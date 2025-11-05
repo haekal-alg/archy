@@ -1,0 +1,50 @@
+{
+  "name": "archy",
+  "version": "1.0.0",
+  "description": "Visual network architecture tool with integrated remote access",
+  "main": "dist/main.js",
+  "scripts": {
+    "start": "npm run build:main && npm run build:renderer && electron .",
+    "dev": "npm run build:main && webpack serve --mode development",
+    "build:main": "tsc src/main/main.ts --outDir dist --module commonjs --target ES2020 --esModuleInterop --skipLibCheck",
+    "build:preload": "tsc src/main/preload.ts --outDir dist --module commonjs --target ES2020 --esModuleInterop --skipLibCheck",
+    "build:renderer": "webpack --mode production",
+    "build": "npm run build:main && npm run build:preload && npm run build:renderer",
+    "package": "npm run build && electron-builder"
+  },
+  "keywords": [
+    "network",
+    "architecture",
+    "rdp",
+    "ssh",
+    "diagram"
+  ],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@types/node": "^24.10.0",
+    "@types/react": "^19.2.2",
+    "@types/react-dom": "^19.2.2",
+    "@xyflow/react": "^12.9.2",
+    "electron": "^39.1.0",
+    "electron-builder": "^26.0.12",
+    "electron-store": "^11.0.2",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0",
+    "reactflow": "^11.11.4",
+    "ssh2": "^1.17.0",
+    "typescript": "^5.9.3"
+  },
+  "devDependencies": {
+    "@types/electron-store": "^1.3.1",
+    "@types/ssh2": "^1.15.5",
+    "copy-webpack-plugin": "^13.0.1",
+    "css-loader": "^7.1.2",
+    "html-webpack-plugin": "^5.6.4",
+    "style-loader": "^4.0.0",
+    "ts-loader": "^9.5.4",
+    "webpack": "^5.102.1",
+    "webpack-cli": "^6.0.1",
+    "webpack-dev-server": "^5.2.2"
+  }
+}

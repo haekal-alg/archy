@@ -1,0 +1,23 @@
+{
+  "appId": "com.archy.app",
+  "productName": "Archy",
+  "directories": {
+    "output": "release"
+  },
+  "files": [
+    "dist/**/*",
+    "package.json"
+  ],
+  "win": {
+    "target": ["nsis"],
+    "icon": "assets/icon.ico"
+  },
+  "linux": {
+    "target": ["AppImage"],
+    "category": "Network"
+  },
+  "mac": {
+    "target": ["dmg"],
+    "category": "public.app-category.developer-tools"
+  }
+}
