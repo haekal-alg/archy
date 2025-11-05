@@ -7,6 +7,7 @@ interface ToolbarProps {
   onSave: () => void;
   onLoad: () => void;
   onClear: () => void;
+  onExportPNG: () => void;
   diagramName: string;
 }
 
@@ -17,6 +18,7 @@ const Toolbar: React.FC<ToolbarProps> = ({
   onSave,
   onLoad,
   onClear,
+  onExportPNG,
   diagramName,
 }) => {
   return (
@@ -134,6 +136,7 @@ const Toolbar: React.FC<ToolbarProps> = ({
           style={{
             width: '100%',
             padding: '8px',
+            marginBottom: '5px',
             background: '#dc3545',
             color: 'white',
             border: 'none',
@@ -143,6 +146,21 @@ const Toolbar: React.FC<ToolbarProps> = ({
           }}
         >
           🗑️ Clear
+        </button>
+        <button
+          onClick={onExportPNG}
+          style={{
+            width: '100%',
+            padding: '8px',
+            background: '#6c757d',
+            color: 'white',
+            border: 'none',
+            borderRadius: '4px',
+            cursor: 'pointer',
+            fontSize: '14px',
+          }}
+        >
+          📸 Export PNG
         </button>
       </div>
 

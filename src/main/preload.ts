@@ -10,12 +10,18 @@ contextBridge.exposeInMainWorld('electron', {
   saveDiagram: (name: string, data: any) =>
     ipcRenderer.invoke('save-diagram', { name, data }),
 
-  loadDiagram: (name: string) =>
-    ipcRenderer.invoke('load-diagram', name),
+  loadDiagram: () =>
+    ipcRenderer.invoke('load-diagram'),
 
   listDiagrams: () =>
     ipcRenderer.invoke('list-diagrams'),
 
   deleteDiagram: (name: string) =>
     ipcRenderer.invoke('delete-diagram', name),
+
+  // Menu event listeners
+  onMenuSave: (callback: () => void) => ipcRenderer.on('menu-save', callback),
+  onMenuLoad: (callback: () => void) => ipcRenderer.on('menu-load', callback),
+  onMenuExport: (callback: () => void) => ipcRenderer.on('menu-export', callback),
+  onMenuClear: (callback: () => void) => ipcRenderer.on('menu-clear', callback),
 });

@@ -1,5 +1,6 @@
-import { app, BrowserWindow, ipcMain } from 'electron';
+import { app, BrowserWindow, ipcMain, Menu, dialog } from 'electron';
 import * as path from 'path';
+import * as fs from 'fs';
 import { exec } from 'child_process';
 import { Client } from 'ssh2';
 
@@ -7,6 +8,80 @@ const Store = require('electron-store');
 const store = new Store.default();
 
 let mainWindow: BrowserWindow | null = null;
+
+function createMenu() {
+  const template: any = [
+    {
+      label: 'File',
+      submenu: [
+        {
+          label: 'Save Diagram',
+          accelerator: 'CmdOrCtrl+S',
+          click: () => {
+            mainWindow?.webContents.send('menu-save');
+          }
+        },
+        {
+          label: 'Load Diagram',
+          accelerator: 'CmdOrCtrl+O',
+          click: () => {
+            mainWindow?.webContents.send('menu-load');
+          }
+        },
+        { type: 'separator' },
+        {
+          label: 'Export as PNG',
+          accelerator: 'CmdOrCtrl+E',
+          click: () => {
+            mainWindow?.webContents.send('menu-export');
+          }
+        },
+        { type: 'separator' },
+        {
+          label: 'Clear Canvas',
+          accelerator: 'CmdOrCtrl+Shift+N',
+          click: () => {
+            mainWindow?.webContents.send('menu-clear');
+          }
+        },
+        { type: 'separator' },
+        {
+          label: 'Exit',
+          accelerator: 'Alt+F4',
+          click: () => {
+            app.quit();
+          }
+        }
+      ]
+    },
+    {
+      label: 'Edit',
+      submenu: [
+        { label: 'Undo', accelerator: 'CmdOrCtrl+Z', role: 'undo' },
+        { label: 'Redo', accelerator: 'CmdOrCtrl+Y', role: 'redo' },
+        { type: 'separator' },
+        { label: 'Cut', accelerator: 'CmdOrCtrl+X', role: 'cut' },
+        { label: 'Copy', accelerator: 'CmdOrCtrl+C', role: 'copy' },
+        { label: 'Paste', accelerator: 'CmdOrCtrl+V', role: 'paste' },
+        { label: 'Select All', accelerator: 'CmdOrCtrl+A', role: 'selectAll' }
+      ]
+    },
+    {
+      label: 'View',
+      submenu: [
+        { label: 'Reload', accelerator: 'CmdOrCtrl+R', role: 'reload' },
+        { label: 'Toggle DevTools', accelerator: 'F12', role: 'toggleDevTools' },
+        { type: 'separator' },
+        { label: 'Zoom In', accelerator: 'CmdOrCtrl+Plus', role: 'zoomIn' },
+        { label: 'Zoom Out', accelerator: 'CmdOrCtrl+-', role: 'zoomOut' },
+        { label: 'Reset Zoom', accelerator: 'CmdOrCtrl+0', role: 'resetZoom' }
+      ]
+    }
+  ];
+
+  const menu = Menu.buildFromTemplate(template);
+  Menu.setApplicationMenu(menu);
+}
 
 function createWindow() {
   mainWindow = new BrowserWindow({
@@ -18,6 +93,8 @@ function createWindow() {
       preload: path.join(__dirname, 'preload.js'),
     },
   });
+
+  createMenu();
 
   if (process.env.NODE_ENV === 'development') {
     mainWindow.loadURL('http://localhost:8080');
@@ -48,16 +125,14 @@ app.on('activate', () => {
 // Handle RDP connections
 ipcMain.handle('connect-rdp', async (event, { host, username, password }) => {
   return new Promise((resolve, reject) => {
-    // Create a temporary .rdp file
     const rdpContent = `full address:s:${host}
 username:s:${username}
 prompt for credentials:i:0
 authentication level:i:0`;
 
     const tempPath = path.join(app.getPath('temp'), 'temp_connection.rdp');
-    require('fs').writeFileSync(tempPath, rdpContent);
+    fs.writeFileSync(tempPath, rdpContent);
 
-    // Launch mstsc with the .rdp file
     const command = `cmdkey /generic:${host} /user:${username} /pass:${password} && mstsc "${tempPath}"`;
 
     exec(command, (error) => {
@@ -76,23 +151,18 @@ ipcMain.handle('connect-ssh', async (event, { host, port = 22, username, passwor
     const conn = new Client();
 
     conn.on('ready', () => {
-      // Launch an interactive shell
       conn.shell((err, stream) => {
         if (err) {
           reject(err);
           return;
         }
 
-        // Open a new terminal window with SSH
         let command;
         if (process.platform === 'win32') {
-          // For Windows, use Windows Terminal or cmd with plink
           command = `start cmd /k "echo Connected to ${host} && plink -ssh ${username}@${host} -P ${port} -pw ${password}"`;
         } else if (process.platform === 'darwin') {
-          // For macOS
           command = `osascript -e 'tell app "Terminal" to do script "sshpass -p '${password}' ssh -p ${port} ${username}@${host}"'`;
         } else {
-          // For Linux
           command = `gnome-terminal -- bash -c "sshpass -p '${password}' ssh -p ${port} ${username}@${host}; exec bash"`;
         }
 
@@ -121,17 +191,61 @@ ipcMain.handle('connect-ssh', async (event, { host, port = 22, username, passwor
   });
 });
 
-// Save/Load diagram data
+// Save diagram - show save dialog
 ipcMain.handle('save-diagram', async (event, { name, data }) => {
-  store.set(`diagram.${name}`, data);
-  return { success: true };
+  try {
+    const result = await dialog.showSaveDialog(mainWindow!, {
+      title: 'Save Diagram',
+      defaultPath: `${name}.json`,
+      filters: [
+        { name: 'JSON Files', extensions: ['json'] },
+        { name: 'All Files', extensions: ['*'] }
+      ]
+    });
+
+    if (!result.canceled && result.filePath) {
+      const jsonString = JSON.stringify(data, null, 2);
+      fs.writeFileSync(result.filePath, jsonString);
+
+      // Also save to electron-store for quick access
+      store.set(`diagram.${name}`, data);
+
+      return { success: true, path: result.filePath };
+    }
+
+    return { success: false, canceled: true };
+  } catch (error: any) {
+    return { success: false, error: error.message };
+  }
 });
 
-ipcMain.handle('load-diagram', async (event, name) => {
-  const data = store.get(`diagram.${name}`);
-  return data;
+// Load diagram - show open dialog
+ipcMain.handle('load-diagram', async () => {
+  try {
+    const result = await dialog.showOpenDialog(mainWindow!, {
+      title: 'Load Diagram',
+      filters: [
+        { name: 'JSON Files', extensions: ['json'] },
+        { name: 'All Files', extensions: ['*'] }
+      ],
+      properties: ['openFile']
+    });
+
+    if (!result.canceled && result.filePaths.length > 0) {
+      const filePath = result.filePaths[0];
+      const fileContent = fs.readFileSync(filePath, 'utf-8');
+      const data = JSON.parse(fileContent);
+
+      return { success: true, data, filename: path.basename(filePath, '.json') };
+    }
+
+    return { success: false, canceled: true };
+  } catch (error: any) {
+    return { success: false, error: error.message };
+  }
 });
 
+// List diagrams from electron-store
 ipcMain.handle('list-diagrams', async () => {
   const store_data = store.store as any;
   const diagrams = Object.keys(store_data)
@@ -140,6 +254,7 @@ ipcMain.handle('list-diagrams', async () => {
   return diagrams;
 });
 
+// Delete diagram from electron-store
 ipcMain.handle('delete-diagram', async (event, name) => {
   store.delete(`diagram.${name}`);
   return { success: true };
