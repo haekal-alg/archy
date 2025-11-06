@@ -7,7 +7,6 @@ interface ContextMenuProps {
   onDelete: () => void;
   onClose: () => void;
   showConnect: boolean;
-  onCopy?: () => void;
   onDuplicate?: () => void;
 }
 
@@ -18,7 +17,6 @@ const ContextMenu: React.FC<ContextMenuProps> = ({
   onDelete,
   onClose,
   showConnect,
-  onCopy,
   onDuplicate
 }) => {
   return (
@@ -84,38 +82,6 @@ const ContextMenu: React.FC<ContextMenuProps> = ({
           >
             <span style={{ fontSize: '16px' }}>▶️</span>
             <span>Connect</span>
-          </button>
-        )}
-
-        {onCopy && (
-          <button
-            onClick={() => {
-              onCopy();
-              onClose();
-            }}
-            style={{
-              width: '100%',
-              padding: '10px 16px',
-              border: 'none',
-              background: 'transparent',
-              color: '#ecf0f1',
-              textAlign: 'left',
-              cursor: 'pointer',
-              fontSize: '13px',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '10px',
-              transition: 'background 0.2s'
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.background = '#4a5f7f';
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.background = 'transparent';
-            }}
-          >
-            <span style={{ fontSize: '16px' }}>📋</span>
-            <span>Copy</span>
           </button>
         )}
 

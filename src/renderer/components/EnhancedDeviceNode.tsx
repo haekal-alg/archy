@@ -26,6 +26,7 @@ export interface EnhancedDeviceData {
   description?: string;
   interfaces?: { name: string; ip: string }[];
   operatingSystem?: string;
+  customCommand?: string;
 }
 
 const EnhancedDeviceNode: React.FC<NodeProps> = ({ data, selected }) => {

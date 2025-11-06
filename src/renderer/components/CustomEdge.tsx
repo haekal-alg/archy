@@ -86,19 +86,32 @@ const CustomEdge: React.FC<EdgeProps> = ({
         }}
       />
 
-      {/* Animated flow effect */}
+      {/* Animated flow effect with glow */}
       {animated && (
-        <path
-          d={path}
-          fill="none"
-          stroke={color}
-          strokeWidth="2"
-          strokeDasharray="5 5"
-          style={{
-            animation: 'dashdraw 0.5s linear infinite',
-            opacity: 0.6
-          }}
-        />
+        <>
+          <path
+            d={path}
+            fill="none"
+            stroke={color}
+            strokeWidth="4"
+            style={{
+              filter: 'blur(4px)',
+              opacity: 0.5,
+              animation: 'glow-pulse 1.5s ease-in-out infinite'
+            }}
+          />
+          <path
+            d={path}
+            fill="none"
+            stroke={color}
+            strokeWidth="2"
+            strokeDasharray="5 5"
+            style={{
+              animation: 'dashdraw 0.5s linear infinite',
+              opacity: 0.8
+            }}
+          />
+        </>
       )}
 
       {/* Bidirectional arrow */}
@@ -144,6 +157,14 @@ const CustomEdge: React.FC<EdgeProps> = ({
           @keyframes dashdraw {
             to {
               stroke-dashoffset: -10;
+            }
+          }
+          @keyframes glow-pulse {
+            0%, 100% {
+              opacity: 0.3;
+            }
+            50% {
+              opacity: 0.7;
             }
           }
         `}

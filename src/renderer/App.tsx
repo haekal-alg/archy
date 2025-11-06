@@ -249,16 +249,6 @@ const App: React.FC = () => {
     setSelectedEdge(null);
   }, [setEdges]);
 
-  const handleCopyNode = useCallback((node: Node) => {
-    const nodeData = JSON.stringify({
-      data: node.data,
-      type: node.type,
-      style: node.style
-    });
-    navigator.clipboard.writeText(nodeData);
-    alert('Node data copied to clipboard!');
-  }, []);
-
   const handleDuplicateNode = useCallback((node: Node) => {
     const newNode: Node = {
       ...node,
@@ -578,6 +568,8 @@ const App: React.FC = () => {
         onUpdateEdge={updateEdgeData}
         onMoveToFront={moveNodeToFront}
         onMoveToBack={moveNodeToBack}
+        onDeleteNode={handleDeleteNode}
+        onDeleteEdge={handleDeleteEdge}
         isOpen={isStylePanelOpen}
         onToggle={() => setIsStylePanelOpen(!isStylePanelOpen)}
       />
@@ -634,9 +626,8 @@ const App: React.FC = () => {
         <ContextMenu
           x={contextMenu.x}
           y={contextMenu.y}
-          showConnect={!!contextMenu.node && contextMenu.node.type !== 'group'}
+          showConnect={!!contextMenu.node && (contextMenu.node.type === 'group' || contextMenu.node.type !== 'group')}
           onConnect={contextMenu.node ? () => handleConnectToDevice(contextMenu.node!) : undefined}
-          onCopy={contextMenu.node ? () => handleCopyNode(contextMenu.node!) : undefined}
           onDuplicate={contextMenu.node ? () => handleDuplicateNode(contextMenu.node!) : undefined}
           onDelete={() => {
             if (contextMenu.node) {

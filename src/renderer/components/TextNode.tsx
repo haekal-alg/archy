@@ -1,5 +1,5 @@
 import React from 'react';
-import { NodeProps } from '@xyflow/react';
+import { Handle, Position, NodeProps } from '@xyflow/react';
 
 export interface TextNodeData {
   label: string;
@@ -36,9 +36,60 @@ const TextNode: React.FC<NodeProps> = ({ data, selected }) => {
         boxShadow: selected ? '0 0 0 2px #1a192b' : 'none',
         cursor: 'pointer',
         transition: 'all 0.2s ease',
+        position: 'relative',
       }}
       className="text-node"
     >
+      {/* Connection Handles */}
+      <Handle
+        type="source"
+        position={Position.Top}
+        id="top"
+        style={{ background: '#555', width: '8px', height: '8px' }}
+      />
+      <Handle
+        type="target"
+        position={Position.Top}
+        id="top-target"
+        style={{ background: '#555', width: '8px', height: '8px' }}
+      />
+      <Handle
+        type="source"
+        position={Position.Right}
+        id="right"
+        style={{ background: '#555', width: '8px', height: '8px' }}
+      />
+      <Handle
+        type="target"
+        position={Position.Right}
+        id="right-target"
+        style={{ background: '#555', width: '8px', height: '8px' }}
+      />
+      <Handle
+        type="source"
+        position={Position.Bottom}
+        id="bottom"
+        style={{ background: '#555', width: '8px', height: '8px' }}
+      />
+      <Handle
+        type="target"
+        position={Position.Bottom}
+        id="bottom-target"
+        style={{ background: '#555', width: '8px', height: '8px' }}
+      />
+      <Handle
+        type="source"
+        position={Position.Left}
+        id="left"
+        style={{ background: '#555', width: '8px', height: '8px' }}
+      />
+      <Handle
+        type="target"
+        position={Position.Left}
+        id="left-target"
+        style={{ background: '#555', width: '8px', height: '8px' }}
+      />
+
       {textData.label || 'Text'}
     </div>
   );

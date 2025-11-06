@@ -12,6 +12,8 @@ interface StylePanelProps {
   onUpdateEdge: (edgeId: string, data: Partial<CustomEdgeData>) => void;
   onMoveToFront?: (nodeId: string) => void;
   onMoveToBack?: (nodeId: string) => void;
+  onDeleteNode?: (nodeId: string) => void;
+  onDeleteEdge?: (edgeId: string) => void;
   isOpen: boolean;
   onToggle: () => void;
 }
@@ -23,6 +25,8 @@ const StylePanel: React.FC<StylePanelProps> = ({
   onUpdateEdge,
   onMoveToFront,
   onMoveToBack,
+  onDeleteNode,
+  onDeleteEdge,
   isOpen,
   onToggle
 }) => {
@@ -36,6 +40,7 @@ const StylePanel: React.FC<StylePanelProps> = ({
   const [nodeUsername, setNodeUsername] = useState('');
   const [nodePassword, setNodePassword] = useState('');
   const [nodeType, setNodeType] = useState<'rdp' | 'ssh' | 'browser'>('ssh');
+  const [nodeCustomCommand, setNodeCustomCommand] = useState('');
   const [textFontSize, setTextFontSize] = useState(14);
   const [textFontColor, setTextFontColor] = useState('#000000');
   const [textBgColor, setTextBgColor] = useState('transparent');
@@ -70,6 +75,7 @@ const StylePanel: React.FC<StylePanelProps> = ({
         setNodePort((data as EnhancedDeviceData).port || 22);
         setNodeUsername((data as EnhancedDeviceData).username || '');
         setNodePassword((data as EnhancedDeviceData).password || '');
+        setNodeCustomCommand((data as EnhancedDeviceData).customCommand || '');
 
         // Determine type from existing type field
         const deviceType = (data as EnhancedDeviceData).type;
@@ -111,6 +117,11 @@ const StylePanel: React.FC<StylePanelProps> = ({
       } else if (selectedNode.type === 'group') {
         updates.borderColor = nodeColor;
         updates.description = nodeDescription;
+        updates.host = nodeHost;
+        updates.port = nodePort;
+        updates.username = nodeUsername;
+        updates.password = nodePassword;
+        updates.customCommand = nodeCustomCommand;
       } else {
         updates.color = nodeColor;
         updates.ipAddress = nodeIP;
@@ -120,6 +131,7 @@ const StylePanel: React.FC<StylePanelProps> = ({
         updates.username = nodeUsername;
         updates.password = nodePassword;
         updates.description = nodeDescription;
+        updates.customCommand = nodeCustomCommand;
       }
 
       onUpdateNode(selectedNode.id, updates);
@@ -153,9 +165,9 @@ const StylePanel: React.FC<StylePanelProps> = ({
     <div
       style={{
         position: 'fixed',
-        right: isOpen ? '0' : '-240px',
+        right: isOpen ? '0' : '-320px',
         top: '0',
-        width: '240px',
+        width: '320px',
         height: '100vh',
         background: '#e8e8e8',
         boxShadow: '-2px 0 8px rgba(0,0,0,0.15)',
@@ -372,7 +384,7 @@ const StylePanel: React.FC<StylePanelProps> = ({
             </>
           )}
 
-          {selectedNode.type !== 'group' && (
+          {(selectedNode.type === 'group' || (selectedNode.type !== 'group' && selectedNode.type !== 'text')) && (
             <>
               <div style={{ marginBottom: '12px' }}>
                 <label style={{ display: 'block', fontSize: '11px', marginBottom: '4px', fontWeight: '500', color: '#666' }}>
@@ -542,23 +554,38 @@ const StylePanel: React.FC<StylePanelProps> = ({
                 />
               </div>
 
-              <div style={{
-                marginBottom: '12px',
-                padding: '8px',
-                background: '#f5f5f5',
-                borderRadius: '4px',
-                fontSize: '10px',
-                color: '#666'
-              }}>
-                <div style={{ fontWeight: '600', marginBottom: '4px' }}>Command:</div>
+              <div style={{ marginBottom: '12px' }}>
+                <label style={{ display: 'block', fontSize: '11px', marginBottom: '4px', fontWeight: '500', color: '#666' }}>
+                  Connection Command
+                </label>
+                <input
+                  type="text"
+                  value={nodeCustomCommand || (
+                    nodeType === 'rdp' ? `mstsc /v:${nodeHost || 'HOST'}` :
+                    nodeType === 'ssh' ? `ssh ${nodeUsername || 'USER'}@${nodeHost || 'HOST'} -p ${nodePort}` :
+                    `start ${nodeHost || 'URL'}`
+                  )}
+                  onChange={(e) => setNodeCustomCommand(e.target.value)}
+                  onBlur={handleNodeUpdate}
+                  placeholder="Custom command..."
+                  style={{
+                    width: '100%',
+                    padding: '6px 8px',
+                    border: '1px solid #ccc',
+                    borderRadius: '4px',
+                    background: '#fff',
+                    color: '#333',
+                    fontSize: '11px',
+                    fontFamily: 'monospace',
+                    boxSizing: 'border-box'
+                  }}
+                />
                 <div style={{
-                  fontFamily: 'monospace',
-                  wordBreak: 'break-all',
-                  color: '#333'
+                  fontSize: '9px',
+                  color: '#999',
+                  marginTop: '4px'
                 }}>
-                  {nodeType === 'rdp' && `mstsc /v:${nodeHost || 'HOST'}`}
-                  {nodeType === 'ssh' && `ssh ${nodeUsername || 'USER'}@${nodeHost || 'HOST'} -p ${nodePort}`}
-                  {nodeType === 'browser' && `start ${nodeHost || 'URL'}`}
+                  Leave empty for auto-generated command
                 </div>
               </div>
             </>
@@ -688,6 +715,35 @@ const StylePanel: React.FC<StylePanelProps> = ({
                   Send to Back
                 </button>
               </div>
+            </div>
+          )}
+
+          {/* Delete Button */}
+          {onDeleteNode && (
+            <div style={{ marginTop: '16px', paddingTop: '16px', borderTop: '1px solid #d0d0d0' }}>
+              <button
+                onClick={() => onDeleteNode(selectedNode.id)}
+                style={{
+                  width: '100%',
+                  padding: '10px',
+                  border: '1px solid #dc3545',
+                  borderRadius: '4px',
+                  background: '#dc3545',
+                  color: '#fff',
+                  cursor: 'pointer',
+                  fontSize: '12px',
+                  fontWeight: '600',
+                  transition: 'all 0.2s'
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.background = '#c82333';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = '#dc3545';
+                }}
+              >
+                Delete Node
+              </button>
             </div>
           )}
         </div>
@@ -823,6 +879,35 @@ const StylePanel: React.FC<StylePanelProps> = ({
               }}
             />
           </div>
+
+          {/* Delete Edge Button */}
+          {onDeleteEdge && (
+            <div style={{ marginTop: '16px', paddingTop: '16px', borderTop: '1px solid #d0d0d0' }}>
+              <button
+                onClick={() => onDeleteEdge(selectedEdge.id)}
+                style={{
+                  width: '100%',
+                  padding: '10px',
+                  border: '1px solid #dc3545',
+                  borderRadius: '4px',
+                  background: '#dc3545',
+                  color: '#fff',
+                  cursor: 'pointer',
+                  fontSize: '12px',
+                  fontWeight: '600',
+                  transition: 'all 0.2s'
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.background = '#c82333';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = '#dc3545';
+                }}
+              >
+                Delete Edge
+              </button>
+            </div>
+          )}
         </div>
       )}
 
@@ -844,7 +929,7 @@ const StylePanel: React.FC<StylePanelProps> = ({
         onClick={onToggle}
         style={{
           position: 'fixed',
-          right: isOpen ? '240px' : '0',
+          right: isOpen ? '320px' : '0',
           top: '50%',
           transform: 'translateY(-50%)',
           width: '30px',

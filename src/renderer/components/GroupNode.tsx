@@ -1,5 +1,5 @@
 import React from 'react';
-import { NodeProps, NodeResizer } from '@xyflow/react';
+import { Handle, Position, NodeProps, NodeResizer } from '@xyflow/react';
 
 export interface GroupNodeData {
   label: string;
@@ -7,6 +7,11 @@ export interface GroupNodeData {
   borderColor?: string;
   borderStyle?: 'solid' | 'dashed' | 'dotted';
   description?: string;
+  host?: string;
+  port?: number;
+  username?: string;
+  password?: string;
+  customCommand?: string;
 }
 
 const GroupNode: React.FC<NodeProps> = ({ data, selected }) => {
@@ -34,6 +39,57 @@ const GroupNode: React.FC<NodeProps> = ({ data, selected }) => {
           border: '2px solid white'
         }}
       />
+
+      {/* Connection Handles */}
+      <Handle
+        type="source"
+        position={Position.Top}
+        id="top"
+        style={{ background: borderColor, width: '10px', height: '10px', border: '2px solid white' }}
+      />
+      <Handle
+        type="target"
+        position={Position.Top}
+        id="top-target"
+        style={{ background: borderColor, width: '10px', height: '10px', border: '2px solid white' }}
+      />
+      <Handle
+        type="source"
+        position={Position.Right}
+        id="right"
+        style={{ background: borderColor, width: '10px', height: '10px', border: '2px solid white' }}
+      />
+      <Handle
+        type="target"
+        position={Position.Right}
+        id="right-target"
+        style={{ background: borderColor, width: '10px', height: '10px', border: '2px solid white' }}
+      />
+      <Handle
+        type="source"
+        position={Position.Bottom}
+        id="bottom"
+        style={{ background: borderColor, width: '10px', height: '10px', border: '2px solid white' }}
+      />
+      <Handle
+        type="target"
+        position={Position.Bottom}
+        id="bottom-target"
+        style={{ background: borderColor, width: '10px', height: '10px', border: '2px solid white' }}
+      />
+      <Handle
+        type="source"
+        position={Position.Left}
+        id="left"
+        style={{ background: borderColor, width: '10px', height: '10px', border: '2px solid white' }}
+      />
+      <Handle
+        type="target"
+        position={Position.Left}
+        id="left-target"
+        style={{ background: borderColor, width: '10px', height: '10px', border: '2px solid white' }}
+      />
+
       <div
         style={{
           width: '100%',
@@ -46,24 +102,26 @@ const GroupNode: React.FC<NodeProps> = ({ data, selected }) => {
           boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
         }}
       >
-        {/* Title Bar */}
-        <div
-          style={{
-            position: 'absolute',
-            top: '-12px',
-            left: '20px',
-            background: borderColor,
-            color: 'white',
-            padding: '6px 16px',
-            borderRadius: '8px',
-            fontWeight: 'bold',
-            fontSize: '14px',
-            boxShadow: '0 2px 8px rgba(0,0,0,0.2)',
-            letterSpacing: '0.5px'
-          }}
-        >
-          {groupData.label}
-        </div>
+        {/* Title Bar - only show if label exists */}
+        {groupData.label && (
+          <div
+            style={{
+              position: 'absolute',
+              top: '-12px',
+              left: '20px',
+              background: borderColor,
+              color: 'white',
+              padding: '6px 16px',
+              borderRadius: '8px',
+              fontWeight: 'bold',
+              fontSize: '14px',
+              boxShadow: '0 2px 8px rgba(0,0,0,0.2)',
+              letterSpacing: '0.5px'
+            }}
+          >
+            {groupData.label}
+          </div>
+        )}
 
         {/* Description */}
         {groupData.description && (
