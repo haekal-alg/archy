@@ -85,29 +85,6 @@ const App: React.FC = () => {
     diagramNameRef.current = diagramName;
   }, [diagramName]);
 
-  // Keyboard delete handler
-  useEffect(() => {
-    const handleKeyDown = (event: KeyboardEvent) => {
-      // Only allow Delete key, not Backspace (to avoid interfering with text input)
-      // Also check if user is typing in an input/textarea field
-      const target = event.target as HTMLElement;
-      const isInputField = target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable;
-
-      if (event.key === 'Delete' && !isInputField) {
-        if (selectedNode) {
-          handleDeleteNode(selectedNode.id);
-        } else if (selectedEdge) {
-          handleDeleteEdge(selectedEdge.id);
-        }
-      }
-    };
-
-    window.addEventListener('keydown', handleKeyDown);
-    return () => {
-      window.removeEventListener('keydown', handleKeyDown);
-    };
-  }, [selectedNode, selectedEdge]);
-
   // Setup menu event listeners (only once on mount)
   useEffect(() => {
     const handleSave = async () => {
@@ -302,14 +279,17 @@ const App: React.FC = () => {
         console.log('SSH connection initiated');
       } else if (type === 'browser') {
         // Browser connection: start URL (opens in default browser)
-        const command = `start ${host}`;
+        // Wrap URL in quotes to handle special characters like &, ?, #
+        const command = `start "" "${host}"`;
         await window.electron.executeCommand(command);
         console.log('Browser opened');
       } else if (type === 'custom') {
-        // Custom command: execute whatever user inputted
+        // Custom command: execute whatever user inputted in cmd window
         if (customCommand) {
-          await window.electron.executeCommand(customCommand);
-          console.log('Custom command executed');
+          // Open cmd with the custom command and keep window open with /k
+          const command = `start cmd /k "${customCommand}"`;
+          await window.electron.executeCommand(command);
+          console.log('Custom command executed in CMD');
         } else {
           alert('No custom command specified');
         }

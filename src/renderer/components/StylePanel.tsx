@@ -30,9 +30,10 @@ const StylePanel: React.FC<StylePanelProps> = ({
   isOpen,
   onToggle
 }) => {
+  const [activeTab, setActiveTab] = useState<'connection' | 'style'>('style');
   const [nodeLabel, setNodeLabel] = useState('');
   const [nodeColor, setNodeColor] = useState('#1976d2');
-  const [nodeIP, setNodeIP] = useState('');
+  const [nodeBgColor, setNodeBgColor] = useState('#ffb3ba40');
   const [nodeDescription, setNodeDescription] = useState('');
   const [nodeOS, setNodeOS] = useState('');
   const [nodeHost, setNodeHost] = useState('');
@@ -66,9 +67,24 @@ const StylePanel: React.FC<StylePanelProps> = ({
         setTextBorderColor(textData.borderColor || '#000000');
         setTextBorderStyle(textData.borderStyle || 'none');
         setTextBorderWidth(textData.borderWidth || 1);
+      } else if (selectedNode.type === 'group') {
+        // Group/Network Zone specific
+        const groupData = data as GroupNodeData;
+        setNodeColor(groupData.borderColor || '#ff6b6b');
+        setNodeBgColor(groupData.backgroundColor || '#ffb3ba40');
+        setNodeDescription(groupData.description || '');
+        setNodeHost(groupData.host || '');
+        setNodePort(groupData.port || 22);
+        setNodeUsername(groupData.username || '');
+        setNodePassword(groupData.password || '');
+        setNodeCustomCommand(groupData.customCommand || '');
+
+        // Load connectionType
+        const savedConnectionType = (data as any).connectionType;
+        setNodeType(savedConnectionType || 'ssh');
       } else {
-        setNodeColor((data as any).color || (data as any).borderColor || '#1976d2');
-        setNodeIP((data as EnhancedDeviceData).ipAddress || '');
+        // Enhanced device node
+        setNodeColor((data as any).color || '#1976d2');
         setNodeDescription((data as any).description || '');
         setNodeOS((data as EnhancedDeviceData).operatingSystem || '');
         setNodeHost((data as EnhancedDeviceData).host || '');
@@ -124,6 +140,7 @@ const StylePanel: React.FC<StylePanelProps> = ({
         updates.borderWidth = textBorderWidth;
       } else if (selectedNode.type === 'group') {
         updates.borderColor = nodeColor;
+        updates.backgroundColor = nodeBgColor;
         updates.description = nodeDescription;
         updates.host = nodeHost;
         updates.port = nodePort;
@@ -133,7 +150,6 @@ const StylePanel: React.FC<StylePanelProps> = ({
         updates.connectionType = nodeType;
       } else {
         updates.color = nodeColor;
-        updates.ipAddress = nodeIP;
         updates.operatingSystem = nodeOS;
         updates.host = nodeHost;
         updates.port = nodePort;
@@ -203,33 +219,105 @@ const StylePanel: React.FC<StylePanelProps> = ({
         </h3>
       </div>
 
+      {/* Tabs for non-text nodes (not for edges or text nodes) */}
+      {selectedNode && selectedNode.type !== 'text' && (
+        <div style={{
+          display: 'flex',
+          borderBottom: '2px solid #d0d0d0',
+          background: '#d8d8d8',
+          position: 'sticky',
+          top: '49px',
+          zIndex: 10
+        }}>
+          <button
+            onClick={() => setActiveTab('connection')}
+            style={{
+              flex: 1,
+              padding: '10px 16px',
+              border: 'none',
+              background: activeTab === 'connection' ? '#e8e8e8' : 'transparent',
+              color: activeTab === 'connection' ? '#007bff' : '#666',
+              cursor: 'pointer',
+              fontSize: '12px',
+              fontWeight: activeTab === 'connection' ? '600' : '500',
+              borderBottom: activeTab === 'connection' ? '3px solid #007bff' : '3px solid transparent',
+              transition: 'all 0.2s',
+              textTransform: 'uppercase',
+              letterSpacing: '0.5px'
+            }}
+            onMouseEnter={(e) => {
+              if (activeTab !== 'connection') {
+                e.currentTarget.style.background = '#cfcfcf';
+              }
+            }}
+            onMouseLeave={(e) => {
+              if (activeTab !== 'connection') {
+                e.currentTarget.style.background = 'transparent';
+              }
+            }}
+          >
+            Connection
+          </button>
+          <button
+            onClick={() => setActiveTab('style')}
+            style={{
+              flex: 1,
+              padding: '10px 16px',
+              border: 'none',
+              background: activeTab === 'style' ? '#e8e8e8' : 'transparent',
+              color: activeTab === 'style' ? '#007bff' : '#666',
+              cursor: 'pointer',
+              fontSize: '12px',
+              fontWeight: activeTab === 'style' ? '600' : '500',
+              borderBottom: activeTab === 'style' ? '3px solid #007bff' : '3px solid transparent',
+              transition: 'all 0.2s',
+              textTransform: 'uppercase',
+              letterSpacing: '0.5px'
+            }}
+            onMouseEnter={(e) => {
+              if (activeTab !== 'style') {
+                e.currentTarget.style.background = '#cfcfcf';
+              }
+            }}
+            onMouseLeave={(e) => {
+              if (activeTab !== 'style') {
+                e.currentTarget.style.background = 'transparent';
+              }
+            }}
+          >
+            Style
+          </button>
+        </div>
+      )}
+
       {/* Node Styling */}
       {selectedNode && (
         <div style={{ padding: '16px' }}>
-          <div style={{ marginBottom: '12px' }}>
-            <label style={{ display: 'block', fontSize: '11px', marginBottom: '4px', fontWeight: '500', color: '#666' }}>
-              {selectedNode.type === 'text' ? 'Text' : 'Label'}
-            </label>
-            <input
-              type="text"
-              value={nodeLabel}
-              onChange={(e) => setNodeLabel(e.target.value)}
-              onBlur={handleNodeUpdate}
-              style={{
-                width: '100%',
-                padding: '6px 8px',
-                border: '1px solid #ccc',
-                borderRadius: '4px',
-                background: '#fff',
-                color: '#333',
-                fontSize: '12px',
-                boxSizing: 'border-box'
-              }}
-            />
-          </div>
-
+          {/* Text Node - No tabs, just style content */}
           {selectedNode.type === 'text' && (
             <>
+              <div style={{ marginBottom: '12px' }}>
+                <label style={{ display: 'block', fontSize: '11px', marginBottom: '4px', fontWeight: '500', color: '#666' }}>
+                  Text
+                </label>
+                <input
+                  type="text"
+                  value={nodeLabel}
+                  onChange={(e) => setNodeLabel(e.target.value)}
+                  onBlur={handleNodeUpdate}
+                  style={{
+                    width: '100%',
+                    padding: '6px 8px',
+                    border: '1px solid #ccc',
+                    borderRadius: '4px',
+                    background: '#fff',
+                    color: '#333',
+                    fontSize: '12px',
+                    boxSizing: 'border-box'
+                  }}
+                />
+              </div>
+
               <div style={{ marginBottom: '12px' }}>
                 <label style={{ display: 'block', fontSize: '11px', marginBottom: '4px', fontWeight: '500', color: '#666' }}>
                   Font Size
@@ -394,347 +482,527 @@ const StylePanel: React.FC<StylePanelProps> = ({
             </>
           )}
 
-          {(selectedNode.type === 'group' || (selectedNode.type !== 'group' && selectedNode.type !== 'text')) && (
+          {/* Non-text nodes with tabs */}
+          {selectedNode.type !== 'text' && (
             <>
-              <div style={{ marginBottom: '12px' }}>
-                <label style={{ display: 'block', fontSize: '11px', marginBottom: '4px', fontWeight: '500', color: '#666' }}>
-                  Operating System
-                </label>
-                <input
-                  type="text"
-                  value={nodeOS}
-                  onChange={(e) => setNodeOS(e.target.value)}
-                  onBlur={handleNodeUpdate}
-                  placeholder="Windows Server 2019"
-                  style={{
-                    width: '100%',
-                    padding: '6px 8px',
-                    border: '1px solid #ccc',
-                    borderRadius: '4px',
-                    background: '#fff',
-                    color: '#333',
-                    fontSize: '12px',
-                    boxSizing: 'border-box'
-                  }}
-                />
-              </div>
-
-              <div style={{ marginBottom: '12px' }}>
-                <label style={{ display: 'block', fontSize: '11px', marginBottom: '4px', fontWeight: '500', color: '#666' }}>
-                  IP Address
-                </label>
-                <input
-                  type="text"
-                  value={nodeIP}
-                  onChange={(e) => setNodeIP(e.target.value)}
-                  onBlur={handleNodeUpdate}
-                  placeholder="10.2.70.5"
-                  style={{
-                    width: '100%',
-                    padding: '6px 8px',
-                    border: '1px solid #ccc',
-                    borderRadius: '4px',
-                    background: '#fff',
-                    color: '#333',
-                    fontSize: '12px',
-                    fontFamily: 'monospace',
-                    boxSizing: 'border-box'
-                  }}
-                />
-              </div>
-
-              {/* Connection Settings Section */}
-              <div style={{
-                marginTop: '16px',
-                paddingTop: '16px',
-                borderTop: '2px solid #007bff',
-                marginBottom: '16px',
-                background: '#f8f9fa',
-                padding: '12px',
-                borderRadius: '6px'
-              }}>
-                <div style={{
-                  fontSize: '12px',
-                  fontWeight: '600',
-                  marginBottom: '12px',
-                  color: '#007bff',
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.5px'
-                }}>
-                  🔌 Connection Settings
-                </div>
-
-                <div style={{ marginBottom: '12px' }}>
-                  <label style={{ display: 'block', fontSize: '11px', marginBottom: '4px', fontWeight: '500', color: '#666' }}>
-                    Connection Type
-                  </label>
-                  <select
-                    value={nodeType}
-                    onChange={(e) => {
-                      setNodeType(e.target.value as 'rdp' | 'ssh' | 'browser' | 'custom');
-                      if (e.target.value !== 'custom') {
-                        setNodeCustomCommand('');
-                      }
-                      handleNodeUpdate();
-                    }}
-                    style={{
-                      width: '100%',
-                      padding: '6px 8px',
-                      border: '1px solid #ccc',
-                      borderRadius: '4px',
-                      background: '#fff',
-                      color: '#333',
-                      fontSize: '12px',
-                      boxSizing: 'border-box',
-                      cursor: 'pointer'
-                    }}
-                  >
-                    <option value="rdp">RDP (Remote Desktop)</option>
-                    <option value="ssh">SSH (Secure Shell)</option>
-                    <option value="browser">Browser (HTTP/HTTPS)</option>
-                    <option value="custom">Custom Command</option>
-                  </select>
-                </div>
-
-                {/* RDP Settings */}
-                {nodeType === 'rdp' && (
-                  <>
-                    <div style={{ marginBottom: '12px' }}>
-                      <label style={{ display: 'block', fontSize: '11px', marginBottom: '4px', fontWeight: '500', color: '#666' }}>
-                        Host / IP Address
-                      </label>
-                      <input
-                        type="text"
-                        value={nodeHost}
-                        onChange={(e) => setNodeHost(e.target.value)}
-                        onBlur={handleNodeUpdate}
-                        placeholder="192.168.1.100"
-                        style={{
-                          width: '100%',
-                          padding: '6px 8px',
-                          border: '1px solid #ccc',
-                          borderRadius: '4px',
-                          background: '#fff',
-                          color: '#333',
-                          fontSize: '12px',
-                          fontFamily: 'monospace',
-                          boxSizing: 'border-box'
-                        }}
-                      />
-                    </div>
-                    <div style={{ marginBottom: '12px' }}>
-                      <label style={{ display: 'block', fontSize: '11px', marginBottom: '4px', fontWeight: '500', color: '#666' }}>
-                        Username
-                      </label>
-                      <input
-                        type="text"
-                        value={nodeUsername}
-                        onChange={(e) => setNodeUsername(e.target.value)}
-                        onBlur={handleNodeUpdate}
-                        placeholder="administrator"
-                        style={{
-                          width: '100%',
-                          padding: '6px 8px',
-                          border: '1px solid #ccc',
-                          borderRadius: '4px',
-                          background: '#fff',
-                          color: '#333',
-                          fontSize: '12px',
-                          boxSizing: 'border-box'
-                        }}
-                      />
-                    </div>
-                    <div style={{ marginBottom: '12px' }}>
-                      <label style={{ display: 'block', fontSize: '11px', marginBottom: '4px', fontWeight: '500', color: '#666' }}>
-                        Password
-                      </label>
-                      <input
-                        type="password"
-                        value={nodePassword}
-                        onChange={(e) => setNodePassword(e.target.value)}
-                        onBlur={handleNodeUpdate}
-                        placeholder="••••••••"
-                        style={{
-                          width: '100%',
-                          padding: '6px 8px',
-                          border: '1px solid #ccc',
-                          borderRadius: '4px',
-                          background: '#fff',
-                          color: '#333',
-                          fontSize: '12px',
-                          boxSizing: 'border-box'
-                        }}
-                      />
-                    </div>
-                    <div style={{
-                      padding: '8px',
-                      background: '#f5f5f5',
-                      borderRadius: '4px',
-                      fontSize: '10px',
-                      color: '#666',
-                      fontFamily: 'monospace'
-                    }}>
-                      Command: mstsc /v:{nodeHost || 'HOST'}
-                    </div>
-                  </>
-                )}
-
-                {/* SSH Settings */}
-                {nodeType === 'ssh' && (
-                  <>
-                    <div style={{ marginBottom: '12px' }}>
-                      <label style={{ display: 'block', fontSize: '11px', marginBottom: '4px', fontWeight: '500', color: '#666' }}>
-                        Host / IP Address
-                      </label>
-                      <input
-                        type="text"
-                        value={nodeHost}
-                        onChange={(e) => setNodeHost(e.target.value)}
-                        onBlur={handleNodeUpdate}
-                        placeholder="192.168.1.100"
-                        style={{
-                          width: '100%',
-                          padding: '6px 8px',
-                          border: '1px solid #ccc',
-                          borderRadius: '4px',
-                          background: '#fff',
-                          color: '#333',
-                          fontSize: '12px',
-                          fontFamily: 'monospace',
-                          boxSizing: 'border-box'
-                        }}
-                      />
-                    </div>
-                    <div style={{ marginBottom: '12px' }}>
-                      <label style={{ display: 'block', fontSize: '11px', marginBottom: '4px', fontWeight: '500', color: '#666' }}>
-                        Port
-                      </label>
-                      <input
-                        type="number"
-                        value={nodePort}
-                        onChange={(e) => setNodePort(parseInt(e.target.value) || 22)}
-                        onBlur={handleNodeUpdate}
-                        style={{
-                          width: '100%',
-                          padding: '6px 8px',
-                          border: '1px solid #ccc',
-                          borderRadius: '4px',
-                          background: '#fff',
-                          color: '#333',
-                          fontSize: '12px',
-                          fontFamily: 'monospace',
-                          boxSizing: 'border-box'
-                        }}
-                      />
-                    </div>
-                    <div style={{ marginBottom: '12px' }}>
-                      <label style={{ display: 'block', fontSize: '11px', marginBottom: '4px', fontWeight: '500', color: '#666' }}>
-                        Username
-                      </label>
-                      <input
-                        type="text"
-                        value={nodeUsername}
-                        onChange={(e) => setNodeUsername(e.target.value)}
-                        onBlur={handleNodeUpdate}
-                        placeholder="root"
-                        style={{
-                          width: '100%',
-                          padding: '6px 8px',
-                          border: '1px solid #ccc',
-                          borderRadius: '4px',
-                          background: '#fff',
-                          color: '#333',
-                          fontSize: '12px',
-                          boxSizing: 'border-box'
-                        }}
-                      />
-                    </div>
-                    <div style={{ marginBottom: '12px' }}>
-                      <label style={{ display: 'block', fontSize: '11px', marginBottom: '4px', fontWeight: '500', color: '#666' }}>
-                        Password
-                      </label>
-                      <input
-                        type="password"
-                        value={nodePassword}
-                        onChange={(e) => setNodePassword(e.target.value)}
-                        onBlur={handleNodeUpdate}
-                        placeholder="••••••••"
-                        style={{
-                          width: '100%',
-                          padding: '6px 8px',
-                          border: '1px solid #ccc',
-                          borderRadius: '4px',
-                          background: '#fff',
-                          color: '#333',
-                          fontSize: '12px',
-                          boxSizing: 'border-box'
-                        }}
-                      />
-                    </div>
-                    <div style={{
-                      padding: '8px',
-                      background: '#f5f5f5',
-                      borderRadius: '4px',
-                      fontSize: '10px',
-                      color: '#666',
-                      fontFamily: 'monospace'
-                    }}>
-                      Command: ssh {nodeUsername || 'USER'}@{nodeHost || 'HOST'} -p {nodePort}
-                    </div>
-                  </>
-                )}
-
-                {/* Browser Settings */}
-                {nodeType === 'browser' && (
-                  <>
-                    <div style={{ marginBottom: '12px' }}>
-                      <label style={{ display: 'block', fontSize: '11px', marginBottom: '4px', fontWeight: '500', color: '#666' }}>
-                        URL
-                      </label>
-                      <input
-                        type="text"
-                        value={nodeHost}
-                        onChange={(e) => setNodeHost(e.target.value)}
-                        onBlur={handleNodeUpdate}
-                        placeholder="https://example.com"
-                        style={{
-                          width: '100%',
-                          padding: '6px 8px',
-                          border: '1px solid #ccc',
-                          borderRadius: '4px',
-                          background: '#fff',
-                          color: '#333',
-                          fontSize: '12px',
-                          fontFamily: 'monospace',
-                          boxSizing: 'border-box'
-                        }}
-                      />
-                    </div>
-                    <div style={{
-                      padding: '8px',
-                      background: '#f5f5f5',
-                      borderRadius: '4px',
-                      fontSize: '10px',
-                      color: '#666',
-                      fontFamily: 'monospace'
-                    }}>
-                      Command: start {nodeHost || 'URL'}
-                    </div>
-                  </>
-                )}
-
-                {/* Custom Command */}
-                {nodeType === 'custom' && (
+              {/* CONNECTION TAB */}
+              {activeTab === 'connection' && (
+                <>
                   <div style={{ marginBottom: '12px' }}>
                     <label style={{ display: 'block', fontSize: '11px', marginBottom: '4px', fontWeight: '500', color: '#666' }}>
-                      Custom Command
+                      Connection Type
+                    </label>
+                    <select
+                      value={nodeType}
+                      onChange={(e) => {
+                        setNodeType(e.target.value as 'rdp' | 'ssh' | 'browser' | 'custom');
+                        if (e.target.value !== 'custom') {
+                          setNodeCustomCommand('');
+                        }
+                        handleNodeUpdate();
+                      }}
+                      style={{
+                        width: '100%',
+                        padding: '6px 8px',
+                        border: '1px solid #ccc',
+                        borderRadius: '4px',
+                        background: '#fff',
+                        color: '#333',
+                        fontSize: '12px',
+                        boxSizing: 'border-box',
+                        cursor: 'pointer'
+                      }}
+                    >
+                      <option value="rdp">RDP</option>
+                      <option value="ssh">SSH</option>
+                      <option value="browser">Browser</option>
+                      <option value="custom">Custom</option>
+                    </select>
+                  </div>
+
+                  {/* RDP Settings */}
+                  {nodeType === 'rdp' && (
+                    <>
+                      <div style={{ marginBottom: '12px' }}>
+                        <label style={{ display: 'block', fontSize: '11px', marginBottom: '4px', fontWeight: '500', color: '#666' }}>
+                          Host
+                        </label>
+                        <input
+                          type="text"
+                          value={nodeHost}
+                          onChange={(e) => setNodeHost(e.target.value)}
+                          onBlur={handleNodeUpdate}
+                          placeholder="192.168.1.100"
+                          style={{
+                            width: '100%',
+                            padding: '6px 8px',
+                            border: '1px solid #ccc',
+                            borderRadius: '4px',
+                            background: '#fff',
+                            color: '#333',
+                            fontSize: '12px',
+                            fontFamily: 'monospace',
+                            boxSizing: 'border-box'
+                          }}
+                        />
+                      </div>
+                      <div style={{ marginBottom: '12px' }}>
+                        <label style={{ display: 'block', fontSize: '11px', marginBottom: '4px', fontWeight: '500', color: '#666' }}>
+                          Username
+                        </label>
+                        <input
+                          type="text"
+                          value={nodeUsername}
+                          onChange={(e) => setNodeUsername(e.target.value)}
+                          onBlur={handleNodeUpdate}
+                          placeholder="administrator"
+                          style={{
+                            width: '100%',
+                            padding: '6px 8px',
+                            border: '1px solid #ccc',
+                            borderRadius: '4px',
+                            background: '#fff',
+                            color: '#333',
+                            fontSize: '12px',
+                            boxSizing: 'border-box'
+                          }}
+                        />
+                      </div>
+                      <div style={{ marginBottom: '12px' }}>
+                        <label style={{ display: 'block', fontSize: '11px', marginBottom: '4px', fontWeight: '500', color: '#666' }}>
+                          Password
+                        </label>
+                        <input
+                          type="password"
+                          value={nodePassword}
+                          onChange={(e) => setNodePassword(e.target.value)}
+                          onBlur={handleNodeUpdate}
+                          placeholder="••••••••"
+                          style={{
+                            width: '100%',
+                            padding: '6px 8px',
+                            border: '1px solid #ccc',
+                            borderRadius: '4px',
+                            background: '#fff',
+                            color: '#333',
+                            fontSize: '12px',
+                            boxSizing: 'border-box'
+                          }}
+                        />
+                      </div>
+                      <div style={{
+                        padding: '10px',
+                        background: '#f8f9fa',
+                        border: '1px solid #dee2e6',
+                        borderRadius: '4px',
+                        marginTop: '16px'
+                      }}>
+                        <div style={{
+                          fontSize: '10px',
+                          fontWeight: '600',
+                          marginBottom: '6px',
+                          color: '#666',
+                          textTransform: 'uppercase'
+                        }}>
+                          Command Preview
+                        </div>
+                        <div style={{
+                          fontSize: '11px',
+                          color: '#495057',
+                          fontFamily: 'monospace',
+                          wordBreak: 'break-all'
+                        }}>
+                          mstsc /v:{nodeHost || 'HOST'}
+                        </div>
+                      </div>
+                    </>
+                  )}
+
+                  {/* SSH Settings */}
+                  {nodeType === 'ssh' && (
+                    <>
+                      <div style={{ marginBottom: '12px' }}>
+                        <label style={{ display: 'block', fontSize: '11px', marginBottom: '4px', fontWeight: '500', color: '#666' }}>
+                          Host
+                        </label>
+                        <input
+                          type="text"
+                          value={nodeHost}
+                          onChange={(e) => setNodeHost(e.target.value)}
+                          onBlur={handleNodeUpdate}
+                          placeholder="192.168.1.100"
+                          style={{
+                            width: '100%',
+                            padding: '6px 8px',
+                            border: '1px solid #ccc',
+                            borderRadius: '4px',
+                            background: '#fff',
+                            color: '#333',
+                            fontSize: '12px',
+                            fontFamily: 'monospace',
+                            boxSizing: 'border-box'
+                          }}
+                        />
+                      </div>
+                      <div style={{ marginBottom: '12px' }}>
+                        <label style={{ display: 'block', fontSize: '11px', marginBottom: '4px', fontWeight: '500', color: '#666' }}>
+                          Port
+                        </label>
+                        <input
+                          type="number"
+                          value={nodePort}
+                          onChange={(e) => setNodePort(parseInt(e.target.value) || 22)}
+                          onBlur={handleNodeUpdate}
+                          style={{
+                            width: '100%',
+                            padding: '6px 8px',
+                            border: '1px solid #ccc',
+                            borderRadius: '4px',
+                            background: '#fff',
+                            color: '#333',
+                            fontSize: '12px',
+                            fontFamily: 'monospace',
+                            boxSizing: 'border-box'
+                          }}
+                        />
+                      </div>
+                      <div style={{ marginBottom: '12px' }}>
+                        <label style={{ display: 'block', fontSize: '11px', marginBottom: '4px', fontWeight: '500', color: '#666' }}>
+                          Username
+                        </label>
+                        <input
+                          type="text"
+                          value={nodeUsername}
+                          onChange={(e) => setNodeUsername(e.target.value)}
+                          onBlur={handleNodeUpdate}
+                          placeholder="root"
+                          style={{
+                            width: '100%',
+                            padding: '6px 8px',
+                            border: '1px solid #ccc',
+                            borderRadius: '4px',
+                            background: '#fff',
+                            color: '#333',
+                            fontSize: '12px',
+                            boxSizing: 'border-box'
+                          }}
+                        />
+                      </div>
+                      <div style={{ marginBottom: '12px' }}>
+                        <label style={{ display: 'block', fontSize: '11px', marginBottom: '4px', fontWeight: '500', color: '#666' }}>
+                          Password
+                        </label>
+                        <input
+                          type="password"
+                          value={nodePassword}
+                          onChange={(e) => setNodePassword(e.target.value)}
+                          onBlur={handleNodeUpdate}
+                          placeholder="••••••••"
+                          style={{
+                            width: '100%',
+                            padding: '6px 8px',
+                            border: '1px solid #ccc',
+                            borderRadius: '4px',
+                            background: '#fff',
+                            color: '#333',
+                            fontSize: '12px',
+                            boxSizing: 'border-box'
+                          }}
+                        />
+                      </div>
+                      <div style={{
+                        padding: '10px',
+                        background: '#f8f9fa',
+                        border: '1px solid #dee2e6',
+                        borderRadius: '4px',
+                        marginTop: '16px'
+                      }}>
+                        <div style={{
+                          fontSize: '10px',
+                          fontWeight: '600',
+                          marginBottom: '6px',
+                          color: '#666',
+                          textTransform: 'uppercase'
+                        }}>
+                          Command Preview
+                        </div>
+                        <div style={{
+                          fontSize: '11px',
+                          color: '#495057',
+                          fontFamily: 'monospace',
+                          wordBreak: 'break-all'
+                        }}>
+                          ssh {nodeUsername || 'USER'}@{nodeHost || 'HOST'} -p {nodePort}
+                        </div>
+                      </div>
+                    </>
+                  )}
+
+                  {/* Browser Settings */}
+                  {nodeType === 'browser' && (
+                    <>
+                      <div style={{ marginBottom: '12px' }}>
+                        <label style={{ display: 'block', fontSize: '11px', marginBottom: '4px', fontWeight: '500', color: '#666' }}>
+                          URL
+                        </label>
+                        <input
+                          type="text"
+                          value={nodeHost}
+                          onChange={(e) => setNodeHost(e.target.value)}
+                          onBlur={handleNodeUpdate}
+                          placeholder="https://example.com"
+                          style={{
+                            width: '100%',
+                            padding: '6px 8px',
+                            border: '1px solid #ccc',
+                            borderRadius: '4px',
+                            background: '#fff',
+                            color: '#333',
+                            fontSize: '12px',
+                            fontFamily: 'monospace',
+                            boxSizing: 'border-box'
+                          }}
+                        />
+                      </div>
+                      <div style={{
+                        padding: '10px',
+                        background: '#f8f9fa',
+                        border: '1px solid #dee2e6',
+                        borderRadius: '4px',
+                        marginTop: '16px'
+                      }}>
+                        <div style={{
+                          fontSize: '10px',
+                          fontWeight: '600',
+                          marginBottom: '6px',
+                          color: '#666',
+                          textTransform: 'uppercase'
+                        }}>
+                          Command Preview
+                        </div>
+                        <div style={{
+                          fontSize: '11px',
+                          color: '#495057',
+                          fontFamily: 'monospace',
+                          wordBreak: 'break-all'
+                        }}>
+                          start "" "{nodeHost || 'URL'}"
+                        </div>
+                      </div>
+                    </>
+                  )}
+
+                  {/* Custom Command */}
+                  {nodeType === 'custom' && (
+                    <div style={{ marginBottom: '12px' }}>
+                      <label style={{ display: 'block', fontSize: '11px', marginBottom: '4px', fontWeight: '500', color: '#666' }}>
+                        Custom Command
+                      </label>
+                      <input
+                        type="text"
+                        value={nodeCustomCommand}
+                        onChange={(e) => setNodeCustomCommand(e.target.value)}
+                        onBlur={handleNodeUpdate}
+                        placeholder="Enter custom command..."
+                        title="Enter command to execute in CMD (e.g., ping 8.8.8.8)"
+                        style={{
+                          width: '100%',
+                          padding: '6px 8px',
+                          border: '1px solid #ccc',
+                          borderRadius: '4px',
+                          background: '#fff',
+                          color: '#333',
+                          fontSize: '11px',
+                          fontFamily: 'monospace',
+                          boxSizing: 'border-box'
+                        }}
+                      />
+                    </div>
+                  )}
+                </>
+              )}
+
+              {/* STYLE TAB */}
+              {activeTab === 'style' && (
+                <>
+                  <div style={{ marginBottom: '12px' }}>
+                    <label style={{ display: 'block', fontSize: '11px', marginBottom: '4px', fontWeight: '500', color: '#666' }}>
+                      Label
                     </label>
                     <input
                       type="text"
-                      value={nodeCustomCommand}
-                      onChange={(e) => setNodeCustomCommand(e.target.value)}
+                      value={nodeLabel}
+                      onChange={(e) => setNodeLabel(e.target.value)}
                       onBlur={handleNodeUpdate}
-                      placeholder="Enter custom command..."
+                      style={{
+                        width: '100%',
+                        padding: '6px 8px',
+                        border: '1px solid #ccc',
+                        borderRadius: '4px',
+                        background: '#fff',
+                        color: '#333',
+                        fontSize: '12px',
+                        boxSizing: 'border-box'
+                      }}
+                    />
+                  </div>
+
+                  {/* Operating System - only for enhanced nodes */}
+                  {selectedNode.type !== 'group' && (
+                    <div style={{ marginBottom: '12px' }}>
+                      <label style={{ display: 'block', fontSize: '11px', marginBottom: '4px', fontWeight: '500', color: '#666' }}>
+                        Operating System
+                      </label>
+                      <input
+                        type="text"
+                        value={nodeOS}
+                        onChange={(e) => setNodeOS(e.target.value)}
+                        onBlur={handleNodeUpdate}
+                        placeholder="Windows Server 2019"
+                        style={{
+                          width: '100%',
+                          padding: '6px 8px',
+                          border: '1px solid #ccc',
+                          borderRadius: '4px',
+                          background: '#fff',
+                          color: '#333',
+                          fontSize: '12px',
+                          boxSizing: 'border-box'
+                        }}
+                      />
+                    </div>
+                  )}
+
+                  {/* Color Section */}
+                  {selectedNode.type === 'group' ? (
+                    <>
+                      {/* Group nodes: Border and Background colors */}
+                      <div style={{ marginBottom: '12px' }}>
+                        <label style={{ display: 'block', fontSize: '11px', marginBottom: '6px', fontWeight: '500', color: '#666' }}>
+                          Border Color
+                        </label>
+                        <div style={{
+                          display: 'grid',
+                          gridTemplateColumns: 'repeat(4, 1fr)',
+                          gap: '6px',
+                          marginBottom: '6px'
+                        }}>
+                          {presetColors.map((color) => (
+                            <button
+                              key={color.value}
+                              onClick={() => {
+                                setNodeColor(color.value);
+                                setTimeout(handleNodeUpdate, 0);
+                              }}
+                              style={{
+                                width: '100%',
+                                height: '32px',
+                                border: nodeColor === color.value ? '2px solid #333' : '1px solid #ccc',
+                                borderRadius: '4px',
+                                background: color.value,
+                                cursor: 'pointer',
+                                transition: 'all 0.2s'
+                              }}
+                              title={color.name}
+                            />
+                          ))}
+                        </div>
+                        <input
+                          type="color"
+                          value={nodeColor}
+                          onChange={(e) => setNodeColor(e.target.value)}
+                          onBlur={handleNodeUpdate}
+                          style={{
+                            width: '100%',
+                            height: '32px',
+                            border: '1px solid #ccc',
+                            borderRadius: '4px',
+                            cursor: 'pointer',
+                            background: '#fff'
+                          }}
+                        />
+                      </div>
+
+                      <div style={{ marginBottom: '12px' }}>
+                        <label style={{ display: 'block', fontSize: '11px', marginBottom: '6px', fontWeight: '500', color: '#666' }}>
+                          Background Color
+                        </label>
+                        <input
+                          type="color"
+                          value={nodeBgColor}
+                          onChange={(e) => setNodeBgColor(e.target.value)}
+                          onBlur={handleNodeUpdate}
+                          style={{
+                            width: '100%',
+                            height: '32px',
+                            border: '1px solid #ccc',
+                            borderRadius: '4px',
+                            cursor: 'pointer',
+                            background: '#fff'
+                          }}
+                        />
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      {/* Enhanced nodes: Single color picker */}
+                      <div style={{ marginBottom: '12px' }}>
+                        <label style={{ display: 'block', fontSize: '11px', marginBottom: '6px', fontWeight: '500', color: '#666' }}>
+                          Color
+                        </label>
+                        <div style={{
+                          display: 'grid',
+                          gridTemplateColumns: 'repeat(4, 1fr)',
+                          gap: '6px',
+                          marginBottom: '6px'
+                        }}>
+                          {presetColors.map((color) => (
+                            <button
+                              key={color.value}
+                              onClick={() => {
+                                setNodeColor(color.value);
+                                setTimeout(handleNodeUpdate, 0);
+                              }}
+                              style={{
+                                width: '100%',
+                                height: '32px',
+                                border: nodeColor === color.value ? '2px solid #333' : '1px solid #ccc',
+                                borderRadius: '4px',
+                                background: color.value,
+                                cursor: 'pointer',
+                                transition: 'all 0.2s'
+                              }}
+                              title={color.name}
+                            />
+                          ))}
+                        </div>
+                        <input
+                          type="color"
+                          value={nodeColor}
+                          onChange={(e) => setNodeColor(e.target.value)}
+                          onBlur={handleNodeUpdate}
+                          style={{
+                            width: '100%',
+                            height: '32px',
+                            border: '1px solid #ccc',
+                            borderRadius: '4px',
+                            cursor: 'pointer',
+                            background: '#fff'
+                          }}
+                        />
+                      </div>
+                    </>
+                  )}
+
+                  <div style={{ marginBottom: '12px' }}>
+                    <label style={{ display: 'block', fontSize: '11px', marginBottom: '4px', fontWeight: '500', color: '#666' }}>
+                      Description
+                    </label>
+                    <textarea
+                      value={nodeDescription}
+                      onChange={(e) => setNodeDescription(e.target.value)}
+                      onBlur={handleNodeUpdate}
+                      rows={3}
                       style={{
                         width: '100%',
                         padding: '6px 8px',
@@ -743,85 +1011,16 @@ const StylePanel: React.FC<StylePanelProps> = ({
                         background: '#fff',
                         color: '#333',
                         fontSize: '11px',
-                        fontFamily: 'monospace',
-                        boxSizing: 'border-box'
+                        resize: 'vertical',
+                        boxSizing: 'border-box',
+                        fontFamily: 'inherit'
                       }}
                     />
                   </div>
-                )}
-              </div>
+                </>
+              )}
             </>
           )}
-
-          <div style={{ marginBottom: '12px' }}>
-            <label style={{ display: 'block', fontSize: '11px', marginBottom: '4px', fontWeight: '500', color: '#666' }}>
-              Description
-            </label>
-            <textarea
-              value={nodeDescription}
-              onChange={(e) => setNodeDescription(e.target.value)}
-              onBlur={handleNodeUpdate}
-              rows={2}
-              style={{
-                width: '100%',
-                padding: '6px 8px',
-                border: '1px solid #ccc',
-                borderRadius: '4px',
-                background: '#fff',
-                color: '#333',
-                fontSize: '11px',
-                resize: 'vertical',
-                boxSizing: 'border-box',
-                fontFamily: 'inherit'
-              }}
-            />
-          </div>
-
-          <div style={{ marginBottom: '12px' }}>
-            <label style={{ display: 'block', fontSize: '11px', marginBottom: '6px', fontWeight: '500', color: '#666' }}>
-              Color
-            </label>
-            <div style={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(4, 1fr)',
-              gap: '6px',
-              marginBottom: '6px'
-            }}>
-              {presetColors.map((color) => (
-                <button
-                  key={color.value}
-                  onClick={() => {
-                    setNodeColor(color.value);
-                    setTimeout(handleNodeUpdate, 0);
-                  }}
-                  style={{
-                    width: '100%',
-                    height: '32px',
-                    border: nodeColor === color.value ? '2px solid #333' : '1px solid #ccc',
-                    borderRadius: '4px',
-                    background: color.value,
-                    cursor: 'pointer',
-                    transition: 'all 0.2s'
-                  }}
-                  title={color.name}
-                />
-              ))}
-            </div>
-            <input
-              type="color"
-              value={nodeColor}
-              onChange={(e) => setNodeColor(e.target.value)}
-              onBlur={handleNodeUpdate}
-              style={{
-                width: '100%',
-                height: '32px',
-                border: '1px solid #ccc',
-                borderRadius: '4px',
-                cursor: 'pointer',
-                background: '#fff'
-              }}
-            />
-          </div>
 
           {/* Layering Controls */}
           {onMoveToFront && onMoveToBack && (
