@@ -90,3 +90,6 @@ temp/
 # Misc
 .claude/
 nul
+
+architectures/
+improvement.txt

@@ -25,6 +25,7 @@ export interface EnhancedDeviceData {
   ipAddress?: string;
   description?: string;
   interfaces?: { name: string; ip: string }[];
+  operatingSystem?: string;
 }
 
 const EnhancedDeviceNode: React.FC<NodeProps> = ({ data, selected }) => {
@@ -208,67 +209,16 @@ const EnhancedDeviceNode: React.FC<NodeProps> = ({ data, selected }) => {
           {deviceData.label}
         </div>
 
-        {/* IP Address or Host */}
-        {(deviceData.ipAddress || deviceData.host) && (
+        {/* Operating System */}
+        {deviceData.operatingSystem && (
           <div style={{
             fontSize: '11px',
             color: '#666',
-            fontFamily: 'monospace',
-            marginBottom: '4px'
+            marginTop: '4px'
           }}>
-            {deviceData.ipAddress || deviceData.host}
+            {deviceData.operatingSystem}
           </div>
         )}
-
-        {/* Interfaces */}
-        {deviceData.interfaces && deviceData.interfaces.length > 0 && (
-          <div style={{
-            fontSize: '10px',
-            marginTop: '6px',
-            padding: '4px',
-            background: 'rgba(0,0,0,0.05)',
-            borderRadius: '4px'
-          }}>
-            {deviceData.interfaces.map((iface, idx) => (
-              <div key={idx} style={{
-                marginBottom: '2px',
-                color: '#555'
-              }}>
-                <span style={{ fontWeight: 'bold' }}>{iface.name}:</span> {iface.ip}
-              </div>
-            ))}
-          </div>
-        )}
-
-        {/* Description */}
-        {deviceData.description && (
-          <div style={{
-            fontSize: '10px',
-            color: '#888',
-            marginTop: '6px',
-            fontStyle: 'italic'
-          }}>
-            {deviceData.description}
-          </div>
-        )}
-
-        {/* Type Badge */}
-        <div
-          style={{
-            fontSize: '9px',
-            marginTop: '8px',
-            padding: '3px 8px',
-            background: borderColor,
-            color: 'white',
-            borderRadius: '10px',
-            display: 'inline-block',
-            fontWeight: '600',
-            textTransform: 'uppercase',
-            letterSpacing: '0.5px'
-          }}
-        >
-          {deviceData.type}
-        </div>
       </div>
     </div>
   );

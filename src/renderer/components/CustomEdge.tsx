@@ -31,7 +31,7 @@ const CustomEdge: React.FC<EdgeProps> = ({
 }) => {
   const edgeData = data as CustomEdgeData;
 
-  const color = edgeData?.color || '#b1b1b7';
+  const color = edgeData?.color || '#000000';
   const routingType = edgeData?.routingType || 'bezier';
   const strokeStyle = edgeData?.style || 'solid';
   const animated = edgeData?.animated || false;

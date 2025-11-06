@@ -21,6 +21,7 @@ import '@xyflow/react/dist/style.css';
 import DeviceNode from './components/DeviceNode';
 import EnhancedDeviceNode, { EnhancedDeviceData } from './components/EnhancedDeviceNode';
 import GroupNode from './components/GroupNode';
+import TextNode from './components/TextNode';
 import CustomEdge, { CustomEdgeData } from './components/CustomEdge';
 import EditNodeModal from './components/EditNodeModal';
 import ShapeLibrary from './components/ShapeLibrary';
@@ -33,6 +34,7 @@ const nodeTypes: NodeTypes = {
   device: DeviceNode,
   enhanced: EnhancedDeviceNode,
   group: GroupNode,
+  text: TextNode,
 };
 
 const edgeTypes: EdgeTypes = {
@@ -186,7 +188,7 @@ const App: React.FC = () => {
         data: {
           label: '',
           style: 'solid',
-          color: '#b1b1b7',
+          color: '#000000',
           animated: false,
           routingType: 'bezier'
         } as CustomEdgeData
@@ -213,10 +215,9 @@ const App: React.FC = () => {
   }, []);
 
   const onNodeDoubleClick = useCallback((event: React.MouseEvent, node: Node) => {
-    if (node.type !== 'group') {
-      setSelectedNode(node);
-      setIsModalOpen(true);
-    }
+    // Removed modal - asset editing now done in right side panel
+    // Just select the node to open the style panel
+    setSelectedNode(node);
   }, []);
 
   const onNodeContextMenu = useCallback((event: React.MouseEvent, node: Node) => {
@@ -247,6 +248,28 @@ const App: React.FC = () => {
     setEdges((eds) => eds.filter((e) => e.id !== edgeId));
     setSelectedEdge(null);
   }, [setEdges]);
+
+  const handleCopyNode = useCallback((node: Node) => {
+    const nodeData = JSON.stringify({
+      data: node.data,
+      type: node.type,
+      style: node.style
+    });
+    navigator.clipboard.writeText(nodeData);
+    alert('Node data copied to clipboard!');
+  }, []);
+
+  const handleDuplicateNode = useCallback((node: Node) => {
+    const newNode: Node = {
+      ...node,
+      id: `node-${Date.now()}`,
+      position: {
+        x: node.position.x + 50,
+        y: node.position.y + 50
+      }
+    };
+    setNodes((nds: Node[]) => [...nds, newNode]);
+  }, [setNodes]);
 
   const handleConnectToDevice = async (node: Node) => {
     const deviceData = node.data as unknown as DeviceData | EnhancedDeviceData;
@@ -358,6 +381,28 @@ const App: React.FC = () => {
     setNodes((nds: Node[]) => [...nds, newNode]);
   };
 
+  const addTextNode = () => {
+    const newNode: Node = {
+      id: `text-${Date.now()}`,
+      type: 'text',
+      position: {
+        x: Math.random() * 400 + 200,
+        y: Math.random() * 300 + 150
+      },
+      data: {
+        label: 'Text',
+        fontSize: 14,
+        fontColor: '#000000',
+        backgroundColor: 'transparent',
+        borderColor: '#000000',
+        borderStyle: 'none',
+        borderWidth: 1
+      },
+    };
+
+    setNodes((nds: Node[]) => [...nds, newNode]);
+  };
+
   const updateNodeData = (nodeId: string, data: Partial<any>) => {
     setNodes((nds) =>
       nds.map((node) => {
@@ -373,6 +418,42 @@ const App: React.FC = () => {
         return node;
       })
     );
+  };
+
+  const moveNodeToFront = (nodeId: string) => {
+    setNodes((nds) => {
+      const maxZIndex = Math.max(...nds.map(n => (n.style?.zIndex as number) || 0), 0);
+      return nds.map((node) => {
+        if (node.id === nodeId) {
+          return {
+            ...node,
+            style: {
+              ...node.style,
+              zIndex: maxZIndex + 1
+            }
+          };
+        }
+        return node;
+      });
+    });
+  };
+
+  const moveNodeToBack = (nodeId: string) => {
+    setNodes((nds) => {
+      const minZIndex = Math.min(...nds.map(n => (n.style?.zIndex as number) || 0), 0);
+      return nds.map((node) => {
+        if (node.id === nodeId) {
+          return {
+            ...node,
+            style: {
+              ...node.style,
+              zIndex: minZIndex - 1
+            }
+          };
+        }
+        return node;
+      });
+    });
   };
 
   const updateEdgeData = (edgeId: string, data: Partial<CustomEdgeData>) => {
@@ -485,6 +566,7 @@ const App: React.FC = () => {
       <ShapeLibrary
         onAddNode={addEnhancedNode}
         onAddGroup={addGroupNode}
+        onAddText={addTextNode}
         isOpen={isShapeLibraryOpen}
         onToggle={() => setIsShapeLibraryOpen(!isShapeLibraryOpen)}
       />
@@ -494,6 +576,8 @@ const App: React.FC = () => {
         selectedEdge={selectedEdge}
         onUpdateNode={updateNodeData}
         onUpdateEdge={updateEdgeData}
+        onMoveToFront={moveNodeToFront}
+        onMoveToBack={moveNodeToBack}
         isOpen={isStylePanelOpen}
         onToggle={() => setIsStylePanelOpen(!isStylePanelOpen)}
       />
@@ -552,6 +636,8 @@ const App: React.FC = () => {
           y={contextMenu.y}
           showConnect={!!contextMenu.node && contextMenu.node.type !== 'group'}
           onConnect={contextMenu.node ? () => handleConnectToDevice(contextMenu.node!) : undefined}
+          onCopy={contextMenu.node ? () => handleCopyNode(contextMenu.node!) : undefined}
+          onDuplicate={contextMenu.node ? () => handleDuplicateNode(contextMenu.node!) : undefined}
           onDelete={() => {
             if (contextMenu.node) {
               handleDeleteNode(contextMenu.node.id);

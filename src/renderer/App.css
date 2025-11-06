@@ -1,9 +1,22 @@
-* {
-  cursor: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"><path d="M4 4 L4 16 L8 12 L11 12 L14 20 L16 19 L13 11 L17 11 L4 4 Z" fill="white" stroke="black" stroke-width="1.5"/></svg>') 4 4, auto !important;
+*,
+*::before,
+*::after,
+.react-flow,
+.react-flow__pane,
+.react-flow__viewport,
+.react-flow__container,
+.react-flow__node,
+.react-flow__edge,
+.react-flow__handle {
+  cursor: default !important;
 }
 
-button, a, [role="button"] {
-  cursor: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"><path d="M9 3 L9 9 L3 9 L3 11 L9 11 L9 17 L5 13 L4 14 L9 19 L10 19 L15 14 L14 13 L10 17 L10 11 L16 11 L16 9 L10 9 L10 3 Z" fill="white" stroke="black" stroke-width="1.5"/></svg>') 12 12, pointer !important;
+button,
+a,
+[role="button"],
+.react-flow__node.selectable,
+.react-flow__handle.connectable {
+  cursor: pointer !important;
 }
 
 .device-node:hover {

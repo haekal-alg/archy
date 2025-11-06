@@ -16,11 +16,12 @@ import {
 interface ShapeLibraryProps {
   onAddNode: (type: string) => void;
   onAddGroup: () => void;
+  onAddText?: () => void;
   isOpen: boolean;
   onToggle: () => void;
 }
 
-const ShapeLibrary: React.FC<ShapeLibraryProps> = ({ onAddNode, onAddGroup, isOpen, onToggle }) => {
+const ShapeLibrary: React.FC<ShapeLibraryProps> = ({ onAddNode, onAddGroup, onAddText, isOpen, onToggle }) => {
   const [activeCategory, setActiveCategory] = useState<'devices' | 'network' | 'infra' | 'security'>('devices');
 
   const shapes = {
@@ -154,11 +155,14 @@ const ShapeLibrary: React.FC<ShapeLibraryProps> = ({ onAddNode, onAddGroup, isOp
         ))}
       </div>
 
-      {/* Add Group Button */}
+      {/* Add Group and Text Buttons */}
       <div style={{
         padding: '12px',
         borderTop: '1px solid #d0d0d0',
-        background: '#d8d8d8'
+        background: '#d8d8d8',
+        display: 'flex',
+        flexDirection: 'column',
+        gap: '8px'
       }}>
         <button
           onClick={onAddGroup}
@@ -183,6 +187,31 @@ const ShapeLibrary: React.FC<ShapeLibraryProps> = ({ onAddNode, onAddGroup, isOp
         >
           + Network Zone
         </button>
+        {onAddText && (
+          <button
+            onClick={onAddText}
+            style={{
+              width: '100%',
+              padding: '8px',
+              border: '1px solid #ccc',
+              borderRadius: '4px',
+              background: '#fff',
+              color: '#333',
+              cursor: 'pointer',
+              fontSize: '12px',
+              fontWeight: '500',
+              transition: 'all 0.2s'
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = '#f5f5f5';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = '#fff';
+            }}
+          >
+            + Text Label
+          </button>
+        )}
       </div>
 
       {/* Toggle Button */}
