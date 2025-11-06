@@ -1,5 +1,6 @@
 import React from 'react';
 import { Handle, Position, NodeProps, NodeResizer } from '@xyflow/react';
+import CONFIG from '../../config';
 
 export interface GroupNodeData {
   label: string;
@@ -45,49 +46,89 @@ const GroupNode: React.FC<NodeProps> = ({ data, selected }) => {
         type="source"
         position={Position.Top}
         id="top"
-        style={{ background: borderColor, width: '10px', height: '10px', border: '2px solid white' }}
+        style={{
+          background: borderColor,
+          width: `${CONFIG.handles.size}px`,
+          height: `${CONFIG.handles.size}px`,
+          border: `${CONFIG.handles.borderWidth}px solid ${CONFIG.handles.borderColor}`
+        }}
       />
       <Handle
         type="target"
         position={Position.Top}
         id="top-target"
-        style={{ background: borderColor, width: '10px', height: '10px', border: '2px solid white' }}
+        style={{
+          background: borderColor,
+          width: `${CONFIG.handles.size}px`,
+          height: `${CONFIG.handles.size}px`,
+          border: `${CONFIG.handles.borderWidth}px solid ${CONFIG.handles.borderColor}`
+        }}
       />
       <Handle
         type="source"
         position={Position.Right}
         id="right"
-        style={{ background: borderColor, width: '10px', height: '10px', border: '2px solid white' }}
+        style={{
+          background: borderColor,
+          width: `${CONFIG.handles.size}px`,
+          height: `${CONFIG.handles.size}px`,
+          border: `${CONFIG.handles.borderWidth}px solid ${CONFIG.handles.borderColor}`
+        }}
       />
       <Handle
         type="target"
         position={Position.Right}
         id="right-target"
-        style={{ background: borderColor, width: '10px', height: '10px', border: '2px solid white' }}
+        style={{
+          background: borderColor,
+          width: `${CONFIG.handles.size}px`,
+          height: `${CONFIG.handles.size}px`,
+          border: `${CONFIG.handles.borderWidth}px solid ${CONFIG.handles.borderColor}`
+        }}
       />
       <Handle
         type="source"
         position={Position.Bottom}
         id="bottom"
-        style={{ background: borderColor, width: '10px', height: '10px', border: '2px solid white' }}
+        style={{
+          background: borderColor,
+          width: `${CONFIG.handles.size}px`,
+          height: `${CONFIG.handles.size}px`,
+          border: `${CONFIG.handles.borderWidth}px solid ${CONFIG.handles.borderColor}`
+        }}
       />
       <Handle
         type="target"
         position={Position.Bottom}
         id="bottom-target"
-        style={{ background: borderColor, width: '10px', height: '10px', border: '2px solid white' }}
+        style={{
+          background: borderColor,
+          width: `${CONFIG.handles.size}px`,
+          height: `${CONFIG.handles.size}px`,
+          border: `${CONFIG.handles.borderWidth}px solid ${CONFIG.handles.borderColor}`
+        }}
       />
       <Handle
         type="source"
         position={Position.Left}
         id="left"
-        style={{ background: borderColor, width: '10px', height: '10px', border: '2px solid white' }}
+        style={{
+          background: borderColor,
+          width: `${CONFIG.handles.size}px`,
+          height: `${CONFIG.handles.size}px`,
+          border: `${CONFIG.handles.borderWidth}px solid ${CONFIG.handles.borderColor}`
+        }}
       />
       <Handle
         type="target"
         position={Position.Left}
         id="left-target"
-        style={{ background: borderColor, width: '10px', height: '10px', border: '2px solid white' }}
+        style={{
+          background: borderColor,
+          width: `${CONFIG.handles.size}px`,
+          height: `${CONFIG.handles.size}px`,
+          border: `${CONFIG.handles.borderWidth}px solid ${CONFIG.handles.borderColor}`
+        }}
       />
 
       <div

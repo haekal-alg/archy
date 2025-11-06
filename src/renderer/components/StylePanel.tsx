@@ -39,7 +39,7 @@ const StylePanel: React.FC<StylePanelProps> = ({
   const [nodePort, setNodePort] = useState(22);
   const [nodeUsername, setNodeUsername] = useState('');
   const [nodePassword, setNodePassword] = useState('');
-  const [nodeType, setNodeType] = useState<'rdp' | 'ssh' | 'browser'>('ssh');
+  const [nodeType, setNodeType] = useState<'rdp' | 'ssh' | 'browser' | 'custom'>('ssh');
   const [nodeCustomCommand, setNodeCustomCommand] = useState('');
   const [textFontSize, setTextFontSize] = useState(14);
   const [textFontColor, setTextFontColor] = useState('#000000');
@@ -77,14 +77,22 @@ const StylePanel: React.FC<StylePanelProps> = ({
         setNodePassword((data as EnhancedDeviceData).password || '');
         setNodeCustomCommand((data as EnhancedDeviceData).customCommand || '');
 
-        // Determine type from existing type field
-        const deviceType = (data as EnhancedDeviceData).type;
-        if (deviceType === 'windows') {
-          setNodeType('rdp');
-        } else if (deviceType === 'linux') {
-          setNodeType('ssh');
+        // Load connectionType if it exists, otherwise determine from existing type field
+        const savedConnectionType = (data as any).connectionType;
+        if (savedConnectionType) {
+          setNodeType(savedConnectionType);
         } else {
-          setNodeType('browser');
+          // Fallback for legacy nodes
+          const deviceType = (data as EnhancedDeviceData).type;
+          if ((data as EnhancedDeviceData).customCommand) {
+            setNodeType('custom');
+          } else if (deviceType === 'windows') {
+            setNodeType('rdp');
+          } else if (deviceType === 'linux') {
+            setNodeType('ssh');
+          } else {
+            setNodeType('ssh'); // Default to SSH
+          }
         }
       }
     }
@@ -122,6 +130,7 @@ const StylePanel: React.FC<StylePanelProps> = ({
         updates.username = nodeUsername;
         updates.password = nodePassword;
         updates.customCommand = nodeCustomCommand;
+        updates.connectionType = nodeType;
       } else {
         updates.color = nodeColor;
         updates.ipAddress = nodeIP;
@@ -132,6 +141,7 @@ const StylePanel: React.FC<StylePanelProps> = ({
         updates.password = nodePassword;
         updates.description = nodeDescription;
         updates.customCommand = nodeCustomCommand;
+        updates.connectionType = nodeType;
       }
 
       onUpdateNode(selectedNode.id, updates);
@@ -433,160 +443,312 @@ const StylePanel: React.FC<StylePanelProps> = ({
                 />
               </div>
 
-              <div style={{ marginBottom: '12px' }}>
-                <label style={{ display: 'block', fontSize: '11px', marginBottom: '4px', fontWeight: '500', color: '#666' }}>
-                  Connection Type
-                </label>
-                <select
-                  value={nodeType}
-                  onChange={(e) => {
-                    setNodeType(e.target.value as 'rdp' | 'ssh' | 'browser');
-                    handleNodeUpdate();
-                  }}
-                  style={{
-                    width: '100%',
-                    padding: '6px 8px',
-                    border: '1px solid #ccc',
-                    borderRadius: '4px',
-                    background: '#fff',
-                    color: '#333',
-                    fontSize: '12px',
-                    boxSizing: 'border-box',
-                    cursor: 'pointer'
-                  }}
-                >
-                  <option value="rdp">RDP</option>
-                  <option value="ssh">SSH</option>
-                  <option value="browser">Browser</option>
-                </select>
-              </div>
-
-              <div style={{ marginBottom: '12px' }}>
-                <label style={{ display: 'block', fontSize: '11px', marginBottom: '4px', fontWeight: '500', color: '#666' }}>
-                  Host
-                </label>
-                <input
-                  type="text"
-                  value={nodeHost}
-                  onChange={(e) => setNodeHost(e.target.value)}
-                  onBlur={handleNodeUpdate}
-                  placeholder="192.168.1.100"
-                  style={{
-                    width: '100%',
-                    padding: '6px 8px',
-                    border: '1px solid #ccc',
-                    borderRadius: '4px',
-                    background: '#fff',
-                    color: '#333',
-                    fontSize: '12px',
-                    fontFamily: 'monospace',
-                    boxSizing: 'border-box'
-                  }}
-                />
-              </div>
-
-              <div style={{ marginBottom: '12px' }}>
-                <label style={{ display: 'block', fontSize: '11px', marginBottom: '4px', fontWeight: '500', color: '#666' }}>
-                  Port
-                </label>
-                <input
-                  type="number"
-                  value={nodePort}
-                  onChange={(e) => setNodePort(parseInt(e.target.value) || 22)}
-                  onBlur={handleNodeUpdate}
-                  style={{
-                    width: '100%',
-                    padding: '6px 8px',
-                    border: '1px solid #ccc',
-                    borderRadius: '4px',
-                    background: '#fff',
-                    color: '#333',
-                    fontSize: '12px',
-                    fontFamily: 'monospace',
-                    boxSizing: 'border-box'
-                  }}
-                />
-              </div>
-
-              <div style={{ marginBottom: '12px' }}>
-                <label style={{ display: 'block', fontSize: '11px', marginBottom: '4px', fontWeight: '500', color: '#666' }}>
-                  Username
-                </label>
-                <input
-                  type="text"
-                  value={nodeUsername}
-                  onChange={(e) => setNodeUsername(e.target.value)}
-                  onBlur={handleNodeUpdate}
-                  placeholder="admin"
-                  style={{
-                    width: '100%',
-                    padding: '6px 8px',
-                    border: '1px solid #ccc',
-                    borderRadius: '4px',
-                    background: '#fff',
-                    color: '#333',
-                    fontSize: '12px',
-                    boxSizing: 'border-box'
-                  }}
-                />
-              </div>
-
-              <div style={{ marginBottom: '12px' }}>
-                <label style={{ display: 'block', fontSize: '11px', marginBottom: '4px', fontWeight: '500', color: '#666' }}>
-                  Password
-                </label>
-                <input
-                  type="password"
-                  value={nodePassword}
-                  onChange={(e) => setNodePassword(e.target.value)}
-                  onBlur={handleNodeUpdate}
-                  placeholder="••••••••"
-                  style={{
-                    width: '100%',
-                    padding: '6px 8px',
-                    border: '1px solid #ccc',
-                    borderRadius: '4px',
-                    background: '#fff',
-                    color: '#333',
-                    fontSize: '12px',
-                    boxSizing: 'border-box'
-                  }}
-                />
-              </div>
-
-              <div style={{ marginBottom: '12px' }}>
-                <label style={{ display: 'block', fontSize: '11px', marginBottom: '4px', fontWeight: '500', color: '#666' }}>
-                  Connection Command
-                </label>
-                <input
-                  type="text"
-                  value={nodeCustomCommand || (
-                    nodeType === 'rdp' ? `mstsc /v:${nodeHost || 'HOST'}` :
-                    nodeType === 'ssh' ? `ssh ${nodeUsername || 'USER'}@${nodeHost || 'HOST'} -p ${nodePort}` :
-                    `start ${nodeHost || 'URL'}`
-                  )}
-                  onChange={(e) => setNodeCustomCommand(e.target.value)}
-                  onBlur={handleNodeUpdate}
-                  placeholder="Custom command..."
-                  style={{
-                    width: '100%',
-                    padding: '6px 8px',
-                    border: '1px solid #ccc',
-                    borderRadius: '4px',
-                    background: '#fff',
-                    color: '#333',
-                    fontSize: '11px',
-                    fontFamily: 'monospace',
-                    boxSizing: 'border-box'
-                  }}
-                />
+              {/* Connection Settings Section */}
+              <div style={{
+                marginTop: '16px',
+                paddingTop: '16px',
+                borderTop: '2px solid #007bff',
+                marginBottom: '16px',
+                background: '#f8f9fa',
+                padding: '12px',
+                borderRadius: '6px'
+              }}>
                 <div style={{
-                  fontSize: '9px',
-                  color: '#999',
-                  marginTop: '4px'
+                  fontSize: '12px',
+                  fontWeight: '600',
+                  marginBottom: '12px',
+                  color: '#007bff',
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.5px'
                 }}>
-                  Leave empty for auto-generated command
+                  🔌 Connection Settings
                 </div>
+
+                <div style={{ marginBottom: '12px' }}>
+                  <label style={{ display: 'block', fontSize: '11px', marginBottom: '4px', fontWeight: '500', color: '#666' }}>
+                    Connection Type
+                  </label>
+                  <select
+                    value={nodeType}
+                    onChange={(e) => {
+                      setNodeType(e.target.value as 'rdp' | 'ssh' | 'browser' | 'custom');
+                      if (e.target.value !== 'custom') {
+                        setNodeCustomCommand('');
+                      }
+                      handleNodeUpdate();
+                    }}
+                    style={{
+                      width: '100%',
+                      padding: '6px 8px',
+                      border: '1px solid #ccc',
+                      borderRadius: '4px',
+                      background: '#fff',
+                      color: '#333',
+                      fontSize: '12px',
+                      boxSizing: 'border-box',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    <option value="rdp">RDP (Remote Desktop)</option>
+                    <option value="ssh">SSH (Secure Shell)</option>
+                    <option value="browser">Browser (HTTP/HTTPS)</option>
+                    <option value="custom">Custom Command</option>
+                  </select>
+                </div>
+
+                {/* RDP Settings */}
+                {nodeType === 'rdp' && (
+                  <>
+                    <div style={{ marginBottom: '12px' }}>
+                      <label style={{ display: 'block', fontSize: '11px', marginBottom: '4px', fontWeight: '500', color: '#666' }}>
+                        Host / IP Address
+                      </label>
+                      <input
+                        type="text"
+                        value={nodeHost}
+                        onChange={(e) => setNodeHost(e.target.value)}
+                        onBlur={handleNodeUpdate}
+                        placeholder="192.168.1.100"
+                        style={{
+                          width: '100%',
+                          padding: '6px 8px',
+                          border: '1px solid #ccc',
+                          borderRadius: '4px',
+                          background: '#fff',
+                          color: '#333',
+                          fontSize: '12px',
+                          fontFamily: 'monospace',
+                          boxSizing: 'border-box'
+                        }}
+                      />
+                    </div>
+                    <div style={{ marginBottom: '12px' }}>
+                      <label style={{ display: 'block', fontSize: '11px', marginBottom: '4px', fontWeight: '500', color: '#666' }}>
+                        Username
+                      </label>
+                      <input
+                        type="text"
+                        value={nodeUsername}
+                        onChange={(e) => setNodeUsername(e.target.value)}
+                        onBlur={handleNodeUpdate}
+                        placeholder="administrator"
+                        style={{
+                          width: '100%',
+                          padding: '6px 8px',
+                          border: '1px solid #ccc',
+                          borderRadius: '4px',
+                          background: '#fff',
+                          color: '#333',
+                          fontSize: '12px',
+                          boxSizing: 'border-box'
+                        }}
+                      />
+                    </div>
+                    <div style={{ marginBottom: '12px' }}>
+                      <label style={{ display: 'block', fontSize: '11px', marginBottom: '4px', fontWeight: '500', color: '#666' }}>
+                        Password
+                      </label>
+                      <input
+                        type="password"
+                        value={nodePassword}
+                        onChange={(e) => setNodePassword(e.target.value)}
+                        onBlur={handleNodeUpdate}
+                        placeholder="••••••••"
+                        style={{
+                          width: '100%',
+                          padding: '6px 8px',
+                          border: '1px solid #ccc',
+                          borderRadius: '4px',
+                          background: '#fff',
+                          color: '#333',
+                          fontSize: '12px',
+                          boxSizing: 'border-box'
+                        }}
+                      />
+                    </div>
+                    <div style={{
+                      padding: '8px',
+                      background: '#f5f5f5',
+                      borderRadius: '4px',
+                      fontSize: '10px',
+                      color: '#666',
+                      fontFamily: 'monospace'
+                    }}>
+                      Command: mstsc /v:{nodeHost || 'HOST'}
+                    </div>
+                  </>
+                )}
+
+                {/* SSH Settings */}
+                {nodeType === 'ssh' && (
+                  <>
+                    <div style={{ marginBottom: '12px' }}>
+                      <label style={{ display: 'block', fontSize: '11px', marginBottom: '4px', fontWeight: '500', color: '#666' }}>
+                        Host / IP Address
+                      </label>
+                      <input
+                        type="text"
+                        value={nodeHost}
+                        onChange={(e) => setNodeHost(e.target.value)}
+                        onBlur={handleNodeUpdate}
+                        placeholder="192.168.1.100"
+                        style={{
+                          width: '100%',
+                          padding: '6px 8px',
+                          border: '1px solid #ccc',
+                          borderRadius: '4px',
+                          background: '#fff',
+                          color: '#333',
+                          fontSize: '12px',
+                          fontFamily: 'monospace',
+                          boxSizing: 'border-box'
+                        }}
+                      />
+                    </div>
+                    <div style={{ marginBottom: '12px' }}>
+                      <label style={{ display: 'block', fontSize: '11px', marginBottom: '4px', fontWeight: '500', color: '#666' }}>
+                        Port
+                      </label>
+                      <input
+                        type="number"
+                        value={nodePort}
+                        onChange={(e) => setNodePort(parseInt(e.target.value) || 22)}
+                        onBlur={handleNodeUpdate}
+                        style={{
+                          width: '100%',
+                          padding: '6px 8px',
+                          border: '1px solid #ccc',
+                          borderRadius: '4px',
+                          background: '#fff',
+                          color: '#333',
+                          fontSize: '12px',
+                          fontFamily: 'monospace',
+                          boxSizing: 'border-box'
+                        }}
+                      />
+                    </div>
+                    <div style={{ marginBottom: '12px' }}>
+                      <label style={{ display: 'block', fontSize: '11px', marginBottom: '4px', fontWeight: '500', color: '#666' }}>
+                        Username
+                      </label>
+                      <input
+                        type="text"
+                        value={nodeUsername}
+                        onChange={(e) => setNodeUsername(e.target.value)}
+                        onBlur={handleNodeUpdate}
+                        placeholder="root"
+                        style={{
+                          width: '100%',
+                          padding: '6px 8px',
+                          border: '1px solid #ccc',
+                          borderRadius: '4px',
+                          background: '#fff',
+                          color: '#333',
+                          fontSize: '12px',
+                          boxSizing: 'border-box'
+                        }}
+                      />
+                    </div>
+                    <div style={{ marginBottom: '12px' }}>
+                      <label style={{ display: 'block', fontSize: '11px', marginBottom: '4px', fontWeight: '500', color: '#666' }}>
+                        Password
+                      </label>
+                      <input
+                        type="password"
+                        value={nodePassword}
+                        onChange={(e) => setNodePassword(e.target.value)}
+                        onBlur={handleNodeUpdate}
+                        placeholder="••••••••"
+                        style={{
+                          width: '100%',
+                          padding: '6px 8px',
+                          border: '1px solid #ccc',
+                          borderRadius: '4px',
+                          background: '#fff',
+                          color: '#333',
+                          fontSize: '12px',
+                          boxSizing: 'border-box'
+                        }}
+                      />
+                    </div>
+                    <div style={{
+                      padding: '8px',
+                      background: '#f5f5f5',
+                      borderRadius: '4px',
+                      fontSize: '10px',
+                      color: '#666',
+                      fontFamily: 'monospace'
+                    }}>
+                      Command: ssh {nodeUsername || 'USER'}@{nodeHost || 'HOST'} -p {nodePort}
+                    </div>
+                  </>
+                )}
+
+                {/* Browser Settings */}
+                {nodeType === 'browser' && (
+                  <>
+                    <div style={{ marginBottom: '12px' }}>
+                      <label style={{ display: 'block', fontSize: '11px', marginBottom: '4px', fontWeight: '500', color: '#666' }}>
+                        URL
+                      </label>
+                      <input
+                        type="text"
+                        value={nodeHost}
+                        onChange={(e) => setNodeHost(e.target.value)}
+                        onBlur={handleNodeUpdate}
+                        placeholder="https://example.com"
+                        style={{
+                          width: '100%',
+                          padding: '6px 8px',
+                          border: '1px solid #ccc',
+                          borderRadius: '4px',
+                          background: '#fff',
+                          color: '#333',
+                          fontSize: '12px',
+                          fontFamily: 'monospace',
+                          boxSizing: 'border-box'
+                        }}
+                      />
+                    </div>
+                    <div style={{
+                      padding: '8px',
+                      background: '#f5f5f5',
+                      borderRadius: '4px',
+                      fontSize: '10px',
+                      color: '#666',
+                      fontFamily: 'monospace'
+                    }}>
+                      Command: start {nodeHost || 'URL'}
+                    </div>
+                  </>
+                )}
+
+                {/* Custom Command */}
+                {nodeType === 'custom' && (
+                  <div style={{ marginBottom: '12px' }}>
+                    <label style={{ display: 'block', fontSize: '11px', marginBottom: '4px', fontWeight: '500', color: '#666' }}>
+                      Custom Command
+                    </label>
+                    <input
+                      type="text"
+                      value={nodeCustomCommand}
+                      onChange={(e) => setNodeCustomCommand(e.target.value)}
+                      onBlur={handleNodeUpdate}
+                      placeholder="Enter custom command..."
+                      style={{
+                        width: '100%',
+                        padding: '6px 8px',
+                        border: '1px solid #ccc',
+                        borderRadius: '4px',
+                        background: '#fff',
+                        color: '#333',
+                        fontSize: '11px',
+                        fontFamily: 'monospace',
+                        boxSizing: 'border-box'
+                      }}
+                    />
+                  </div>
+                )}
               </div>
             </>
           )}
@@ -718,34 +880,6 @@ const StylePanel: React.FC<StylePanelProps> = ({
             </div>
           )}
 
-          {/* Delete Button */}
-          {onDeleteNode && (
-            <div style={{ marginTop: '16px', paddingTop: '16px', borderTop: '1px solid #d0d0d0' }}>
-              <button
-                onClick={() => onDeleteNode(selectedNode.id)}
-                style={{
-                  width: '100%',
-                  padding: '10px',
-                  border: '1px solid #dc3545',
-                  borderRadius: '4px',
-                  background: '#dc3545',
-                  color: '#fff',
-                  cursor: 'pointer',
-                  fontSize: '12px',
-                  fontWeight: '600',
-                  transition: 'all 0.2s'
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.background = '#c82333';
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.background = '#dc3545';
-                }}
-              >
-                Delete Node
-              </button>
-            </div>
-          )}
         </div>
       )}
 
@@ -880,34 +1014,6 @@ const StylePanel: React.FC<StylePanelProps> = ({
             />
           </div>
 
-          {/* Delete Edge Button */}
-          {onDeleteEdge && (
-            <div style={{ marginTop: '16px', paddingTop: '16px', borderTop: '1px solid #d0d0d0' }}>
-              <button
-                onClick={() => onDeleteEdge(selectedEdge.id)}
-                style={{
-                  width: '100%',
-                  padding: '10px',
-                  border: '1px solid #dc3545',
-                  borderRadius: '4px',
-                  background: '#dc3545',
-                  color: '#fff',
-                  cursor: 'pointer',
-                  fontSize: '12px',
-                  fontWeight: '600',
-                  transition: 'all 0.2s'
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.background = '#c82333';
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.background = '#dc3545';
-                }}
-              >
-                Delete Edge
-              </button>
-            </div>
-          )}
         </div>
       )}
 

@@ -1,5 +1,6 @@
 import React from 'react';
 import { Handle, Position, NodeProps } from '@xyflow/react';
+import CONFIG from '../../config';
 
 export interface TextNodeData {
   label: string;
@@ -45,49 +46,89 @@ const TextNode: React.FC<NodeProps> = ({ data, selected }) => {
         type="source"
         position={Position.Top}
         id="top"
-        style={{ background: '#555', width: '8px', height: '8px' }}
+        style={{
+          background: '#555',
+          width: `${CONFIG.handles.size}px`,
+          height: `${CONFIG.handles.size}px`,
+          border: `${CONFIG.handles.borderWidth}px solid ${CONFIG.handles.borderColor}`
+        }}
       />
       <Handle
         type="target"
         position={Position.Top}
         id="top-target"
-        style={{ background: '#555', width: '8px', height: '8px' }}
+        style={{
+          background: '#555',
+          width: `${CONFIG.handles.size}px`,
+          height: `${CONFIG.handles.size}px`,
+          border: `${CONFIG.handles.borderWidth}px solid ${CONFIG.handles.borderColor}`
+        }}
       />
       <Handle
         type="source"
         position={Position.Right}
         id="right"
-        style={{ background: '#555', width: '8px', height: '8px' }}
+        style={{
+          background: '#555',
+          width: `${CONFIG.handles.size}px`,
+          height: `${CONFIG.handles.size}px`,
+          border: `${CONFIG.handles.borderWidth}px solid ${CONFIG.handles.borderColor}`
+        }}
       />
       <Handle
         type="target"
         position={Position.Right}
         id="right-target"
-        style={{ background: '#555', width: '8px', height: '8px' }}
+        style={{
+          background: '#555',
+          width: `${CONFIG.handles.size}px`,
+          height: `${CONFIG.handles.size}px`,
+          border: `${CONFIG.handles.borderWidth}px solid ${CONFIG.handles.borderColor}`
+        }}
       />
       <Handle
         type="source"
         position={Position.Bottom}
         id="bottom"
-        style={{ background: '#555', width: '8px', height: '8px' }}
+        style={{
+          background: '#555',
+          width: `${CONFIG.handles.size}px`,
+          height: `${CONFIG.handles.size}px`,
+          border: `${CONFIG.handles.borderWidth}px solid ${CONFIG.handles.borderColor}`
+        }}
       />
       <Handle
         type="target"
         position={Position.Bottom}
         id="bottom-target"
-        style={{ background: '#555', width: '8px', height: '8px' }}
+        style={{
+          background: '#555',
+          width: `${CONFIG.handles.size}px`,
+          height: `${CONFIG.handles.size}px`,
+          border: `${CONFIG.handles.borderWidth}px solid ${CONFIG.handles.borderColor}`
+        }}
       />
       <Handle
         type="source"
         position={Position.Left}
         id="left"
-        style={{ background: '#555', width: '8px', height: '8px' }}
+        style={{
+          background: '#555',
+          width: `${CONFIG.handles.size}px`,
+          height: `${CONFIG.handles.size}px`,
+          border: `${CONFIG.handles.borderWidth}px solid ${CONFIG.handles.borderColor}`
+        }}
       />
       <Handle
         type="target"
         position={Position.Left}
         id="left-target"
-        style={{ background: '#555', width: '8px', height: '8px' }}
+        style={{
+          background: '#555',
+          width: `${CONFIG.handles.size}px`,
+          height: `${CONFIG.handles.size}px`,
+          border: `${CONFIG.handles.borderWidth}px solid ${CONFIG.handles.borderColor}`
+        }}
       />
 
       {textData.label || 'Text'}

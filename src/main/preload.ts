@@ -7,6 +7,9 @@ contextBridge.exposeInMainWorld('electron', {
   connectSSH: (host: string, port: number, username: string, password: string) =>
     ipcRenderer.invoke('connect-ssh', { host, port, username, password }),
 
+  executeCommand: (command: string) =>
+    ipcRenderer.invoke('execute-command', { command }),
+
   saveDiagram: (name: string, data: any) =>
     ipcRenderer.invoke('save-diagram', { name, data }),
 

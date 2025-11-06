@@ -85,6 +85,29 @@ const App: React.FC = () => {
     diagramNameRef.current = diagramName;
   }, [diagramName]);
 
+  // Keyboard delete handler
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      // Only allow Delete key, not Backspace (to avoid interfering with text input)
+      // Also check if user is typing in an input/textarea field
+      const target = event.target as HTMLElement;
+      const isInputField = target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable;
+
+      if (event.key === 'Delete' && !isInputField) {
+        if (selectedNode) {
+          handleDeleteNode(selectedNode.id);
+        } else if (selectedEdge) {
+          handleDeleteEdge(selectedEdge.id);
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [selectedNode, selectedEdge]);
+
   // Setup menu event listeners (only once on mount)
   useEffect(() => {
     const handleSave = async () => {
@@ -262,15 +285,40 @@ const App: React.FC = () => {
   }, [setNodes]);
 
   const handleConnectToDevice = async (node: Node) => {
-    const deviceData = node.data as unknown as DeviceData | EnhancedDeviceData;
-    const { host, port, username, password } = deviceData as any;
-    const type = (deviceData as any).type;
+    const deviceData = node.data as any;
+    const { host, port, username, password, connectionType, customCommand } = deviceData;
+    const type = connectionType || deviceData.type;
 
     try {
-      if (type === 'windows') {
+      // Handle new connection types
+      if (type === 'rdp') {
+        // RDP connection: mstsc /v:host
+        const command = `mstsc /v:${host}`;
+        await window.electron.executeCommand(command);
+        console.log('RDP connection initiated');
+      } else if (type === 'ssh') {
+        // SSH connection: ssh username@host -p port
+        await window.electron.connectSSH(host, port || 22, username, password);
+        console.log('SSH connection initiated');
+      } else if (type === 'browser') {
+        // Browser connection: start URL (opens in default browser)
+        const command = `start ${host}`;
+        await window.electron.executeCommand(command);
+        console.log('Browser opened');
+      } else if (type === 'custom') {
+        // Custom command: execute whatever user inputted
+        if (customCommand) {
+          await window.electron.executeCommand(customCommand);
+          console.log('Custom command executed');
+        } else {
+          alert('No custom command specified');
+        }
+      } else if (type === 'windows') {
+        // Legacy support
         await window.electron.connectRDP(host, username, password);
         console.log('RDP connection initiated');
       } else if (type === 'linux') {
+        // Legacy support
         await window.electron.connectSSH(host, port || 22, username, password);
         console.log('SSH connection initiated');
       }

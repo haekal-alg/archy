@@ -1,5 +1,6 @@
 import React from 'react';
 import { Handle, Position, NodeProps } from '@xyflow/react';
+import CONFIG from '../../config';
 import {
   RouterIcon,
   ServerIcon,
@@ -105,9 +106,9 @@ const EnhancedDeviceNode: React.FC<NodeProps> = ({ data, selected }) => {
         id="top"
         style={{
           background: borderColor,
-          width: '12px',
-          height: '12px',
-          border: '2px solid white'
+          width: `${CONFIG.handles.size}px`,
+          height: `${CONFIG.handles.size}px`,
+          border: `${CONFIG.handles.borderWidth}px solid ${CONFIG.handles.borderColor}`
         }}
       />
       <Handle
@@ -116,9 +117,9 @@ const EnhancedDeviceNode: React.FC<NodeProps> = ({ data, selected }) => {
         id="top-target"
         style={{
           background: borderColor,
-          width: '12px',
-          height: '12px',
-          border: '2px solid white'
+          width: `${CONFIG.handles.size}px`,
+          height: `${CONFIG.handles.size}px`,
+          border: `${CONFIG.handles.borderWidth}px solid ${CONFIG.handles.borderColor}`
         }}
       />
       <Handle
@@ -127,9 +128,9 @@ const EnhancedDeviceNode: React.FC<NodeProps> = ({ data, selected }) => {
         id="right"
         style={{
           background: borderColor,
-          width: '12px',
-          height: '12px',
-          border: '2px solid white'
+          width: `${CONFIG.handles.size}px`,
+          height: `${CONFIG.handles.size}px`,
+          border: `${CONFIG.handles.borderWidth}px solid ${CONFIG.handles.borderColor}`
         }}
       />
       <Handle
@@ -138,9 +139,9 @@ const EnhancedDeviceNode: React.FC<NodeProps> = ({ data, selected }) => {
         id="right-target"
         style={{
           background: borderColor,
-          width: '12px',
-          height: '12px',
-          border: '2px solid white'
+          width: `${CONFIG.handles.size}px`,
+          height: `${CONFIG.handles.size}px`,
+          border: `${CONFIG.handles.borderWidth}px solid ${CONFIG.handles.borderColor}`
         }}
       />
       <Handle
@@ -149,9 +150,9 @@ const EnhancedDeviceNode: React.FC<NodeProps> = ({ data, selected }) => {
         id="bottom"
         style={{
           background: borderColor,
-          width: '12px',
-          height: '12px',
-          border: '2px solid white'
+          width: `${CONFIG.handles.size}px`,
+          height: `${CONFIG.handles.size}px`,
+          border: `${CONFIG.handles.borderWidth}px solid ${CONFIG.handles.borderColor}`
         }}
       />
       <Handle
@@ -160,9 +161,9 @@ const EnhancedDeviceNode: React.FC<NodeProps> = ({ data, selected }) => {
         id="bottom-target"
         style={{
           background: borderColor,
-          width: '12px',
-          height: '12px',
-          border: '2px solid white'
+          width: `${CONFIG.handles.size}px`,
+          height: `${CONFIG.handles.size}px`,
+          border: `${CONFIG.handles.borderWidth}px solid ${CONFIG.handles.borderColor}`
         }}
       />
       <Handle
@@ -171,9 +172,9 @@ const EnhancedDeviceNode: React.FC<NodeProps> = ({ data, selected }) => {
         id="left"
         style={{
           background: borderColor,
-          width: '12px',
-          height: '12px',
-          border: '2px solid white'
+          width: `${CONFIG.handles.size}px`,
+          height: `${CONFIG.handles.size}px`,
+          border: `${CONFIG.handles.borderWidth}px solid ${CONFIG.handles.borderColor}`
         }}
       />
       <Handle
@@ -182,9 +183,9 @@ const EnhancedDeviceNode: React.FC<NodeProps> = ({ data, selected }) => {
         id="left-target"
         style={{
           background: borderColor,
-          width: '12px',
-          height: '12px',
-          border: '2px solid white'
+          width: `${CONFIG.handles.size}px`,
+          height: `${CONFIG.handles.size}px`,
+          border: `${CONFIG.handles.borderWidth}px solid ${CONFIG.handles.borderColor}`
         }}
       />
 

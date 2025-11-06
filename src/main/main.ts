@@ -191,6 +191,21 @@ ipcMain.handle('connect-ssh', async (event, { host, port = 22, username, passwor
   });
 });
 
+// Handle generic command execution (for browser, custom commands, etc.)
+ipcMain.handle('execute-command', async (event, { command }) => {
+  return new Promise((resolve, reject) => {
+    exec(command, (error, stdout, stderr) => {
+      if (error) {
+        console.error(`Command execution error: ${error.message}`);
+        reject(error);
+      } else {
+        console.log(`Command executed: ${command}`);
+        resolve({ success: true, stdout, stderr });
+      }
+    });
+  });
+});
+
 // Save diagram - show save dialog
 ipcMain.handle('save-diagram', async (event, { name, data }) => {
   try {

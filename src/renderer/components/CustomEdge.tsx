@@ -86,9 +86,22 @@ const CustomEdge: React.FC<EdgeProps> = ({
         }}
       />
 
-      {/* Animated flow effect with glow */}
+      {/* Animated flow effect with intense glow */}
       {animated && (
         <>
+          {/* Outer glow layer */}
+          <path
+            d={path}
+            fill="none"
+            stroke={color}
+            strokeWidth="8"
+            style={{
+              filter: 'blur(8px)',
+              opacity: 0.6,
+              animation: 'glow-pulse 1.5s ease-in-out infinite'
+            }}
+          />
+          {/* Middle glow layer */}
           <path
             d={path}
             fill="none"
@@ -96,10 +109,11 @@ const CustomEdge: React.FC<EdgeProps> = ({
             strokeWidth="4"
             style={{
               filter: 'blur(4px)',
-              opacity: 0.5,
-              animation: 'glow-pulse 1.5s ease-in-out infinite'
+              opacity: 0.8,
+              animation: 'glow-pulse 1.5s ease-in-out infinite 0.3s'
             }}
           />
+          {/* Animated dashes */}
           <path
             d={path}
             fill="none"
@@ -108,7 +122,7 @@ const CustomEdge: React.FC<EdgeProps> = ({
             strokeDasharray="5 5"
             style={{
               animation: 'dashdraw 0.5s linear infinite',
-              opacity: 0.8
+              opacity: 1
             }}
           />
         </>
@@ -161,10 +175,10 @@ const CustomEdge: React.FC<EdgeProps> = ({
           }
           @keyframes glow-pulse {
             0%, 100% {
-              opacity: 0.3;
+              opacity: 0.4;
             }
             50% {
-              opacity: 0.7;
+              opacity: 1;
             }
           }
         `}
