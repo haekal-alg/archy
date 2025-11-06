@@ -15,6 +15,16 @@ import {
   AttackIcon
 } from './NetworkIcons';
 
+export interface ConnectionConfig {
+  id: string;
+  type: 'rdp' | 'ssh' | 'browser' | 'custom';
+  host?: string;
+  port?: number;
+  username?: string;
+  password?: string;
+  customCommand?: string;
+}
+
 export interface EnhancedDeviceData {
   label: string;
   type: 'router' | 'server' | 'firewall' | 'windows' | 'linux' | 'switch' | 'cloud' | 'database' | 'laptop' | 'attacker' | 'generic';
@@ -28,6 +38,7 @@ export interface EnhancedDeviceData {
   interfaces?: { name: string; ip: string }[];
   operatingSystem?: string;
   customCommand?: string;
+  connections?: ConnectionConfig[];
 }
 
 const EnhancedDeviceNode: React.FC<NodeProps> = ({ data, selected }) => {
@@ -219,6 +230,35 @@ const EnhancedDeviceNode: React.FC<NodeProps> = ({ data, selected }) => {
             marginTop: '4px'
           }}>
             {deviceData.operatingSystem}
+          </div>
+        )}
+
+        {/* Connection Status Indicator */}
+        {deviceData.connections && deviceData.connections.length > 0 ? (
+          <div style={{
+            marginTop: '6px',
+            fontSize: '10px',
+            color: '#28a745',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: '4px'
+          }}>
+            <span style={{ fontSize: '12px' }}>✓</span>
+            <span>{deviceData.connections.length} connection{deviceData.connections.length > 1 ? 's' : ''}</span>
+          </div>
+        ) : (
+          <div style={{
+            marginTop: '6px',
+            fontSize: '10px',
+            color: '#999',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: '4px'
+          }}>
+            <span style={{ fontSize: '12px' }}>⚠️</span>
+            <span>No connection</span>
           </div>
         )}
       </div>

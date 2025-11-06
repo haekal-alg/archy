@@ -261,13 +261,16 @@ const App: React.FC = () => {
     setNodes((nds: Node[]) => [...nds, newNode]);
   }, [setNodes]);
 
-  const handleConnectToDevice = async (node: Node) => {
-    const deviceData = node.data as any;
-    const { host, port, username, password, connectionType, customCommand } = deviceData;
-    const type = connectionType || deviceData.type;
+  const handleConnectToDevice = async (node: Node, connection?: any) => {
+    if (!connection) {
+      alert('No connection configuration provided');
+      return;
+    }
+
+    const { type, host, port, username, password, customCommand } = connection;
 
     try {
-      // Handle new connection types
+      // Handle connection types
       if (type === 'rdp') {
         // RDP connection: mstsc /v:host
         const command = `mstsc /v:${host}`;
@@ -293,14 +296,6 @@ const App: React.FC = () => {
         } else {
           alert('No custom command specified');
         }
-      } else if (type === 'windows') {
-        // Legacy support
-        await window.electron.connectRDP(host, username, password);
-        console.log('RDP connection initiated');
-      } else if (type === 'linux') {
-        // Legacy support
-        await window.electron.connectSSH(host, port || 22, username, password);
-        console.log('SSH connection initiated');
       }
     } catch (error) {
       console.error('Connection failed:', error);
@@ -655,7 +650,8 @@ const App: React.FC = () => {
           x={contextMenu.x}
           y={contextMenu.y}
           showConnect={!!contextMenu.node && (contextMenu.node.type === 'group' || contextMenu.node.type !== 'group')}
-          onConnect={contextMenu.node ? () => handleConnectToDevice(contextMenu.node!) : undefined}
+          connections={contextMenu.node ? (contextMenu.node.data as any).connections || [] : []}
+          onConnect={contextMenu.node ? (connection) => handleConnectToDevice(contextMenu.node!, connection) : undefined}
           onDuplicate={contextMenu.node ? () => handleDuplicateNode(contextMenu.node!) : undefined}
           onDelete={() => {
             if (contextMenu.node) {
@@ -676,7 +672,14 @@ const App: React.FC = () => {
             setIsModalOpen(false);
             setSelectedNode(null);
           }}
-          onConnect={() => handleConnectToDevice(selectedNode)}
+          onConnect={() => {
+            const connections = (selectedNode.data as any).connections || [];
+            if (connections.length > 0) {
+              handleConnectToDevice(selectedNode, connections[0]);
+            } else {
+              alert('No connections configured for this node');
+            }
+          }}
         />
       )}
 

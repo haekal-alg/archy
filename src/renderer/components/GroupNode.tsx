@@ -1,6 +1,7 @@
 import React from 'react';
 import { Handle, Position, NodeProps, NodeResizer } from '@xyflow/react';
 import CONFIG from '../../config';
+import { ConnectionConfig } from './EnhancedDeviceNode';
 
 export interface GroupNodeData {
   label: string;
@@ -13,6 +14,7 @@ export interface GroupNodeData {
   username?: string;
   password?: string;
   customCommand?: string;
+  connections?: ConnectionConfig[];
 }
 
 const GroupNode: React.FC<NodeProps> = ({ data, selected }) => {
@@ -182,6 +184,29 @@ const GroupNode: React.FC<NodeProps> = ({ data, selected }) => {
             }}
           >
             {groupData.description}
+          </div>
+        )}
+
+        {/* Connection Status Indicator for Groups */}
+        {(!groupData.connections || groupData.connections.length === 0) && (
+          <div
+            style={{
+              position: 'absolute',
+              top: '12px',
+              right: '12px',
+              fontSize: '10px',
+              color: '#999',
+              background: 'rgba(255,255,255,0.9)',
+              padding: '4px 8px',
+              borderRadius: '4px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '4px',
+              border: '1px solid #ddd'
+            }}
+          >
+            <span style={{ fontSize: '12px' }}>⚠️</span>
+            <span>No connection</span>
           </div>
         )}
       </div>

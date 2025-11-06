@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Node, Edge } from '@xyflow/react';
-import { EnhancedDeviceData } from './EnhancedDeviceNode';
+import { EnhancedDeviceData, ConnectionConfig } from './EnhancedDeviceNode';
 import { GroupNodeData } from './GroupNode';
 import { CustomEdgeData } from './CustomEdge';
 import { TextNodeData } from './TextNode';
@@ -54,6 +54,11 @@ const StylePanel: React.FC<StylePanelProps> = ({
   const [edgeRouting, setEdgeRouting] = useState<'bezier' | 'smoothstep' | 'straight'>('bezier');
   const [edgeAnimated, setEdgeAnimated] = useState(false);
 
+  // Multiple connections support
+  const [connections, setConnections] = useState<ConnectionConfig[]>([]);
+  const [editingConnectionId, setEditingConnectionId] = useState<string | null>(null);
+  const [showConnectionForm, setShowConnectionForm] = useState(false);
+
   useEffect(() => {
     if (selectedNode) {
       const data = selectedNode.data as unknown as EnhancedDeviceData | GroupNodeData | TextNodeData;
@@ -73,46 +78,72 @@ const StylePanel: React.FC<StylePanelProps> = ({
         setNodeColor(groupData.borderColor || '#ff6b6b');
         setNodeBgColor(groupData.backgroundColor || '#ffb3ba40');
         setNodeDescription(groupData.description || '');
-        setNodeHost(groupData.host || '');
-        setNodePort(groupData.port || 22);
-        setNodeUsername(groupData.username || '');
-        setNodePassword(groupData.password || '');
-        setNodeCustomCommand(groupData.customCommand || '');
 
-        // Load connectionType
-        const savedConnectionType = (data as any).connectionType;
-        setNodeType(savedConnectionType || 'ssh');
+        // Load connections array or migrate from old format
+        if ((groupData as any).connections) {
+          setConnections((groupData as any).connections);
+        } else {
+          // Migrate from old single-connection format
+          const legacyConnection = migrateOldConnectionFormat(groupData as any);
+          setConnections(legacyConnection ? [legacyConnection] : []);
+        }
+
+        // Reset connection form state
+        setShowConnectionForm(false);
+        setEditingConnectionId(null);
+        setNodeType('ssh');
+        setNodeHost('');
+        setNodePort(22);
+        setNodeUsername('');
+        setNodePassword('');
+        setNodeCustomCommand('');
       } else {
         // Enhanced device node
         setNodeColor((data as any).color || '#1976d2');
         setNodeDescription((data as any).description || '');
         setNodeOS((data as EnhancedDeviceData).operatingSystem || '');
-        setNodeHost((data as EnhancedDeviceData).host || '');
-        setNodePort((data as EnhancedDeviceData).port || 22);
-        setNodeUsername((data as EnhancedDeviceData).username || '');
-        setNodePassword((data as EnhancedDeviceData).password || '');
-        setNodeCustomCommand((data as EnhancedDeviceData).customCommand || '');
 
-        // Load connectionType if it exists, otherwise determine from existing type field
-        const savedConnectionType = (data as any).connectionType;
-        if (savedConnectionType) {
-          setNodeType(savedConnectionType);
+        // Load connections array or migrate from old format
+        if ((data as any).connections) {
+          setConnections((data as any).connections);
         } else {
-          // Fallback for legacy nodes
-          const deviceType = (data as EnhancedDeviceData).type;
-          if ((data as EnhancedDeviceData).customCommand) {
-            setNodeType('custom');
-          } else if (deviceType === 'windows') {
-            setNodeType('rdp');
-          } else if (deviceType === 'linux') {
-            setNodeType('ssh');
-          } else {
-            setNodeType('ssh'); // Default to SSH
-          }
+          // Migrate from old single-connection format
+          const legacyConnection = migrateOldConnectionFormat(data as any);
+          setConnections(legacyConnection ? [legacyConnection] : []);
         }
+
+        // Reset connection form state
+        setShowConnectionForm(false);
+        setEditingConnectionId(null);
+        setNodeType('ssh');
+        setNodeHost('');
+        setNodePort(22);
+        setNodeUsername('');
+        setNodePassword('');
+        setNodeCustomCommand('');
       }
     }
   }, [selectedNode]);
+
+  // Helper function to migrate old single-connection format to new array format
+  const migrateOldConnectionFormat = (data: any): ConnectionConfig | null => {
+    const connectionType = data.connectionType;
+    const host = data.host;
+
+    if (!host && !data.customCommand) {
+      return null;
+    }
+
+    return {
+      id: `conn-${Date.now()}`,
+      type: connectionType || 'ssh',
+      host: host,
+      port: data.port || 22,
+      username: data.username || '',
+      password: data.password || '',
+      customCommand: data.customCommand || ''
+    };
+  };
 
   useEffect(() => {
     if (selectedEdge) {
@@ -142,22 +173,12 @@ const StylePanel: React.FC<StylePanelProps> = ({
         updates.borderColor = nodeColor;
         updates.backgroundColor = nodeBgColor;
         updates.description = nodeDescription;
-        updates.host = nodeHost;
-        updates.port = nodePort;
-        updates.username = nodeUsername;
-        updates.password = nodePassword;
-        updates.customCommand = nodeCustomCommand;
-        updates.connectionType = nodeType;
+        updates.connections = connections;
       } else {
         updates.color = nodeColor;
         updates.operatingSystem = nodeOS;
-        updates.host = nodeHost;
-        updates.port = nodePort;
-        updates.username = nodeUsername;
-        updates.password = nodePassword;
         updates.description = nodeDescription;
-        updates.customCommand = nodeCustomCommand;
-        updates.connectionType = nodeType;
+        updates.connections = connections;
       }
 
       onUpdateNode(selectedNode.id, updates);
@@ -173,6 +194,111 @@ const StylePanel: React.FC<StylePanelProps> = ({
         routingType: edgeRouting,
         animated: edgeAnimated
       });
+    }
+  };
+
+  // Connection management functions
+  const handleAddConnection = () => {
+    setShowConnectionForm(true);
+    setEditingConnectionId(null);
+    setNodeType('ssh');
+    setNodeHost('');
+    setNodePort(22);
+    setNodeUsername('');
+    setNodePassword('');
+    setNodeCustomCommand('');
+  };
+
+  const handleEditConnection = (connection: ConnectionConfig) => {
+    setEditingConnectionId(connection.id);
+    setShowConnectionForm(true);
+    setNodeType(connection.type);
+    setNodeHost(connection.host || '');
+    setNodePort(connection.port || 22);
+    setNodeUsername(connection.username || '');
+    setNodePassword(connection.password || '');
+    setNodeCustomCommand(connection.customCommand || '');
+  };
+
+  const handleSaveConnection = () => {
+    const newConnection: ConnectionConfig = {
+      id: editingConnectionId || `conn-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+      type: nodeType,
+      host: nodeHost,
+      port: nodePort,
+      username: nodeUsername,
+      password: nodePassword,
+      customCommand: nodeCustomCommand
+    };
+
+    if (editingConnectionId) {
+      // Update existing connection
+      setConnections(connections.map(conn =>
+        conn.id === editingConnectionId ? newConnection : conn
+      ));
+    } else {
+      // Add new connection
+      setConnections([...connections, newConnection]);
+    }
+
+    // Reset form
+    setShowConnectionForm(false);
+    setEditingConnectionId(null);
+    setNodeType('ssh');
+    setNodeHost('');
+    setNodePort(22);
+    setNodeUsername('');
+    setNodePassword('');
+    setNodeCustomCommand('');
+
+    // Save to node
+    setTimeout(() => {
+      handleNodeUpdate();
+    }, 0);
+  };
+
+  const handleDeleteConnection = (connectionId: string) => {
+    if (confirm('Are you sure you want to delete this connection?')) {
+      setConnections(connections.filter(conn => conn.id !== connectionId));
+      setTimeout(() => {
+        handleNodeUpdate();
+      }, 0);
+    }
+  };
+
+  const handleCancelConnectionForm = () => {
+    setShowConnectionForm(false);
+    setEditingConnectionId(null);
+    setNodeType('ssh');
+    setNodeHost('');
+    setNodePort(22);
+    setNodeUsername('');
+    setNodePassword('');
+    setNodeCustomCommand('');
+  };
+
+  const getConnectionDisplayText = (connection: ConnectionConfig): string => {
+    switch (connection.type) {
+      case 'rdp':
+        return connection.host || 'No host';
+      case 'ssh':
+        return `${connection.username || 'user'}@${connection.host || 'host'}:${connection.port || 22}`;
+      case 'browser':
+        return connection.host || 'No URL';
+      case 'custom':
+        return connection.customCommand || 'No command';
+      default:
+        return 'Unknown';
+    }
+  };
+
+  const getConnectionTypeBadgeColor = (type: string): string => {
+    switch (type) {
+      case 'rdp': return '#0078d4';
+      case 'ssh': return '#f7a41d';
+      case 'browser': return '#4285f4';
+      case 'custom': return '#7b1fa2';
+      default: return '#666666';
     }
   };
 
@@ -488,336 +614,479 @@ const StylePanel: React.FC<StylePanelProps> = ({
               {/* CONNECTION TAB */}
               {activeTab === 'connection' && (
                 <>
-                  <div style={{ marginBottom: '12px' }}>
-                    <label style={{ display: 'block', fontSize: '11px', marginBottom: '4px', fontWeight: '500', color: '#666' }}>
-                      Connection Type
-                    </label>
-                    <select
-                      value={nodeType}
-                      onChange={(e) => {
-                        setNodeType(e.target.value as 'rdp' | 'ssh' | 'browser' | 'custom');
-                        if (e.target.value !== 'custom') {
-                          setNodeCustomCommand('');
-                        }
-                        handleNodeUpdate();
-                      }}
-                      style={{
-                        width: '100%',
-                        padding: '6px 8px',
-                        border: '1px solid #ccc',
-                        borderRadius: '4px',
-                        background: '#fff',
-                        color: '#333',
-                        fontSize: '12px',
-                        boxSizing: 'border-box',
-                        cursor: 'pointer'
-                      }}
-                    >
-                      <option value="rdp">RDP</option>
-                      <option value="ssh">SSH</option>
-                      <option value="browser">Browser</option>
-                      <option value="custom">Custom</option>
-                    </select>
-                  </div>
-
-                  {/* RDP Settings */}
-                  {nodeType === 'rdp' && (
+                  {/* Show connection list when not in form mode */}
+                  {!showConnectionForm && (
                     <>
-                      <div style={{ marginBottom: '12px' }}>
-                        <label style={{ display: 'block', fontSize: '11px', marginBottom: '4px', fontWeight: '500', color: '#666' }}>
-                          Host
-                        </label>
-                        <input
-                          type="text"
-                          value={nodeHost}
-                          onChange={(e) => setNodeHost(e.target.value)}
-                          onBlur={handleNodeUpdate}
-                          placeholder="192.168.1.100"
-                          style={{
-                            width: '100%',
-                            padding: '6px 8px',
-                            border: '1px solid #ccc',
-                            borderRadius: '4px',
-                            background: '#fff',
-                            color: '#333',
-                            fontSize: '12px',
-                            fontFamily: 'monospace',
-                            boxSizing: 'border-box'
-                          }}
-                        />
-                      </div>
-                      <div style={{ marginBottom: '12px' }}>
-                        <label style={{ display: 'block', fontSize: '11px', marginBottom: '4px', fontWeight: '500', color: '#666' }}>
-                          Username
-                        </label>
-                        <input
-                          type="text"
-                          value={nodeUsername}
-                          onChange={(e) => setNodeUsername(e.target.value)}
-                          onBlur={handleNodeUpdate}
-                          placeholder="administrator"
-                          style={{
-                            width: '100%',
-                            padding: '6px 8px',
-                            border: '1px solid #ccc',
-                            borderRadius: '4px',
-                            background: '#fff',
-                            color: '#333',
-                            fontSize: '12px',
-                            boxSizing: 'border-box'
-                          }}
-                        />
-                      </div>
-                      <div style={{ marginBottom: '12px' }}>
-                        <label style={{ display: 'block', fontSize: '11px', marginBottom: '4px', fontWeight: '500', color: '#666' }}>
-                          Password
-                        </label>
-                        <input
-                          type="password"
-                          value={nodePassword}
-                          onChange={(e) => setNodePassword(e.target.value)}
-                          onBlur={handleNodeUpdate}
-                          placeholder="••••••••"
-                          style={{
-                            width: '100%',
-                            padding: '6px 8px',
-                            border: '1px solid #ccc',
-                            borderRadius: '4px',
-                            background: '#fff',
-                            color: '#333',
-                            fontSize: '12px',
-                            boxSizing: 'border-box'
-                          }}
-                        />
-                      </div>
-                      <div style={{
-                        padding: '10px',
-                        background: '#f8f9fa',
-                        border: '1px solid #dee2e6',
-                        borderRadius: '4px',
-                        marginTop: '16px'
-                      }}>
-                        <div style={{
-                          fontSize: '10px',
-                          fontWeight: '600',
-                          marginBottom: '6px',
-                          color: '#666',
-                          textTransform: 'uppercase'
-                        }}>
-                          Command Preview
-                        </div>
-                        <div style={{
-                          fontSize: '11px',
-                          color: '#495057',
-                          fontFamily: 'monospace',
-                          wordBreak: 'break-all'
-                        }}>
-                          mstsc /v:{nodeHost || 'HOST'}
-                        </div>
-                      </div>
-                    </>
-                  )}
+                      {/* Connections List */}
+                      {connections.length > 0 && (
+                        <div style={{ marginBottom: '16px' }}>
+                          <label style={{ display: 'block', fontSize: '11px', marginBottom: '8px', fontWeight: '500', color: '#666' }}>
+                            Configured Connections
+                          </label>
+                          {connections.map((connection) => (
+                            <div
+                              key={connection.id}
+                              style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '8px',
+                                padding: '8px',
+                                marginBottom: '8px',
+                                background: '#fff',
+                                border: '1px solid #ccc',
+                                borderRadius: '4px',
+                                fontSize: '11px'
+                              }}
+                            >
+                              {/* Connection Type Badge */}
+                              <span style={{
+                                padding: '2px 6px',
+                                borderRadius: '3px',
+                                background: getConnectionTypeBadgeColor(connection.type),
+                                color: '#fff',
+                                fontSize: '9px',
+                                fontWeight: '600',
+                                textTransform: 'uppercase',
+                                whiteSpace: 'nowrap'
+                              }}>
+                                {connection.type}
+                              </span>
 
-                  {/* SSH Settings */}
-                  {nodeType === 'ssh' && (
-                    <>
-                      <div style={{ marginBottom: '12px' }}>
-                        <label style={{ display: 'block', fontSize: '11px', marginBottom: '4px', fontWeight: '500', color: '#666' }}>
-                          Host
-                        </label>
-                        <input
-                          type="text"
-                          value={nodeHost}
-                          onChange={(e) => setNodeHost(e.target.value)}
-                          onBlur={handleNodeUpdate}
-                          placeholder="192.168.1.100"
-                          style={{
-                            width: '100%',
-                            padding: '6px 8px',
-                            border: '1px solid #ccc',
-                            borderRadius: '4px',
-                            background: '#fff',
-                            color: '#333',
-                            fontSize: '12px',
-                            fontFamily: 'monospace',
-                            boxSizing: 'border-box'
-                          }}
-                        />
-                      </div>
-                      <div style={{ marginBottom: '12px' }}>
-                        <label style={{ display: 'block', fontSize: '11px', marginBottom: '4px', fontWeight: '500', color: '#666' }}>
-                          Port
-                        </label>
-                        <input
-                          type="number"
-                          value={nodePort}
-                          onChange={(e) => setNodePort(parseInt(e.target.value) || 22)}
-                          onBlur={handleNodeUpdate}
-                          style={{
-                            width: '100%',
-                            padding: '6px 8px',
-                            border: '1px solid #ccc',
-                            borderRadius: '4px',
-                            background: '#fff',
-                            color: '#333',
-                            fontSize: '12px',
-                            fontFamily: 'monospace',
-                            boxSizing: 'border-box'
-                          }}
-                        />
-                      </div>
-                      <div style={{ marginBottom: '12px' }}>
-                        <label style={{ display: 'block', fontSize: '11px', marginBottom: '4px', fontWeight: '500', color: '#666' }}>
-                          Username
-                        </label>
-                        <input
-                          type="text"
-                          value={nodeUsername}
-                          onChange={(e) => setNodeUsername(e.target.value)}
-                          onBlur={handleNodeUpdate}
-                          placeholder="root"
-                          style={{
-                            width: '100%',
-                            padding: '6px 8px',
-                            border: '1px solid #ccc',
-                            borderRadius: '4px',
-                            background: '#fff',
-                            color: '#333',
-                            fontSize: '12px',
-                            boxSizing: 'border-box'
-                          }}
-                        />
-                      </div>
-                      <div style={{ marginBottom: '12px' }}>
-                        <label style={{ display: 'block', fontSize: '11px', marginBottom: '4px', fontWeight: '500', color: '#666' }}>
-                          Password
-                        </label>
-                        <input
-                          type="password"
-                          value={nodePassword}
-                          onChange={(e) => setNodePassword(e.target.value)}
-                          onBlur={handleNodeUpdate}
-                          placeholder="••••••••"
-                          style={{
-                            width: '100%',
-                            padding: '6px 8px',
-                            border: '1px solid #ccc',
-                            borderRadius: '4px',
-                            background: '#fff',
-                            color: '#333',
-                            fontSize: '12px',
-                            boxSizing: 'border-box'
-                          }}
-                        />
-                      </div>
-                      <div style={{
-                        padding: '10px',
-                        background: '#f8f9fa',
-                        border: '1px solid #dee2e6',
-                        borderRadius: '4px',
-                        marginTop: '16px'
-                      }}>
-                        <div style={{
-                          fontSize: '10px',
-                          fontWeight: '600',
-                          marginBottom: '6px',
-                          color: '#666',
-                          textTransform: 'uppercase'
-                        }}>
-                          Command Preview
-                        </div>
-                        <div style={{
-                          fontSize: '11px',
-                          color: '#495057',
-                          fontFamily: 'monospace',
-                          wordBreak: 'break-all'
-                        }}>
-                          ssh {nodeUsername || 'USER'}@{nodeHost || 'HOST'} -p {nodePort}
-                        </div>
-                      </div>
-                    </>
-                  )}
+                              {/* Connection Info */}
+                              <div style={{
+                                flex: 1,
+                                fontFamily: 'monospace',
+                                fontSize: '10px',
+                                color: '#333',
+                                overflow: 'hidden',
+                                textOverflow: 'ellipsis',
+                                whiteSpace: 'nowrap'
+                              }}>
+                                {getConnectionDisplayText(connection)}
+                              </div>
 
-                  {/* Browser Settings */}
-                  {nodeType === 'browser' && (
-                    <>
-                      <div style={{ marginBottom: '12px' }}>
-                        <label style={{ display: 'block', fontSize: '11px', marginBottom: '4px', fontWeight: '500', color: '#666' }}>
-                          URL
-                        </label>
-                        <input
-                          type="text"
-                          value={nodeHost}
-                          onChange={(e) => setNodeHost(e.target.value)}
-                          onBlur={handleNodeUpdate}
-                          placeholder="https://example.com"
-                          style={{
-                            width: '100%',
-                            padding: '6px 8px',
-                            border: '1px solid #ccc',
-                            borderRadius: '4px',
-                            background: '#fff',
-                            color: '#333',
-                            fontSize: '12px',
-                            fontFamily: 'monospace',
-                            boxSizing: 'border-box'
-                          }}
-                        />
-                      </div>
-                      <div style={{
-                        padding: '10px',
-                        background: '#f8f9fa',
-                        border: '1px solid #dee2e6',
-                        borderRadius: '4px',
-                        marginTop: '16px'
-                      }}>
-                        <div style={{
-                          fontSize: '10px',
-                          fontWeight: '600',
-                          marginBottom: '6px',
-                          color: '#666',
-                          textTransform: 'uppercase'
-                        }}>
-                          Command Preview
-                        </div>
-                        <div style={{
-                          fontSize: '11px',
-                          color: '#495057',
-                          fontFamily: 'monospace',
-                          wordBreak: 'break-all'
-                        }}>
-                          start "" "{nodeHost || 'URL'}"
-                        </div>
-                      </div>
-                    </>
-                  )}
+                              {/* Edit Button */}
+                              <button
+                                onClick={() => handleEditConnection(connection)}
+                                style={{
+                                  padding: '4px 8px',
+                                  border: '1px solid #ccc',
+                                  borderRadius: '3px',
+                                  background: '#fff',
+                                  color: '#333',
+                                  cursor: 'pointer',
+                                  fontSize: '10px',
+                                  fontWeight: '500',
+                                  transition: 'all 0.2s'
+                                }}
+                                onMouseEnter={(e) => {
+                                  e.currentTarget.style.background = '#f5f5f5';
+                                }}
+                                onMouseLeave={(e) => {
+                                  e.currentTarget.style.background = '#fff';
+                                }}
+                              >
+                                Edit
+                              </button>
 
-                  {/* Custom Command */}
-                  {nodeType === 'custom' && (
-                    <div style={{ marginBottom: '12px' }}>
-                      <label style={{ display: 'block', fontSize: '11px', marginBottom: '4px', fontWeight: '500', color: '#666' }}>
-                        Custom Command
-                      </label>
-                      <input
-                        type="text"
-                        value={nodeCustomCommand}
-                        onChange={(e) => setNodeCustomCommand(e.target.value)}
-                        onBlur={handleNodeUpdate}
-                        placeholder="Enter custom command..."
-                        title="Enter command to execute in CMD (e.g., ping 8.8.8.8)"
+                              {/* Delete Button */}
+                              <button
+                                onClick={() => handleDeleteConnection(connection.id)}
+                                style={{
+                                  padding: '4px 8px',
+                                  border: '1px solid #e74c3c',
+                                  borderRadius: '3px',
+                                  background: '#fff',
+                                  color: '#e74c3c',
+                                  cursor: 'pointer',
+                                  fontSize: '10px',
+                                  fontWeight: '500',
+                                  transition: 'all 0.2s'
+                                }}
+                                onMouseEnter={(e) => {
+                                  e.currentTarget.style.background = '#e74c3c';
+                                  e.currentTarget.style.color = '#fff';
+                                }}
+                                onMouseLeave={(e) => {
+                                  e.currentTarget.style.background = '#fff';
+                                  e.currentTarget.style.color = '#e74c3c';
+                                }}
+                              >
+                                Delete
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+
+                      {/* No connections message */}
+                      {connections.length === 0 && (
+                        <div style={{
+                          padding: '20px',
+                          textAlign: 'center',
+                          background: '#f8f9fa',
+                          border: '1px solid #dee2e6',
+                          borderRadius: '4px',
+                          marginBottom: '16px'
+                        }}>
+                          <div style={{ fontSize: '24px', marginBottom: '8px' }}>🔌</div>
+                          <div style={{ fontSize: '11px', color: '#666', marginBottom: '4px' }}>
+                            No connections configured
+                          </div>
+                          <div style={{ fontSize: '10px', color: '#999' }}>
+                            Add a connection to enable remote access
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Add Connection Button */}
+                      <button
+                        onClick={handleAddConnection}
                         style={{
                           width: '100%',
-                          padding: '6px 8px',
-                          border: '1px solid #ccc',
+                          padding: '10px',
+                          border: '1px solid #007bff',
                           borderRadius: '4px',
-                          background: '#fff',
-                          color: '#333',
-                          fontSize: '11px',
-                          fontFamily: 'monospace',
-                          boxSizing: 'border-box'
+                          background: '#007bff',
+                          color: '#fff',
+                          cursor: 'pointer',
+                          fontSize: '12px',
+                          fontWeight: '600',
+                          transition: 'all 0.2s',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          gap: '6px'
                         }}
-                      />
-                    </div>
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.background = '#0056b3';
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.background = '#007bff';
+                        }}
+                      >
+                        <span style={{ fontSize: '14px' }}>+</span>
+                        <span>Add Connection</span>
+                      </button>
+                    </>
+                  )}
+
+                  {/* Show connection form when adding/editing */}
+                  {showConnectionForm && (
+                    <>
+                      <div style={{
+                        marginBottom: '16px',
+                        padding: '12px',
+                        background: '#f8f9fa',
+                        border: '1px solid #dee2e6',
+                        borderRadius: '4px'
+                      }}>
+                        <div style={{
+                          fontSize: '11px',
+                          fontWeight: '600',
+                          marginBottom: '12px',
+                          color: '#333'
+                        }}>
+                          {editingConnectionId ? 'Edit Connection' : 'New Connection'}
+                        </div>
+
+                        <div style={{ marginBottom: '12px' }}>
+                          <label style={{ display: 'block', fontSize: '11px', marginBottom: '4px', fontWeight: '500', color: '#666' }}>
+                            Connection Type
+                          </label>
+                          <select
+                            value={nodeType}
+                            onChange={(e) => {
+                              setNodeType(e.target.value as 'rdp' | 'ssh' | 'browser' | 'custom');
+                              if (e.target.value !== 'custom') {
+                                setNodeCustomCommand('');
+                              }
+                            }}
+                            style={{
+                              width: '100%',
+                              padding: '6px 8px',
+                              border: '1px solid #ccc',
+                              borderRadius: '4px',
+                              background: '#fff',
+                              color: '#333',
+                              fontSize: '12px',
+                              boxSizing: 'border-box',
+                              cursor: 'pointer'
+                            }}
+                          >
+                            <option value="rdp">RDP</option>
+                            <option value="ssh">SSH</option>
+                            <option value="browser">Browser</option>
+                            <option value="custom">Custom</option>
+                          </select>
+                        </div>
+
+                        {/* RDP Settings */}
+                        {nodeType === 'rdp' && (
+                          <>
+                            <div style={{ marginBottom: '12px' }}>
+                              <label style={{ display: 'block', fontSize: '11px', marginBottom: '4px', fontWeight: '500', color: '#666' }}>
+                                Host
+                              </label>
+                              <input
+                                type="text"
+                                value={nodeHost}
+                                onChange={(e) => setNodeHost(e.target.value)}
+                                placeholder="192.168.1.1"
+                                style={{
+                                  width: '100%',
+                                  padding: '6px 8px',
+                                  border: '1px solid #ccc',
+                                  borderRadius: '4px',
+                                  background: '#fff',
+                                  color: '#333',
+                                  fontSize: '12px',
+                                  fontFamily: 'monospace',
+                                  boxSizing: 'border-box'
+                                }}
+                              />
+                            </div>
+                            <div style={{ marginBottom: '12px' }}>
+                              <label style={{ display: 'block', fontSize: '11px', marginBottom: '4px', fontWeight: '500', color: '#666' }}>
+                                Username (Optional)
+                              </label>
+                              <input
+                                type="text"
+                                value={nodeUsername}
+                                onChange={(e) => setNodeUsername(e.target.value)}
+                                placeholder="administrator"
+                                style={{
+                                  width: '100%',
+                                  padding: '6px 8px',
+                                  border: '1px solid #ccc',
+                                  borderRadius: '4px',
+                                  background: '#fff',
+                                  color: '#333',
+                                  fontSize: '12px',
+                                  boxSizing: 'border-box'
+                                }}
+                              />
+                            </div>
+                            <div style={{ marginBottom: '12px' }}>
+                              <label style={{ display: 'block', fontSize: '11px', marginBottom: '4px', fontWeight: '500', color: '#666' }}>
+                                Password (Optional)
+                              </label>
+                              <input
+                                type="password"
+                                value={nodePassword}
+                                onChange={(e) => setNodePassword(e.target.value)}
+                                placeholder="••••••••"
+                                style={{
+                                  width: '100%',
+                                  padding: '6px 8px',
+                                  border: '1px solid #ccc',
+                                  borderRadius: '4px',
+                                  background: '#fff',
+                                  color: '#333',
+                                  fontSize: '12px',
+                                  boxSizing: 'border-box'
+                                }}
+                              />
+                            </div>
+                          </>
+                        )}
+
+                        {/* SSH Settings */}
+                        {nodeType === 'ssh' && (
+                          <>
+                            <div style={{ marginBottom: '12px' }}>
+                              <label style={{ display: 'block', fontSize: '11px', marginBottom: '4px', fontWeight: '500', color: '#666' }}>
+                                Host
+                              </label>
+                              <input
+                                type="text"
+                                value={nodeHost}
+                                onChange={(e) => setNodeHost(e.target.value)}
+                                placeholder="192.168.1.1"
+                                style={{
+                                  width: '100%',
+                                  padding: '6px 8px',
+                                  border: '1px solid #ccc',
+                                  borderRadius: '4px',
+                                  background: '#fff',
+                                  color: '#333',
+                                  fontSize: '12px',
+                                  fontFamily: 'monospace',
+                                  boxSizing: 'border-box'
+                                }}
+                              />
+                            </div>
+                            <div style={{ marginBottom: '12px' }}>
+                              <label style={{ display: 'block', fontSize: '11px', marginBottom: '4px', fontWeight: '500', color: '#666' }}>
+                                Port
+                              </label>
+                              <input
+                                type="number"
+                                value={nodePort}
+                                onChange={(e) => setNodePort(parseInt(e.target.value) || 22)}
+                                placeholder="22"
+                                style={{
+                                  width: '100%',
+                                  padding: '6px 8px',
+                                  border: '1px solid #ccc',
+                                  borderRadius: '4px',
+                                  background: '#fff',
+                                  color: '#333',
+                                  fontSize: '12px',
+                                  fontFamily: 'monospace',
+                                  boxSizing: 'border-box'
+                                }}
+                              />
+                            </div>
+                            <div style={{ marginBottom: '12px' }}>
+                              <label style={{ display: 'block', fontSize: '11px', marginBottom: '4px', fontWeight: '500', color: '#666' }}>
+                                Username
+                              </label>
+                              <input
+                                type="text"
+                                value={nodeUsername}
+                                onChange={(e) => setNodeUsername(e.target.value)}
+                                placeholder="root"
+                                style={{
+                                  width: '100%',
+                                  padding: '6px 8px',
+                                  border: '1px solid #ccc',
+                                  borderRadius: '4px',
+                                  background: '#fff',
+                                  color: '#333',
+                                  fontSize: '12px',
+                                  boxSizing: 'border-box'
+                                }}
+                              />
+                            </div>
+                            <div style={{ marginBottom: '12px' }}>
+                              <label style={{ display: 'block', fontSize: '11px', marginBottom: '4px', fontWeight: '500', color: '#666' }}>
+                                Password
+                              </label>
+                              <input
+                                type="password"
+                                value={nodePassword}
+                                onChange={(e) => setNodePassword(e.target.value)}
+                                placeholder="••••••••"
+                                style={{
+                                  width: '100%',
+                                  padding: '6px 8px',
+                                  border: '1px solid #ccc',
+                                  borderRadius: '4px',
+                                  background: '#fff',
+                                  color: '#333',
+                                  fontSize: '12px',
+                                  boxSizing: 'border-box'
+                                }}
+                              />
+                            </div>
+                          </>
+                        )}
+
+                        {/* Browser Settings */}
+                        {nodeType === 'browser' && (
+                          <div style={{ marginBottom: '12px' }}>
+                            <label style={{ display: 'block', fontSize: '11px', marginBottom: '4px', fontWeight: '500', color: '#666' }}>
+                              URL
+                            </label>
+                            <input
+                              type="text"
+                              value={nodeHost}
+                              onChange={(e) => setNodeHost(e.target.value)}
+                              placeholder="https://example.com"
+                              style={{
+                                width: '100%',
+                                padding: '6px 8px',
+                                border: '1px solid #ccc',
+                                borderRadius: '4px',
+                                background: '#fff',
+                                color: '#333',
+                                fontSize: '12px',
+                                fontFamily: 'monospace',
+                                boxSizing: 'border-box'
+                              }}
+                            />
+                          </div>
+                        )}
+
+                        {/* Custom Command */}
+                        {nodeType === 'custom' && (
+                          <div style={{ marginBottom: '12px' }}>
+                            <label style={{ display: 'block', fontSize: '11px', marginBottom: '4px', fontWeight: '500', color: '#666' }}>
+                              Custom Command
+                            </label>
+                            <input
+                              type="text"
+                              value={nodeCustomCommand}
+                              onChange={(e) => setNodeCustomCommand(e.target.value)}
+                              placeholder="ping 8.8.8.8"
+                              title="Enter command to execute in CMD (e.g., ping 8.8.8.8)"
+                              style={{
+                                width: '100%',
+                                padding: '6px 8px',
+                                border: '1px solid #ccc',
+                                borderRadius: '4px',
+                                background: '#fff',
+                                color: '#333',
+                                fontSize: '11px',
+                                fontFamily: 'monospace',
+                                boxSizing: 'border-box'
+                              }}
+                            />
+                          </div>
+                        )}
+
+                        {/* Action Buttons */}
+                        <div style={{ display: 'flex', gap: '8px', marginTop: '16px' }}>
+                          <button
+                            onClick={handleSaveConnection}
+                            style={{
+                              flex: 1,
+                              padding: '8px',
+                              border: '1px solid #28a745',
+                              borderRadius: '4px',
+                              background: '#28a745',
+                              color: '#fff',
+                              cursor: 'pointer',
+                              fontSize: '11px',
+                              fontWeight: '600',
+                              transition: 'all 0.2s'
+                            }}
+                            onMouseEnter={(e) => {
+                              e.currentTarget.style.background = '#218838';
+                            }}
+                            onMouseLeave={(e) => {
+                              e.currentTarget.style.background = '#28a745';
+                            }}
+                          >
+                            {editingConnectionId ? 'Update' : 'Save'}
+                          </button>
+                          <button
+                            onClick={handleCancelConnectionForm}
+                            style={{
+                              flex: 1,
+                              padding: '8px',
+                              border: '1px solid #6c757d',
+                              borderRadius: '4px',
+                              background: '#6c757d',
+                              color: '#fff',
+                              cursor: 'pointer',
+                              fontSize: '11px',
+                              fontWeight: '600',
+                              transition: 'all 0.2s'
+                            }}
+                            onMouseEnter={(e) => {
+                              e.currentTarget.style.background = '#5a6268';
+                            }}
+                            onMouseLeave={(e) => {
+                              e.currentTarget.style.background = '#6c757d';
+                            }}
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                      </div>
+                    </>
                   )}
                 </>
               )}
@@ -858,7 +1127,7 @@ const StylePanel: React.FC<StylePanelProps> = ({
                         value={nodeOS}
                         onChange={(e) => setNodeOS(e.target.value)}
                         onBlur={handleNodeUpdate}
-                        placeholder="Windows Server 2019"
+                        
                         style={{
                           width: '100%',
                           padding: '6px 8px',
@@ -1094,7 +1363,7 @@ const StylePanel: React.FC<StylePanelProps> = ({
               value={edgeLabel}
               onChange={(e) => setEdgeLabel(e.target.value)}
               onBlur={handleEdgeUpdate}
-              placeholder="Protocol, bandwidth, etc."
+              
               style={{
                 width: '100%',
                 padding: '6px 8px',
