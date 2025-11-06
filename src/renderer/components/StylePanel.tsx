@@ -58,6 +58,7 @@ const StylePanel: React.FC<StylePanelProps> = ({
   const [connections, setConnections] = useState<ConnectionConfig[]>([]);
   const [editingConnectionId, setEditingConnectionId] = useState<string | null>(null);
   const [showConnectionForm, setShowConnectionForm] = useState(false);
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
 
   useEffect(() => {
     if (selectedNode) {
@@ -97,6 +98,7 @@ const StylePanel: React.FC<StylePanelProps> = ({
         setNodeUsername('');
         setNodePassword('');
         setNodeCustomCommand('');
+        setHasUnsavedChanges(false);
       } else {
         // Enhanced device node
         setNodeColor((data as any).color || '#1976d2');
@@ -121,6 +123,7 @@ const StylePanel: React.FC<StylePanelProps> = ({
         setNodeUsername('');
         setNodePassword('');
         setNodeCustomCommand('');
+        setHasUnsavedChanges(false);
       }
     }
   }, [selectedNode]);
@@ -251,18 +254,14 @@ const StylePanel: React.FC<StylePanelProps> = ({
     setNodePassword('');
     setNodeCustomCommand('');
 
-    // Save to node
-    setTimeout(() => {
-      handleNodeUpdate();
-    }, 0);
+    // Mark as having unsaved changes
+    setHasUnsavedChanges(true);
   };
 
   const handleDeleteConnection = (connectionId: string) => {
     if (confirm('Are you sure you want to delete this connection?')) {
       setConnections(connections.filter(conn => conn.id !== connectionId));
-      setTimeout(() => {
-        handleNodeUpdate();
-      }, 0);
+      setHasUnsavedChanges(true);
     }
   };
 
@@ -275,6 +274,11 @@ const StylePanel: React.FC<StylePanelProps> = ({
     setNodeUsername('');
     setNodePassword('');
     setNodeCustomCommand('');
+  };
+
+  const handleSaveAllChanges = () => {
+    handleNodeUpdate();
+    setHasUnsavedChanges(false);
   };
 
   const getConnectionDisplayText = (connection: ConnectionConfig): string => {
@@ -614,15 +618,12 @@ const StylePanel: React.FC<StylePanelProps> = ({
               {/* CONNECTION TAB */}
               {activeTab === 'connection' && (
                 <>
-                  {/* Show connection list when not in form mode */}
-                  {!showConnectionForm && (
-                    <>
-                      {/* Connections List */}
-                      {connections.length > 0 && (
-                        <div style={{ marginBottom: '16px' }}>
-                          <label style={{ display: 'block', fontSize: '11px', marginBottom: '8px', fontWeight: '500', color: '#666' }}>
-                            Configured Connections
-                          </label>
+                  {/* Connections List - Always visible */}
+                  {connections.length > 0 && (
+                    <div style={{ marginBottom: '16px' }}>
+                      <label style={{ display: 'block', fontSize: '11px', marginBottom: '8px', fontWeight: '500', color: '#666' }}>
+                        Configured Connections
+                      </label>
                           {connections.map((connection) => (
                             <div
                               key={connection.id}
@@ -719,57 +720,56 @@ const StylePanel: React.FC<StylePanelProps> = ({
                         </div>
                       )}
 
-                      {/* No connections message */}
-                      {connections.length === 0 && (
-                        <div style={{
-                          padding: '20px',
-                          textAlign: 'center',
-                          background: '#f8f9fa',
-                          border: '1px solid #dee2e6',
-                          borderRadius: '4px',
-                          marginBottom: '16px'
-                        }}>
-                          <div style={{ fontSize: '24px', marginBottom: '8px' }}>🔌</div>
-                          <div style={{ fontSize: '11px', color: '#666', marginBottom: '4px' }}>
-                            No connections configured
-                          </div>
-                          <div style={{ fontSize: '10px', color: '#999' }}>
-                            Add a connection to enable remote access
-                          </div>
-                        </div>
-                      )}
-
-                      {/* Add Connection Button */}
-                      <button
-                        onClick={handleAddConnection}
-                        style={{
-                          width: '100%',
-                          padding: '10px',
-                          border: '1px solid #007bff',
-                          borderRadius: '4px',
-                          background: '#007bff',
-                          color: '#fff',
-                          cursor: 'pointer',
-                          fontSize: '12px',
-                          fontWeight: '600',
-                          transition: 'all 0.2s',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          gap: '6px'
-                        }}
-                        onMouseEnter={(e) => {
-                          e.currentTarget.style.background = '#0056b3';
-                        }}
-                        onMouseLeave={(e) => {
-                          e.currentTarget.style.background = '#007bff';
-                        }}
-                      >
-                        <span style={{ fontSize: '14px' }}>+</span>
-                        <span>Add Connection</span>
-                      </button>
-                    </>
+                  {/* No connections message */}
+                  {connections.length === 0 && (
+                    <div style={{
+                      padding: '20px',
+                      textAlign: 'center',
+                      background: '#f8f9fa',
+                      border: '1px solid #dee2e6',
+                      borderRadius: '4px',
+                      marginBottom: '16px'
+                    }}>
+                      <div style={{ fontSize: '24px', marginBottom: '8px' }}>🔌</div>
+                      <div style={{ fontSize: '11px', color: '#666', marginBottom: '4px' }}>
+                        No connections configured
+                      </div>
+                      <div style={{ fontSize: '10px', color: '#999' }}>
+                        Add a connection to enable remote access
+                      </div>
+                    </div>
                   )}
+
+                  {/* Add Connection Button */}
+                  <button
+                    onClick={handleAddConnection}
+                    style={{
+                      width: '100%',
+                      padding: '10px',
+                      border: '1px solid #007bff',
+                      borderRadius: '4px',
+                      background: '#007bff',
+                      color: '#fff',
+                      cursor: 'pointer',
+                      fontSize: '12px',
+                      fontWeight: '600',
+                      transition: 'all 0.2s',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '6px',
+                      marginBottom: '16px'
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.background = '#0056b3';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.background = '#007bff';
+                    }}
+                  >
+                    <span style={{ fontSize: '14px' }}>+</span>
+                    <span>Add Connection</span>
+                  </button>
 
                   {/* Show connection form when adding/editing */}
                   {showConnectionForm && (
@@ -1088,6 +1088,56 @@ const StylePanel: React.FC<StylePanelProps> = ({
                       </div>
                     </>
                   )}
+
+                  {/* Save All Changes Button */}
+                  <button
+                    onClick={handleSaveAllChanges}
+                    style={{
+                      width: '100%',
+                      padding: '12px',
+                      border: hasUnsavedChanges ? '2px solid #28a745' : '1px solid #ccc',
+                      borderRadius: '4px',
+                      background: hasUnsavedChanges ? '#28a745' : '#fff',
+                      color: hasUnsavedChanges ? '#fff' : '#666',
+                      cursor: 'pointer',
+                      fontSize: '13px',
+                      fontWeight: '600',
+                      transition: 'all 0.2s',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '8px',
+                      marginTop: '16px'
+                    }}
+                    onMouseEnter={(e) => {
+                      if (hasUnsavedChanges) {
+                        e.currentTarget.style.background = '#218838';
+                      } else {
+                        e.currentTarget.style.background = '#f5f5f5';
+                      }
+                    }}
+                    onMouseLeave={(e) => {
+                      if (hasUnsavedChanges) {
+                        e.currentTarget.style.background = '#28a745';
+                      } else {
+                        e.currentTarget.style.background = '#fff';
+                      }
+                    }}
+                  >
+                    <span style={{ fontSize: '16px' }}>💾</span>
+                    <span>Save All Changes</span>
+                    {hasUnsavedChanges && (
+                      <span style={{
+                        fontSize: '10px',
+                        padding: '2px 6px',
+                        background: 'rgba(255, 255, 255, 0.3)',
+                        borderRadius: '10px',
+                        fontWeight: '500'
+                      }}>
+                        •
+                      </span>
+                    )}
+                  </button>
                 </>
               )}
 
@@ -1286,66 +1336,66 @@ const StylePanel: React.FC<StylePanelProps> = ({
                       }}
                     />
                   </div>
+
+                  {/* Layer Order Controls - Only in Style Tab */}
+                  {onMoveToFront && onMoveToBack && (
+                    <div style={{ marginTop: '16px', paddingTop: '16px', borderTop: '1px solid #d0d0d0' }}>
+                      <label style={{ display: 'block', fontSize: '11px', marginBottom: '8px', fontWeight: '500', color: '#666' }}>
+                        Layer Order
+                      </label>
+                      <div style={{ display: 'flex', gap: '8px' }}>
+                        <button
+                          onClick={() => onMoveToFront(selectedNode.id)}
+                          style={{
+                            flex: 1,
+                            padding: '8px',
+                            border: '1px solid #ccc',
+                            borderRadius: '4px',
+                            background: '#fff',
+                            color: '#333',
+                            cursor: 'pointer',
+                            fontSize: '11px',
+                            fontWeight: '500',
+                            transition: 'all 0.2s'
+                          }}
+                          onMouseEnter={(e) => {
+                            e.currentTarget.style.background = '#f5f5f5';
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.background = '#fff';
+                          }}
+                        >
+                          Bring to Front
+                        </button>
+                        <button
+                          onClick={() => onMoveToBack(selectedNode.id)}
+                          style={{
+                            flex: 1,
+                            padding: '8px',
+                            border: '1px solid #ccc',
+                            borderRadius: '4px',
+                            background: '#fff',
+                            color: '#333',
+                            cursor: 'pointer',
+                            fontSize: '11px',
+                            fontWeight: '500',
+                            transition: 'all 0.2s'
+                          }}
+                          onMouseEnter={(e) => {
+                            e.currentTarget.style.background = '#f5f5f5';
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.background = '#fff';
+                          }}
+                        >
+                          Send to Back
+                        </button>
+                      </div>
+                    </div>
+                  )}
                 </>
               )}
             </>
-          )}
-
-          {/* Layering Controls */}
-          {onMoveToFront && onMoveToBack && (
-            <div style={{ marginTop: '16px', paddingTop: '16px', borderTop: '1px solid #d0d0d0' }}>
-              <label style={{ display: 'block', fontSize: '11px', marginBottom: '8px', fontWeight: '500', color: '#666' }}>
-                Layer Order
-              </label>
-              <div style={{ display: 'flex', gap: '8px' }}>
-                <button
-                  onClick={() => onMoveToFront(selectedNode.id)}
-                  style={{
-                    flex: 1,
-                    padding: '8px',
-                    border: '1px solid #ccc',
-                    borderRadius: '4px',
-                    background: '#fff',
-                    color: '#333',
-                    cursor: 'pointer',
-                    fontSize: '11px',
-                    fontWeight: '500',
-                    transition: 'all 0.2s'
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.background = '#f5f5f5';
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.background = '#fff';
-                  }}
-                >
-                  Bring to Front
-                </button>
-                <button
-                  onClick={() => onMoveToBack(selectedNode.id)}
-                  style={{
-                    flex: 1,
-                    padding: '8px',
-                    border: '1px solid #ccc',
-                    borderRadius: '4px',
-                    background: '#fff',
-                    color: '#333',
-                    cursor: 'pointer',
-                    fontSize: '11px',
-                    fontWeight: '500',
-                    transition: 'all 0.2s'
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.background = '#f5f5f5';
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.background = '#fff';
-                  }}
-                >
-                  Send to Back
-                </button>
-              </div>
-            </div>
           )}
 
         </div>
