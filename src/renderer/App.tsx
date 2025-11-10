@@ -15,7 +15,8 @@ import {
   Panel,
   getNodesBounds,
   getViewportForBounds,
-  ReactFlowInstance
+  ReactFlowInstance,
+  useReactFlow
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import DeviceNode from './components/DeviceNode';
@@ -28,7 +29,7 @@ import ShapeLibrary from './components/ShapeLibrary';
 import StylePanel from './components/StylePanel';
 import ContextMenu from './components/ContextMenu';
 import './App.css';
-import { toPng } from 'html-to-image';
+import { toPng, toJpeg } from 'html-to-image';
 
 const nodeTypes: NodeTypes = {
   device: DeviceNode,
@@ -50,6 +51,11 @@ export interface DeviceData {
   password: string;
 }
 
+interface HistoryState {
+  nodes: Node[];
+  edges: Edge[];
+}
+
 const App: React.FC = () => {
   const [nodes, setNodes, onNodesChange] = useNodesState<Node>([] as Node[]);
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([] as Edge[]);
@@ -68,6 +74,14 @@ const App: React.FC = () => {
     edge?: Edge;
   } | null>(null);
 
+  // History state for Undo/Redo
+  const [history, setHistory] = useState<HistoryState[]>([]);
+  const [historyIndex, setHistoryIndex] = useState(-1);
+
+  // Export state
+  const [isExporting, setIsExporting] = useState(false);
+  const [showExportMenu, setShowExportMenu] = useState(false);
+
   // Setup menu event listeners with refs to avoid stale closures
   const nodesRef = useRef(nodes);
   const edgesRef = useRef(edges);
@@ -84,6 +98,103 @@ const App: React.FC = () => {
   useEffect(() => {
     diagramNameRef.current = diagramName;
   }, [diagramName]);
+
+  // History management functions
+  const saveToHistory = useCallback(() => {
+    const newState: HistoryState = {
+      nodes: JSON.parse(JSON.stringify(nodes)),
+      edges: JSON.parse(JSON.stringify(edges))
+    };
+
+    setHistory((prev) => {
+      const newHistory = prev.slice(0, historyIndex + 1);
+      newHistory.push(newState);
+      // Limit history to 50 states
+      if (newHistory.length > 50) {
+        newHistory.shift();
+        setHistoryIndex((idx) => idx);
+        return newHistory;
+      }
+      setHistoryIndex(newHistory.length - 1);
+      return newHistory;
+    });
+  }, [nodes, edges, historyIndex]);
+
+  const handleUndo = useCallback(() => {
+    if (historyIndex > 0) {
+      const prevState = history[historyIndex - 1];
+      setNodes(prevState.nodes);
+      setEdges(prevState.edges);
+      setHistoryIndex(historyIndex - 1);
+    }
+  }, [historyIndex, history, setNodes, setEdges]);
+
+  const handleRedo = useCallback(() => {
+    if (historyIndex < history.length - 1) {
+      const nextState = history[historyIndex + 1];
+      setNodes(nextState.nodes);
+      setEdges(nextState.edges);
+      setHistoryIndex(historyIndex + 1);
+    }
+  }, [historyIndex, history, setNodes, setEdges]);
+
+  const canUndo = historyIndex > 0;
+  const canRedo = historyIndex < history.length - 1;
+
+  // Keyboard shortcuts for Undo/Redo
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if ((event.ctrlKey || event.metaKey) && event.shiftKey && event.key === 'Z') {
+        event.preventDefault();
+        handleRedo();
+      } else if ((event.ctrlKey || event.metaKey) && event.key === 'z') {
+        event.preventDefault();
+        handleUndo();
+      } else if ((event.ctrlKey || event.metaKey) && event.key === 'y') {
+        event.preventDefault();
+        handleRedo();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [handleUndo, handleRedo]);
+
+  // Track node position changes and save to history when dragging ends
+  const nodesMoveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  useEffect(() => {
+    // Clear existing timeout
+    if (nodesMoveTimeoutRef.current) {
+      clearTimeout(nodesMoveTimeoutRef.current);
+    }
+
+    // Set new timeout to save history after nodes settle (500ms after last change)
+    nodesMoveTimeoutRef.current = setTimeout(() => {
+      // Only save if we have nodes (avoid saving on initial render)
+      if (nodes.length > 0 && history.length > 0) {
+        // Check if positions actually changed from last history state
+        const lastState = history[historyIndex];
+        if (lastState) {
+          const positionsChanged = nodes.some((node, idx) => {
+            const lastNode = lastState.nodes.find(n => n.id === node.id);
+            return lastNode && (
+              lastNode.position.x !== node.position.x ||
+              lastNode.position.y !== node.position.y
+            );
+          });
+          if (positionsChanged) {
+            saveToHistory();
+          }
+        }
+      }
+    }, 500);
+
+    return () => {
+      if (nodesMoveTimeoutRef.current) {
+        clearTimeout(nodesMoveTimeoutRef.current);
+      }
+    };
+  }, [nodes]);
 
   // Setup menu event listeners (only once on mount)
   useEffect(() => {
@@ -194,8 +305,10 @@ const App: React.FC = () => {
         } as CustomEdgeData
       };
       setEdges((eds) => addEdge(newEdge, eds));
+      // Save to history after adding edge
+      setTimeout(() => saveToHistory(), 0);
     },
-    [setEdges]
+    [setEdges, saveToHistory]
   );
 
   const onNodeClick = useCallback((event: React.MouseEvent, node: Node) => {
@@ -212,6 +325,7 @@ const App: React.FC = () => {
     setSelectedNode(null);
     setSelectedEdge(null);
     setContextMenu(null);
+    setShowExportMenu(false);
   }, []);
 
   const onNodeDoubleClick = useCallback((event: React.MouseEvent, node: Node) => {
@@ -242,12 +356,16 @@ const App: React.FC = () => {
     setNodes((nds) => nds.filter((n) => n.id !== nodeId));
     setEdges((eds) => eds.filter((e) => e.source !== nodeId && e.target !== nodeId));
     setSelectedNode(null);
-  }, [setNodes, setEdges]);
+    // Save to history after deletion
+    setTimeout(() => saveToHistory(), 0);
+  }, [setNodes, setEdges, saveToHistory]);
 
   const handleDeleteEdge = useCallback((edgeId: string) => {
     setEdges((eds) => eds.filter((e) => e.id !== edgeId));
     setSelectedEdge(null);
-  }, [setEdges]);
+    // Save to history after deletion
+    setTimeout(() => saveToHistory(), 0);
+  }, [setEdges, saveToHistory]);
 
   const handleDuplicateNode = useCallback((node: Node) => {
     const newNode: Node = {
@@ -259,7 +377,9 @@ const App: React.FC = () => {
       }
     };
     setNodes((nds: Node[]) => [...nds, newNode]);
-  }, [setNodes]);
+    // Save to history after duplication
+    setTimeout(() => saveToHistory(), 0);
+  }, [setNodes, saveToHistory]);
 
   const handleConnectToDevice = async (node: Node, connection?: any) => {
     if (!connection) {
@@ -357,6 +477,8 @@ const App: React.FC = () => {
     };
 
     setNodes((nds: Node[]) => [...nds, newNode]);
+    // Save to history after adding node
+    setTimeout(() => saveToHistory(), 0);
   };
 
   const addGroupNode = () => {
@@ -392,6 +514,8 @@ const App: React.FC = () => {
     };
 
     setNodes((nds: Node[]) => [...nds, newNode]);
+    // Save to history after adding group
+    setTimeout(() => saveToHistory(), 0);
   };
 
   const addTextNode = () => {
@@ -414,6 +538,8 @@ const App: React.FC = () => {
     };
 
     setNodes((nds: Node[]) => [...nds, newNode]);
+    // Save to history after adding text
+    setTimeout(() => saveToHistory(), 0);
   };
 
   const updateNodeData = (nodeId: string, data: Partial<any>) => {
@@ -431,6 +557,8 @@ const App: React.FC = () => {
         return node;
       })
     );
+    // Save to history after data update
+    setTimeout(() => saveToHistory(), 0);
   };
 
   const moveNodeToFront = (nodeId: string) => {
@@ -485,6 +613,8 @@ const App: React.FC = () => {
         return edge;
       })
     );
+    // Save to history after edge data update
+    setTimeout(() => saveToHistory(), 0);
   };
 
   const saveDiagram = async () => {
@@ -532,47 +662,182 @@ const App: React.FC = () => {
     }
   };
 
-  const exportToPNG = useCallback(() => {
-    if (!reactFlowWrapper.current || !reactFlowInstance) {
-      alert('Please wait for the diagram to load');
+  // Export functions with proper error handling
+  const handleExportPNG = async () => {
+    if (!reactFlowInstance) {
+      alert('Diagram is still initializing, please wait a moment');
       return;
     }
-
-    const nodesBounds = getNodesBounds(nodes);
     if (nodes.length === 0) {
-      alert('Please add some nodes to export');
+      alert('Please add some nodes to the diagram first');
       return;
     }
 
-    const viewport = getViewportForBounds(
-      nodesBounds,
-      nodesBounds.width,
-      nodesBounds.height,
-      0.5,
-      2,
-      0.2
-    );
+    setIsExporting(true);
+    setShowExportMenu(false);
 
-    toPng(reactFlowWrapper.current, {
-      backgroundColor: '#ffffff',
-      width: nodesBounds.width + 200,
-      height: nodesBounds.height + 200,
-      style: {
-        width: `${nodesBounds.width + 200}px`,
-        height: `${nodesBounds.height + 200}px`,
-        transform: `translate(${viewport.x}px, ${viewport.y}px) scale(${viewport.zoom})`,
-      },
-    }).then((dataUrl) => {
+    try {
+      // Get viewport element (the actual flow canvas)
+      const viewportElement = document.querySelector('.react-flow__viewport') as HTMLElement;
+      if (!viewportElement) {
+        throw new Error('Canvas viewport not found');
+      }
+
+      // Calculate bounds of all nodes
+      const nodesBounds = getNodesBounds(nodes);
+      const imageWidth = nodesBounds.width + 100;
+      const imageHeight = nodesBounds.height + 100;
+
+      const viewport = getViewportForBounds(
+        nodesBounds,
+        imageWidth,
+        imageHeight,
+        0.5,
+        2,
+        0.1
+      );
+
+      // Export only the viewport (canvas area) with proper transform
+      const dataUrl = await toPng(viewportElement, {
+        backgroundColor: '#ffffff',
+        width: imageWidth,
+        height: imageHeight,
+        pixelRatio: 3, // Higher quality
+        style: {
+          width: `${imageWidth}px`,
+          height: `${imageHeight}px`,
+          transform: `translate(${viewport.x}px, ${viewport.y}px) scale(${viewport.zoom})`
+        }
+      });
+
       const link = document.createElement('a');
-      link.download = `${diagramName}.png`;
+      const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+      link.download = `diagram-${diagramName}-${timestamp}.png`;
       link.href = dataUrl;
       link.click();
-      alert('Diagram exported as PNG!');
-    }).catch((error) => {
-      console.error('Export failed:', error);
-      alert('Failed to export diagram');
-    });
-  }, [nodes, reactFlowInstance, diagramName]);
+    } catch (error) {
+      console.error('PNG export failed:', error);
+      alert(`Export failed: ${error}`);
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
+  const handleExportJPG = async () => {
+    if (!reactFlowInstance) {
+      alert('Diagram is still initializing, please wait a moment');
+      return;
+    }
+    if (nodes.length === 0) {
+      alert('Please add some nodes to the diagram first');
+      return;
+    }
+
+    setIsExporting(true);
+    setShowExportMenu(false);
+
+    try {
+      const viewportElement = document.querySelector('.react-flow__viewport') as HTMLElement;
+      if (!viewportElement) {
+        throw new Error('Canvas viewport not found');
+      }
+
+      const nodesBounds = getNodesBounds(nodes);
+      const imageWidth = nodesBounds.width + 100;
+      const imageHeight = nodesBounds.height + 100;
+
+      const viewport = getViewportForBounds(
+        nodesBounds,
+        imageWidth,
+        imageHeight,
+        0.5,
+        2,
+        0.1
+      );
+
+      const dataUrl = await toJpeg(viewportElement, {
+        backgroundColor: '#ffffff',
+        width: imageWidth,
+        height: imageHeight,
+        quality: 0.95,
+        pixelRatio: 3,
+        style: {
+          width: `${imageWidth}px`,
+          height: `${imageHeight}px`,
+          transform: `translate(${viewport.x}px, ${viewport.y}px) scale(${viewport.zoom})`
+        }
+      });
+
+      const link = document.createElement('a');
+      const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+      link.download = `diagram-${diagramName}-${timestamp}.jpg`;
+      link.href = dataUrl;
+      link.click();
+    } catch (error) {
+      console.error('JPG export failed:', error);
+      alert(`Export failed: ${error}`);
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
+  const handleExportSVG = async () => {
+    if (!reactFlowInstance) {
+      alert('Diagram is still initializing, please wait a moment');
+      return;
+    }
+    if (nodes.length === 0) {
+      alert('Please add some nodes to the diagram first');
+      return;
+    }
+
+    setIsExporting(true);
+    setShowExportMenu(false);
+
+    try {
+      const viewportElement = document.querySelector('.react-flow__viewport') as HTMLElement;
+      if (!viewportElement) {
+        throw new Error('Canvas viewport not found');
+      }
+
+      const nodesBounds = getNodesBounds(nodes);
+      const imageWidth = nodesBounds.width + 100;
+      const imageHeight = nodesBounds.height + 100;
+
+      const viewport = getViewportForBounds(
+        nodesBounds,
+        imageWidth,
+        imageHeight,
+        0.5,
+        2,
+        0.1
+      );
+
+      // Use toSvg for vector export
+      const { toSvg } = await import('html-to-image');
+      const dataUrl = await toSvg(viewportElement, {
+        backgroundColor: '#ffffff',
+        width: imageWidth,
+        height: imageHeight,
+        style: {
+          width: `${imageWidth}px`,
+          height: `${imageHeight}px`,
+          transform: `translate(${viewport.x}px, ${viewport.y}px) scale(${viewport.zoom})`
+        }
+      });
+
+      const link = document.createElement('a');
+      const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+      link.download = `diagram-${diagramName}-${timestamp}.svg`;
+      link.href = dataUrl;
+      link.click();
+    } catch (error) {
+      console.error('SVG export failed:', error);
+      alert(`Export failed: ${error}`);
+    } finally {
+      setIsExporting(false);
+    }
+  };
 
   return (
     <div style={{ width: '100vw', height: '100vh' }} ref={reactFlowWrapper}>
@@ -633,6 +898,159 @@ const App: React.FC = () => {
             borderRadius: '8px'
           }}
         />
+
+        {/* Top Panel with Undo/Redo and Export buttons */}
+        <Panel position="top-right" style={{
+          display: 'flex',
+          gap: '8px',
+          alignItems: 'center',
+          background: 'rgba(255,255,255,0.95)',
+          padding: '8px 12px',
+          borderRadius: '8px',
+          boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
+          marginTop: '10px',
+          marginRight: '10px'
+        }}>
+          {/* Undo/Redo buttons */}
+          <button
+            onClick={handleUndo}
+            disabled={!canUndo || isExporting}
+            title="Undo (Ctrl+Z)"
+            style={{
+              padding: '6px 12px',
+              background: canUndo && !isExporting ? '#3498db' : '#95a5a6',
+              color: 'white',
+              border: 'none',
+              borderRadius: '4px',
+              cursor: canUndo && !isExporting ? 'pointer' : 'not-allowed',
+              fontSize: '13px',
+              fontWeight: '500',
+              transition: 'all 0.2s'
+            }}
+          >
+            ↶ Undo
+          </button>
+
+          <button
+            onClick={handleRedo}
+            disabled={!canRedo || isExporting}
+            title="Redo (Ctrl+Y / Ctrl+Shift+Z)"
+            style={{
+              padding: '6px 12px',
+              background: canRedo && !isExporting ? '#3498db' : '#95a5a6',
+              color: 'white',
+              border: 'none',
+              borderRadius: '4px',
+              cursor: canRedo && !isExporting ? 'pointer' : 'not-allowed',
+              fontSize: '13px',
+              fontWeight: '500',
+              transition: 'all 0.2s'
+            }}
+          >
+            ↷ Redo
+          </button>
+
+          <div style={{ width: '1px', height: '24px', background: '#ddd', margin: '0 4px' }} />
+
+          {/* Export dropdown */}
+          <div style={{ position: 'relative' }}>
+            <button
+              onClick={() => setShowExportMenu(!showExportMenu)}
+              disabled={isExporting || nodes.length === 0}
+              title="Export diagram"
+              style={{
+                padding: '6px 12px',
+                background: !isExporting && nodes.length > 0 ? '#27ae60' : '#95a5a6',
+                color: 'white',
+                border: 'none',
+                borderRadius: '4px',
+                cursor: !isExporting && nodes.length > 0 ? 'pointer' : 'not-allowed',
+                fontSize: '13px',
+                fontWeight: '500',
+                transition: 'all 0.2s',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px'
+              }}
+            >
+              {isExporting ? 'Exporting...' : '📥 Export'} ▾
+            </button>
+
+            {showExportMenu && !isExporting && (
+              <div style={{
+                position: 'absolute',
+                top: '100%',
+                right: '0',
+                marginTop: '4px',
+                background: 'white',
+                border: '1px solid #ddd',
+                borderRadius: '6px',
+                boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+                minWidth: '140px',
+                zIndex: 1000
+              }}>
+                <button
+                  onClick={handleExportPNG}
+                  style={{
+                    width: '100%',
+                    padding: '10px 16px',
+                    background: 'white',
+                    border: 'none',
+                    borderBottom: '1px solid #eee',
+                    textAlign: 'left',
+                    cursor: 'pointer',
+                    fontSize: '13px',
+                    transition: 'background 0.2s',
+                    borderTopLeftRadius: '6px',
+                    borderTopRightRadius: '6px'
+                  }}
+                  onMouseEnter={(e) => e.currentTarget.style.background = '#f8f9fa'}
+                  onMouseLeave={(e) => e.currentTarget.style.background = 'white'}
+                >
+                  Export as PNG
+                </button>
+                <button
+                  onClick={handleExportJPG}
+                  style={{
+                    width: '100%',
+                    padding: '10px 16px',
+                    background: 'white',
+                    border: 'none',
+                    borderBottom: '1px solid #eee',
+                    textAlign: 'left',
+                    cursor: 'pointer',
+                    fontSize: '13px',
+                    transition: 'background 0.2s'
+                  }}
+                  onMouseEnter={(e) => e.currentTarget.style.background = '#f8f9fa'}
+                  onMouseLeave={(e) => e.currentTarget.style.background = 'white'}
+                >
+                  Export as JPG
+                </button>
+                <button
+                  onClick={handleExportSVG}
+                  style={{
+                    width: '100%',
+                    padding: '10px 16px',
+                    background: 'white',
+                    border: 'none',
+                    textAlign: 'left',
+                    cursor: 'pointer',
+                    fontSize: '13px',
+                    transition: 'background 0.2s',
+                    borderBottomLeftRadius: '6px',
+                    borderBottomRightRadius: '6px'
+                  }}
+                  onMouseEnter={(e) => e.currentTarget.style.background = '#f8f9fa'}
+                  onMouseLeave={(e) => e.currentTarget.style.background = 'white'}
+                >
+                  Export as SVG
+                </button>
+              </div>
+            )}
+          </div>
+        </Panel>
+
         <Panel position="bottom-center" style={{
           background: 'rgba(44,62,80,0.95)',
           color: '#ecf0f1',

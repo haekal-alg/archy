@@ -21,10 +21,22 @@ module.exports = {
   },
   resolve: {
     extensions: ['.tsx', '.ts', '.js'],
+    fallback: {
+      "buffer": false,
+      "stream": false,
+      "util": false,
+      "fs": false,
+      "path": false,
+      "module": false
+    }
+  },
+  externals: {
+    'module': 'commonjs module'
   },
   output: {
     filename: 'renderer.js',
     path: path.resolve(__dirname, 'dist'),
+    globalObject: 'this'
   },
   plugins: [
     new HtmlWebpackPlugin({
