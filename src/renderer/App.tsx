@@ -30,6 +30,7 @@ import StylePanel from './components/StylePanel';
 import ContextMenu from './components/ContextMenu';
 import './App.css';
 import { toPng, toJpeg } from 'html-to-image';
+import theme from '../theme';
 
 const nodeTypes: NodeTypes = {
   device: DeviceNode,
@@ -885,31 +886,44 @@ const App: React.FC = () => {
         defaultEdgeOptions={{
           type: 'custom',
         }}
+        style={{
+          background: theme.background.canvas,
+        }}
       >
-        <Background gap={20} size={1} />
+        <Background
+          gap={20}
+          size={1}
+          color={theme.border.subtle}
+          style={{
+            backgroundColor: theme.background.canvas,
+          }}
+        />
         <Controls />
         <MiniMap
           nodeStrokeWidth={3}
           zoomable
           pannable
+          nodeColor={theme.accent.blue}
+          maskColor={`${theme.background.canvas}CC`}
           style={{
-            background: '#f8f9fa',
-            border: '2px solid #dee2e6',
-            borderRadius: '8px'
+            background: theme.background.secondary,
+            border: `2px solid ${theme.border.default}`,
+            borderRadius: theme.radius.lg
           }}
         />
 
         {/* Top Panel with Undo/Redo and Export buttons */}
         <Panel position="top-right" style={{
           display: 'flex',
-          gap: '8px',
+          gap: theme.spacing.md,
           alignItems: 'center',
-          background: 'rgba(255,255,255,0.95)',
-          padding: '8px 12px',
-          borderRadius: '8px',
-          boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
+          background: theme.background.elevated,
+          padding: `${theme.spacing.md} ${theme.spacing.lg}`,
+          borderRadius: theme.radius.lg,
+          boxShadow: theme.shadow.lg,
           marginTop: '10px',
-          marginRight: '10px'
+          marginRight: '10px',
+          border: `1px solid ${theme.border.default}`
         }}>
           {/* Undo/Redo buttons */}
           <button
@@ -917,15 +931,16 @@ const App: React.FC = () => {
             disabled={!canUndo || isExporting}
             title="Undo (Ctrl+Z)"
             style={{
-              padding: '6px 12px',
-              background: canUndo && !isExporting ? '#3498db' : '#95a5a6',
-              color: 'white',
-              border: 'none',
-              borderRadius: '4px',
+              padding: `${theme.spacing.sm} ${theme.spacing.lg}`,
+              background: canUndo && !isExporting ? theme.gradient.button : theme.background.hover,
+              color: theme.text.primary,
+              border: `1px solid ${canUndo && !isExporting ? theme.accent.blue : theme.border.default}`,
+              borderRadius: theme.radius.sm,
               cursor: canUndo && !isExporting ? 'pointer' : 'not-allowed',
-              fontSize: '13px',
-              fontWeight: '500',
-              transition: 'all 0.2s'
+              fontSize: theme.fontSize.md,
+              fontWeight: theme.fontWeight.medium,
+              transition: theme.transition.normal,
+              opacity: canUndo && !isExporting ? 1 : 0.5
             }}
           >
             ↶ Undo
@@ -936,21 +951,22 @@ const App: React.FC = () => {
             disabled={!canRedo || isExporting}
             title="Redo (Ctrl+Y / Ctrl+Shift+Z)"
             style={{
-              padding: '6px 12px',
-              background: canRedo && !isExporting ? '#3498db' : '#95a5a6',
-              color: 'white',
-              border: 'none',
-              borderRadius: '4px',
+              padding: `${theme.spacing.sm} ${theme.spacing.lg}`,
+              background: canRedo && !isExporting ? theme.gradient.button : theme.background.hover,
+              color: theme.text.primary,
+              border: `1px solid ${canRedo && !isExporting ? theme.accent.blue : theme.border.default}`,
+              borderRadius: theme.radius.sm,
               cursor: canRedo && !isExporting ? 'pointer' : 'not-allowed',
-              fontSize: '13px',
-              fontWeight: '500',
-              transition: 'all 0.2s'
+              fontSize: theme.fontSize.md,
+              fontWeight: theme.fontWeight.medium,
+              transition: theme.transition.normal,
+              opacity: canRedo && !isExporting ? 1 : 0.5
             }}
           >
             ↷ Redo
           </button>
 
-          <div style={{ width: '1px', height: '24px', background: '#ddd', margin: '0 4px' }} />
+          <div style={{ width: '1px', height: '24px', background: theme.border.default, margin: `0 ${theme.spacing.xs}` }} />
 
           {/* Export dropdown */}
           <div style={{ position: 'relative' }}>
@@ -959,18 +975,19 @@ const App: React.FC = () => {
               disabled={isExporting || nodes.length === 0}
               title="Export diagram"
               style={{
-                padding: '6px 12px',
-                background: !isExporting && nodes.length > 0 ? '#27ae60' : '#95a5a6',
-                color: 'white',
-                border: 'none',
-                borderRadius: '4px',
+                padding: `${theme.spacing.sm} ${theme.spacing.lg}`,
+                background: !isExporting && nodes.length > 0 ? theme.accent.green : theme.background.hover,
+                color: theme.text.primary,
+                border: `1px solid ${!isExporting && nodes.length > 0 ? theme.accent.green : theme.border.default}`,
+                borderRadius: theme.radius.sm,
                 cursor: !isExporting && nodes.length > 0 ? 'pointer' : 'not-allowed',
-                fontSize: '13px',
-                fontWeight: '500',
-                transition: 'all 0.2s',
+                fontSize: theme.fontSize.md,
+                fontWeight: theme.fontWeight.medium,
+                transition: theme.transition.normal,
                 display: 'flex',
                 alignItems: 'center',
-                gap: '6px'
+                gap: theme.spacing.sm,
+                opacity: !isExporting && nodes.length > 0 ? 1 : 0.5
               }}
             >
               {isExporting ? 'Exporting...' : '📥 Export'} ▾
@@ -981,31 +998,32 @@ const App: React.FC = () => {
                 position: 'absolute',
                 top: '100%',
                 right: '0',
-                marginTop: '4px',
-                background: 'white',
-                border: '1px solid #ddd',
-                borderRadius: '6px',
-                boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+                marginTop: theme.spacing.xs,
+                background: theme.background.elevated,
+                border: `1px solid ${theme.border.default}`,
+                borderRadius: theme.radius.md,
+                boxShadow: theme.shadow.lg,
                 minWidth: '140px',
-                zIndex: 1000
+                zIndex: theme.zIndex.dropdown
               }}>
                 <button
                   onClick={handleExportPNG}
                   style={{
                     width: '100%',
                     padding: '10px 16px',
-                    background: 'white',
+                    background: theme.background.elevated,
                     border: 'none',
-                    borderBottom: '1px solid #eee',
+                    borderBottom: `1px solid ${theme.border.subtle}`,
                     textAlign: 'left',
                     cursor: 'pointer',
-                    fontSize: '13px',
-                    transition: 'background 0.2s',
-                    borderTopLeftRadius: '6px',
-                    borderTopRightRadius: '6px'
+                    fontSize: theme.fontSize.md,
+                    color: theme.text.primary,
+                    transition: theme.transition.fast,
+                    borderTopLeftRadius: theme.radius.md,
+                    borderTopRightRadius: theme.radius.md
                   }}
-                  onMouseEnter={(e) => e.currentTarget.style.background = '#f8f9fa'}
-                  onMouseLeave={(e) => e.currentTarget.style.background = 'white'}
+                  onMouseEnter={(e) => e.currentTarget.style.background = theme.background.hover}
+                  onMouseLeave={(e) => e.currentTarget.style.background = theme.background.elevated}
                 >
                   Export as PNG
                 </button>
@@ -1014,16 +1032,17 @@ const App: React.FC = () => {
                   style={{
                     width: '100%',
                     padding: '10px 16px',
-                    background: 'white',
+                    background: theme.background.elevated,
                     border: 'none',
-                    borderBottom: '1px solid #eee',
+                    borderBottom: `1px solid ${theme.border.subtle}`,
                     textAlign: 'left',
                     cursor: 'pointer',
-                    fontSize: '13px',
-                    transition: 'background 0.2s'
+                    fontSize: theme.fontSize.md,
+                    color: theme.text.primary,
+                    transition: theme.transition.fast
                   }}
-                  onMouseEnter={(e) => e.currentTarget.style.background = '#f8f9fa'}
-                  onMouseLeave={(e) => e.currentTarget.style.background = 'white'}
+                  onMouseEnter={(e) => e.currentTarget.style.background = theme.background.hover}
+                  onMouseLeave={(e) => e.currentTarget.style.background = theme.background.elevated}
                 >
                   Export as JPG
                 </button>
@@ -1032,17 +1051,18 @@ const App: React.FC = () => {
                   style={{
                     width: '100%',
                     padding: '10px 16px',
-                    background: 'white',
+                    background: theme.background.elevated,
                     border: 'none',
                     textAlign: 'left',
                     cursor: 'pointer',
-                    fontSize: '13px',
-                    transition: 'background 0.2s',
-                    borderBottomLeftRadius: '6px',
-                    borderBottomRightRadius: '6px'
+                    fontSize: theme.fontSize.md,
+                    color: theme.text.primary,
+                    transition: theme.transition.fast,
+                    borderBottomLeftRadius: theme.radius.md,
+                    borderBottomRightRadius: theme.radius.md
                   }}
-                  onMouseEnter={(e) => e.currentTarget.style.background = '#f8f9fa'}
-                  onMouseLeave={(e) => e.currentTarget.style.background = 'white'}
+                  onMouseEnter={(e) => e.currentTarget.style.background = theme.background.hover}
+                  onMouseLeave={(e) => e.currentTarget.style.background = theme.background.elevated}
                 >
                   Export as SVG
                 </button>
@@ -1052,14 +1072,15 @@ const App: React.FC = () => {
         </Panel>
 
         <Panel position="bottom-center" style={{
-          background: 'rgba(44,62,80,0.95)',
-          color: '#ecf0f1',
-          padding: '6px 12px',
-          borderRadius: '6px',
-          fontSize: '11px',
-          boxShadow: '0 2px 8px rgba(0,0,0,0.2)'
+          background: theme.background.elevated,
+          color: theme.text.secondary,
+          padding: `${theme.spacing.sm} ${theme.spacing.lg}`,
+          borderRadius: theme.radius.md,
+          fontSize: theme.fontSize.sm,
+          boxShadow: theme.shadow.md,
+          border: `1px solid ${theme.border.default}`
         }}>
-          <strong>Tip:</strong> Double-click nodes to edit | Right-click to delete/connect | {diagramName}
+          <strong style={{ color: theme.accent.blue }}>Tip:</strong> Double-click nodes to edit | Right-click to delete/connect | {diagramName}
         </Panel>
       </ReactFlow>
 

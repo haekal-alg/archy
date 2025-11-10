@@ -1,6 +1,7 @@
 import React from 'react';
 import { Handle, Position, NodeProps } from '@xyflow/react';
 import CONFIG from '../../config';
+import theme from '../../theme';
 import {
   RouterIcon,
   ServerIcon,
@@ -76,17 +77,17 @@ const EnhancedDeviceNode: React.FC<NodeProps> = ({ data, selected }) => {
     if (deviceData.color) return deviceData.color;
 
     switch (deviceData.type) {
-      case 'router': return '#1976d2';
-      case 'server': return '#2e7d32';
-      case 'firewall': return '#d32f2f';
-      case 'windows': return '#0078d4';
-      case 'linux': return '#f7a41d';
-      case 'switch': return '#455a64';
-      case 'cloud': return '#4285f4';
-      case 'database': return '#7b1fa2';
-      case 'laptop': return '#546e7a';
-      case 'attacker': return '#e91e63';
-      default: return '#666666';
+      case 'router': return theme.device.router;
+      case 'server': return theme.device.server;
+      case 'firewall': return theme.device.firewall;
+      case 'windows': return theme.device.windows;
+      case 'linux': return theme.device.linux;
+      case 'switch': return theme.device.switch;
+      case 'cloud': return theme.device.cloud;
+      case 'database': return theme.device.database;
+      case 'laptop': return theme.device.laptop;
+      case 'attacker': return theme.device.attacker;
+      default: return theme.text.tertiary;
     }
   };
 
@@ -95,20 +96,19 @@ const EnhancedDeviceNode: React.FC<NodeProps> = ({ data, selected }) => {
   return (
     <div
       style={{
-        padding: '12px',
-        borderRadius: '12px',
+        padding: theme.spacing.lg,
+        borderRadius: theme.radius.xl,
         border: selected ? `3px solid ${borderColor}` : `2px solid ${borderColor}`,
-        background: 'linear-gradient(135deg, #ffffff 0%, #f5f5f5 100%)',
+        background: theme.gradient.nodeDefault,
         minWidth: '140px',
         maxWidth: '200px',
         boxShadow: selected
-          ? `0 8px 16px rgba(0,0,0,0.2), 0 0 0 3px ${borderColor}40`
-          : '0 4px 12px rgba(0,0,0,0.15)',
+          ? `${theme.shadow.lg}, 0 0 0 3px ${borderColor}40`
+          : theme.shadow.md,
         cursor: 'pointer',
-        transition: 'all 0.2s ease',
         position: 'relative',
       }}
-      className="enhanced-device-node"
+      className="enhanced-device-node device-node"
     >
       {/* Connection Handles - All 4 directions as both source and target */}
       <Handle
@@ -203,7 +203,7 @@ const EnhancedDeviceNode: React.FC<NodeProps> = ({ data, selected }) => {
       <div style={{ textAlign: 'center' }}>
         {/* Icon */}
         <div style={{
-          marginBottom: '8px',
+          marginBottom: theme.spacing.md,
           display: 'flex',
           justifyContent: 'center',
           alignItems: 'center'
@@ -213,10 +213,10 @@ const EnhancedDeviceNode: React.FC<NodeProps> = ({ data, selected }) => {
 
         {/* Label */}
         <div style={{
-          fontWeight: 'bold',
-          marginBottom: '4px',
-          fontSize: '13px',
-          color: '#333',
+          fontWeight: theme.fontWeight.bold,
+          marginBottom: theme.spacing.xs,
+          fontSize: theme.fontSize.md,
+          color: theme.text.primary,
           wordWrap: 'break-word'
         }}>
           {deviceData.label}
@@ -225,9 +225,9 @@ const EnhancedDeviceNode: React.FC<NodeProps> = ({ data, selected }) => {
         {/* Operating System */}
         {deviceData.operatingSystem && (
           <div style={{
-            fontSize: '11px',
-            color: '#666',
-            marginTop: '4px'
+            fontSize: theme.fontSize.sm,
+            color: theme.text.secondary,
+            marginTop: theme.spacing.xs
           }}>
             {deviceData.operatingSystem}
           </div>
@@ -236,28 +236,28 @@ const EnhancedDeviceNode: React.FC<NodeProps> = ({ data, selected }) => {
         {/* Connection Status Indicator */}
         {deviceData.connections && deviceData.connections.length > 0 ? (
           <div style={{
-            marginTop: '6px',
-            fontSize: '10px',
-            color: '#28a745',
+            marginTop: theme.spacing.sm,
+            fontSize: theme.fontSize.xs,
+            color: theme.accent.green,
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            gap: '4px'
+            gap: theme.spacing.xs
           }}>
-            <span style={{ fontSize: '12px' }}>✓</span>
+            <span style={{ fontSize: theme.fontSize.md }}>✓</span>
             <span>{deviceData.connections.length} connection{deviceData.connections.length > 1 ? 's' : ''}</span>
           </div>
         ) : (
           <div style={{
-            marginTop: '6px',
-            fontSize: '10px',
-            color: '#999',
+            marginTop: theme.spacing.sm,
+            fontSize: theme.fontSize.xs,
+            color: theme.text.tertiary,
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            gap: '4px'
+            gap: theme.spacing.xs
           }}>
-            <span style={{ fontSize: '12px' }}>⚠️</span>
+            <span style={{ fontSize: theme.fontSize.md }}>⚠️</span>
             <span>No connection</span>
           </div>
         )}

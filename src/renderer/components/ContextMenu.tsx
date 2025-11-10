@@ -1,5 +1,6 @@
 import React from 'react';
 import { ConnectionConfig } from './EnhancedDeviceNode';
+import theme from '../../theme';
 
 interface ContextMenuProps {
   x: number;
@@ -72,11 +73,11 @@ const ContextMenu: React.FC<ContextMenuProps> = ({
           position: 'fixed',
           top: y,
           left: x,
-          background: '#34495e',
-          border: '1px solid #2c3e50',
-          borderRadius: '6px',
-          boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
-          zIndex: 9999,
+          background: theme.background.elevated,
+          border: `1px solid ${theme.border.default}`,
+          borderRadius: theme.radius.md,
+          boxShadow: theme.shadow.lg,
+          zIndex: theme.zIndex.popover,
           minWidth: '160px',
           overflow: 'hidden'
         }}
@@ -93,21 +94,21 @@ const ContextMenu: React.FC<ContextMenuProps> = ({
                 }}
                 style={{
                   width: '100%',
-                  padding: '10px 16px',
+                  padding: `${theme.spacing.lg} ${theme.spacing.xl}`,
                   border: 'none',
                   background: 'transparent',
-                  color: '#ecf0f1',
+                  color: theme.text.primary,
                   textAlign: 'left',
                   cursor: 'pointer',
-                  fontSize: '13px',
+                  fontSize: theme.fontSize.md,
                   display: 'flex',
                   alignItems: 'center',
-                  gap: '10px',
-                  transition: 'background 0.2s',
-                  borderTop: index > 0 ? '1px solid #2c3e50' : 'none'
+                  gap: theme.spacing.lg,
+                  transition: theme.transition.normal,
+                  borderTop: index > 0 ? `1px solid ${theme.border.subtle}` : 'none'
                 }}
                 onMouseEnter={(e) => {
-                  e.currentTarget.style.background = '#4a5f7f';
+                  e.currentTarget.style.background = theme.background.hover;
                 }}
                 onMouseLeave={(e) => {
                   e.currentTarget.style.background = 'transparent';
@@ -125,13 +126,13 @@ const ContextMenu: React.FC<ContextMenuProps> = ({
           <div
             style={{
               width: '100%',
-              padding: '10px 16px',
-              color: '#95a5a6',
-              fontSize: '12px',
+              padding: `${theme.spacing.lg} ${theme.spacing.xl}`,
+              color: theme.text.tertiary,
+              fontSize: theme.fontSize.sm,
               fontStyle: 'italic',
               display: 'flex',
               alignItems: 'center',
-              gap: '10px'
+              gap: theme.spacing.lg
             }}
           >
             <span style={{ fontSize: '16px' }}>⚠️</span>
@@ -147,20 +148,20 @@ const ContextMenu: React.FC<ContextMenuProps> = ({
             }}
             style={{
               width: '100%',
-              padding: '10px 16px',
+              padding: `${theme.spacing.lg} ${theme.spacing.xl}`,
               border: 'none',
               background: 'transparent',
-              color: '#ecf0f1',
+              color: theme.text.primary,
               textAlign: 'left',
               cursor: 'pointer',
-              fontSize: '13px',
+              fontSize: theme.fontSize.md,
               display: 'flex',
               alignItems: 'center',
-              gap: '10px',
-              transition: 'background 0.2s'
+              gap: theme.spacing.lg,
+              transition: theme.transition.normal
             }}
             onMouseEnter={(e) => {
-              e.currentTarget.style.background = '#4a5f7f';
+              e.currentTarget.style.background = theme.background.hover;
             }}
             onMouseLeave={(e) => {
               e.currentTarget.style.background = 'transparent';
@@ -178,20 +179,20 @@ const ContextMenu: React.FC<ContextMenuProps> = ({
           }}
           style={{
             width: '100%',
-            padding: '10px 16px',
+            padding: `${theme.spacing.lg} ${theme.spacing.xl}`,
             border: 'none',
             background: 'transparent',
-            color: '#ecf0f1',
+            color: theme.text.primary,
             textAlign: 'left',
             cursor: 'pointer',
-            fontSize: '13px',
+            fontSize: theme.fontSize.md,
             display: 'flex',
             alignItems: 'center',
-            gap: '10px',
-            transition: 'background 0.2s'
+            gap: theme.spacing.lg,
+            transition: theme.transition.normal
           }}
           onMouseEnter={(e) => {
-            e.currentTarget.style.background = '#e74c3c';
+            e.currentTarget.style.background = theme.accent.red;
           }}
           onMouseLeave={(e) => {
             e.currentTarget.style.background = 'transparent';

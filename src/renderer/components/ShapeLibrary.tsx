@@ -12,6 +12,7 @@ import {
   AttackIcon,
   GenericIcon
 } from './NetworkIcons';
+import theme from '../../theme';
 
 interface ShapeLibraryProps {
   onAddNode: (type: string) => void;
@@ -26,24 +27,24 @@ const ShapeLibrary: React.FC<ShapeLibraryProps> = ({ onAddNode, onAddGroup, onAd
 
   const shapes = {
     devices: [
-      { type: 'windows', icon: DesktopIcon, label: 'Windows', color: '#0078d4' },
-      { type: 'linux', icon: LinuxIcon, label: 'Linux', color: '#f7a41d' },
-      { type: 'laptop', icon: LaptopIcon, label: 'Laptop', color: '#546e7a' },
-      { type: 'generic', icon: GenericIcon, label: 'Generic', color: '#666666' },
+      { type: 'windows', icon: DesktopIcon, label: 'Windows', color: theme.device.windows },
+      { type: 'linux', icon: LinuxIcon, label: 'Linux', color: theme.device.linux },
+      { type: 'laptop', icon: LaptopIcon, label: 'Laptop', color: theme.device.laptop },
+      { type: 'generic', icon: GenericIcon, label: 'Generic', color: theme.text.tertiary },
     ],
     network: [
-      { type: 'router', icon: RouterIcon, label: 'Router', color: '#1976d2' },
-      { type: 'switch', icon: SwitchIcon, label: 'Switch', color: '#455a64' },
-      { type: 'firewall', icon: FirewallIcon, label: 'Firewall', color: '#d32f2f' },
+      { type: 'router', icon: RouterIcon, label: 'Router', color: theme.device.router },
+      { type: 'switch', icon: SwitchIcon, label: 'Switch', color: theme.device.switch },
+      { type: 'firewall', icon: FirewallIcon, label: 'Firewall', color: theme.device.firewall },
     ],
     infra: [
-      { type: 'server', icon: ServerIcon, label: 'Server', color: '#2e7d32' },
-      { type: 'database', icon: DatabaseIcon, label: 'Database', color: '#7b1fa2' },
-      { type: 'cloud', icon: CloudIcon, label: 'Cloud', color: '#4285f4' },
+      { type: 'server', icon: ServerIcon, label: 'Server', color: theme.device.server },
+      { type: 'database', icon: DatabaseIcon, label: 'Database', color: theme.device.database },
+      { type: 'cloud', icon: CloudIcon, label: 'Cloud', color: theme.device.cloud },
     ],
     security: [
-      { type: 'attacker', icon: AttackIcon, label: 'Attacker', color: '#e91e63' },
-      { type: 'firewall', icon: FirewallIcon, label: 'Firewall', color: '#d32f2f' },
+      { type: 'attacker', icon: AttackIcon, label: 'Attacker', color: theme.device.attacker },
+      { type: 'firewall', icon: FirewallIcon, label: 'Firewall', color: theme.device.firewall },
     ]
   };
 
@@ -55,47 +56,53 @@ const ShapeLibrary: React.FC<ShapeLibraryProps> = ({ onAddNode, onAddGroup, onAd
         top: '0',
         width: '240px',
         height: '100vh',
-        background: '#e8e8e8',
-        boxShadow: '2px 0 8px rgba(0,0,0,0.15)',
-        transition: 'left 0.3s ease',
-        zIndex: 1000,
+        background: theme.background.secondary,
+        boxShadow: theme.shadow.lg,
+        transition: theme.transition.slow,
+        zIndex: theme.zIndex.sticky,
         display: 'flex',
         flexDirection: 'column',
-        color: '#333'
+        color: theme.text.primary,
+        borderRight: `1px solid ${theme.border.default}`
       }}
     >
       {/* Header */}
       <div style={{
-        padding: '12px 16px',
-        borderBottom: '1px solid #d0d0d0',
-        background: '#d8d8d8'
+        padding: `${theme.spacing.lg} ${theme.spacing.xl}`,
+        borderBottom: `1px solid ${theme.border.default}`,
+        background: theme.background.primary
       }}>
-        <h3 style={{ margin: 0, fontSize: '14px', fontWeight: '600', color: '#333' }}>Shapes</h3>
+        <h3 style={{
+          margin: 0,
+          fontSize: theme.fontSize.base,
+          fontWeight: theme.fontWeight.semibold,
+          color: theme.text.primary
+        }}>Shapes</h3>
       </div>
 
       {/* Category Tabs */}
       <div style={{
         display: 'grid',
         gridTemplateColumns: 'repeat(2, 1fr)',
-        gap: '4px',
-        padding: '8px',
-        background: '#d8d8d8'
+        gap: theme.spacing.xs,
+        padding: theme.spacing.md,
+        background: theme.background.primary
       }}>
         {Object.keys(shapes).map((category) => (
           <button
             key={category}
             onClick={() => setActiveCategory(category as any)}
             style={{
-              padding: '6px 8px',
-              border: '1px solid #ccc',
-              borderRadius: '4px',
-              background: activeCategory === category ? '#bbb' : '#fff',
-              color: '#333',
+              padding: `${theme.spacing.sm} ${theme.spacing.md}`,
+              border: `1px solid ${activeCategory === category ? theme.accent.blue : theme.border.default}`,
+              borderRadius: theme.radius.sm,
+              background: activeCategory === category ? theme.background.active : theme.background.tertiary,
+              color: activeCategory === category ? theme.text.primary : theme.text.secondary,
               cursor: 'pointer',
-              fontSize: '11px',
-              fontWeight: '500',
+              fontSize: theme.fontSize.sm,
+              fontWeight: theme.fontWeight.medium,
               textTransform: 'capitalize',
-              transition: 'all 0.2s'
+              transition: theme.transition.normal
             }}
           >
             {category}
@@ -107,10 +114,10 @@ const ShapeLibrary: React.FC<ShapeLibraryProps> = ({ onAddNode, onAddGroup, onAd
       <div style={{
         flex: 1,
         overflowY: 'auto',
-        padding: '12px',
+        padding: theme.spacing.lg,
         display: 'grid',
         gridTemplateColumns: 'repeat(2, 1fr)',
-        gap: '8px',
+        gap: theme.spacing.md,
         alignContent: 'start'
       }}>
         {shapes[activeCategory].map((shape) => (
@@ -118,36 +125,39 @@ const ShapeLibrary: React.FC<ShapeLibraryProps> = ({ onAddNode, onAddGroup, onAd
             key={shape.type}
             onClick={() => onAddNode(shape.type)}
             style={{
-              padding: '12px 8px',
-              border: '1px solid #ccc',
-              borderRadius: '6px',
-              background: '#fff',
+              padding: `${theme.spacing.lg} ${theme.spacing.md}`,
+              border: `1px solid ${theme.border.default}`,
+              borderRadius: theme.radius.md,
+              background: theme.background.tertiary,
               cursor: 'pointer',
-              transition: 'all 0.2s',
+              transition: theme.transition.normal,
               display: 'flex',
               flexDirection: 'column',
               alignItems: 'center',
-              gap: '6px',
-              color: '#333'
+              gap: theme.spacing.sm,
+              color: theme.text.primary
             }}
             onMouseEnter={(e) => {
               e.currentTarget.style.transform = 'translateY(-2px)';
-              e.currentTarget.style.background = '#f5f5f5';
-              e.currentTarget.style.boxShadow = '0 4px 8px rgba(0,0,0,0.2)';
+              e.currentTarget.style.background = theme.background.hover;
+              e.currentTarget.style.boxShadow = theme.shadow.md;
+              e.currentTarget.style.borderColor = theme.accent.blue;
             }}
             onMouseLeave={(e) => {
               e.currentTarget.style.transform = 'translateY(0)';
-              e.currentTarget.style.background = '#fff';
+              e.currentTarget.style.background = theme.background.tertiary;
               e.currentTarget.style.boxShadow = 'none';
+              e.currentTarget.style.borderColor = theme.border.default;
             }}
           >
             <div style={{ transform: 'scale(0.7)' }}>
-              <shape.icon color="#666" />
+              <shape.icon color={shape.color} />
             </div>
             <span style={{
-              fontSize: '10px',
-              fontWeight: '500',
-              textAlign: 'center'
+              fontSize: theme.fontSize.xs,
+              fontWeight: theme.fontWeight.medium,
+              textAlign: 'center',
+              color: theme.text.secondary
             }}>
               {shape.label}
             </span>
@@ -157,32 +167,34 @@ const ShapeLibrary: React.FC<ShapeLibraryProps> = ({ onAddNode, onAddGroup, onAd
 
       {/* Add Group and Text Buttons */}
       <div style={{
-        padding: '12px',
-        borderTop: '1px solid #d0d0d0',
-        background: '#d8d8d8',
+        padding: theme.spacing.lg,
+        borderTop: `1px solid ${theme.border.default}`,
+        background: theme.background.primary,
         display: 'flex',
         flexDirection: 'column',
-        gap: '8px'
+        gap: theme.spacing.md
       }}>
         <button
           onClick={onAddGroup}
           style={{
             width: '100%',
-            padding: '8px',
-            border: '1px solid #ccc',
-            borderRadius: '4px',
-            background: '#fff',
-            color: '#333',
+            padding: theme.spacing.md,
+            border: `1px solid ${theme.border.default}`,
+            borderRadius: theme.radius.sm,
+            background: theme.background.tertiary,
+            color: theme.text.primary,
             cursor: 'pointer',
-            fontSize: '12px',
-            fontWeight: '500',
-            transition: 'all 0.2s'
+            fontSize: theme.fontSize.md,
+            fontWeight: theme.fontWeight.medium,
+            transition: theme.transition.normal
           }}
           onMouseEnter={(e) => {
-            e.currentTarget.style.background = '#f5f5f5';
+            e.currentTarget.style.background = theme.background.hover;
+            e.currentTarget.style.borderColor = theme.accent.blue;
           }}
           onMouseLeave={(e) => {
-            e.currentTarget.style.background = '#fff';
+            e.currentTarget.style.background = theme.background.tertiary;
+            e.currentTarget.style.borderColor = theme.border.default;
           }}
         >
           + Network Zone
@@ -192,21 +204,23 @@ const ShapeLibrary: React.FC<ShapeLibraryProps> = ({ onAddNode, onAddGroup, onAd
             onClick={onAddText}
             style={{
               width: '100%',
-              padding: '8px',
-              border: '1px solid #ccc',
-              borderRadius: '4px',
-              background: '#fff',
-              color: '#333',
+              padding: theme.spacing.md,
+              border: `1px solid ${theme.border.default}`,
+              borderRadius: theme.radius.sm,
+              background: theme.background.tertiary,
+              color: theme.text.primary,
               cursor: 'pointer',
-              fontSize: '12px',
-              fontWeight: '500',
-              transition: 'all 0.2s'
+              fontSize: theme.fontSize.md,
+              fontWeight: theme.fontWeight.medium,
+              transition: theme.transition.normal
             }}
             onMouseEnter={(e) => {
-              e.currentTarget.style.background = '#f5f5f5';
+              e.currentTarget.style.background = theme.background.hover;
+              e.currentTarget.style.borderColor = theme.accent.blue;
             }}
             onMouseLeave={(e) => {
-              e.currentTarget.style.background = '#fff';
+              e.currentTarget.style.background = theme.background.tertiary;
+              e.currentTarget.style.borderColor = theme.border.default;
             }}
           >
             + Text Label
@@ -224,24 +238,25 @@ const ShapeLibrary: React.FC<ShapeLibraryProps> = ({ onAddNode, onAddGroup, onAd
           transform: 'translateY(-50%)',
           width: '30px',
           height: '60px',
-          border: 'none',
-          borderTopRightRadius: '6px',
-          borderBottomRightRadius: '6px',
-          background: '#e8e8e8',
-          color: '#333',
+          border: `1px solid ${theme.border.default}`,
+          borderLeft: 'none',
+          borderTopRightRadius: theme.radius.md,
+          borderBottomRightRadius: theme.radius.md,
+          background: theme.background.secondary,
+          color: theme.text.primary,
           cursor: 'pointer',
-          fontSize: '16px',
-          boxShadow: '2px 0 8px rgba(0,0,0,0.15)',
-          transition: 'all 0.2s',
+          fontSize: theme.fontSize.lg,
+          boxShadow: theme.shadow.md,
+          transition: theme.transition.normal,
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center'
         }}
         onMouseEnter={(e) => {
-          e.currentTarget.style.background = '#d0d0d0';
+          e.currentTarget.style.background = theme.background.hover;
         }}
         onMouseLeave={(e) => {
-          e.currentTarget.style.background = '#e8e8e8';
+          e.currentTarget.style.background = theme.background.secondary;
         }}
       >
         {isOpen ? '◀' : '▶'}

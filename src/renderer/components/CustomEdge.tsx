@@ -7,6 +7,7 @@ import {
   getSmoothStepPath,
   getStraightPath
 } from '@xyflow/react';
+import theme from '../../theme';
 
 export interface CustomEdgeData {
   label?: string;
@@ -31,7 +32,7 @@ const CustomEdge: React.FC<EdgeProps> = ({
 }) => {
   const edgeData = data as CustomEdgeData;
 
-  const color = edgeData?.color || '#000000';
+  const color = edgeData?.color || theme.border.default;
   const routingType = edgeData?.routingType || 'bezier';
   const strokeStyle = edgeData?.style || 'solid';
   const animated = edgeData?.animated || false;
@@ -82,7 +83,7 @@ const CustomEdge: React.FC<EdgeProps> = ({
           strokeWidth: selected ? 3 : 2,
           strokeDasharray,
           opacity: selected ? 1 : 0.8,
-          filter: selected ? 'drop-shadow(0 0 4px rgba(0,0,0,0.3))' : 'none',
+          filter: selected ? `drop-shadow(0 0 4px ${theme.shadow.md})` : 'none',
         }}
       />
 
@@ -147,15 +148,15 @@ const CustomEdge: React.FC<EdgeProps> = ({
             style={{
               position: 'absolute',
               transform: `translate(-50%, -50%) translate(${labelX}px,${labelY}px)`,
-              background: 'white',
-              padding: '4px 8px',
-              borderRadius: '6px',
-              fontSize: '11px',
-              fontWeight: '600',
+              background: theme.background.elevated,
+              padding: `${theme.spacing.xs} ${theme.spacing.md}`,
+              borderRadius: theme.radius.md,
+              fontSize: theme.fontSize.sm,
+              fontWeight: theme.fontWeight.semibold,
               border: `2px solid ${color}`,
-              color: '#333',
+              color: theme.text.primary,
               pointerEvents: 'all',
-              boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
+              boxShadow: theme.shadow.sm,
               whiteSpace: 'nowrap'
             }}
             className="nodrag nopan"

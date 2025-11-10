@@ -4,6 +4,7 @@ import { EnhancedDeviceData, ConnectionConfig } from './EnhancedDeviceNode';
 import { GroupNodeData } from './GroupNode';
 import { CustomEdgeData } from './CustomEdge';
 import { TextNodeData } from './TextNode';
+import theme from '../../theme';
 
 interface StylePanelProps {
   selectedNode: Node | null;
@@ -30,6 +31,14 @@ const StylePanel: React.FC<StylePanelProps> = ({
   isOpen,
   onToggle
 }) => {
+  // Helper function to convert hex + opacity to rgba
+  const hexToRgba = (hex: string, opacity: number): string => {
+    const r = parseInt(hex.slice(1, 3), 16);
+    const g = parseInt(hex.slice(3, 5), 16);
+    const b = parseInt(hex.slice(5, 7), 16);
+    return `rgba(${r}, ${g}, ${b}, ${opacity / 100})`;
+  };
+
   const [activeTab, setActiveTab] = useState<'connection' | 'style'>('style');
   const [nodeLabel, setNodeLabel] = useState('');
   const [nodeColor, setNodeColor] = useState('#1976d2');
@@ -54,6 +63,12 @@ const StylePanel: React.FC<StylePanelProps> = ({
   const [edgeRouting, setEdgeRouting] = useState<'bezier' | 'smoothstep' | 'straight'>('bezier');
   const [edgeAnimated, setEdgeAnimated] = useState(false);
 
+  // Background opacity and transparency controls
+  const [textBgOpacity, setTextBgOpacity] = useState(100);
+  const [textBgTransparent, setTextBgTransparent] = useState(false);
+  const [nodeBgOpacity, setNodeBgOpacity] = useState(100);
+  const [nodeBgTransparent, setNodeBgTransparent] = useState(false);
+
   // Multiple connections support
   const [connections, setConnections] = useState<ConnectionConfig[]>([]);
   const [editingConnectionId, setEditingConnectionId] = useState<string | null>(null);
@@ -69,7 +84,30 @@ const StylePanel: React.FC<StylePanelProps> = ({
         const textData = data as TextNodeData;
         setTextFontSize(textData.fontSize || 14);
         setTextFontColor(textData.fontColor || '#000000');
-        setTextBgColor(textData.backgroundColor || 'transparent');
+
+        // Parse background color for opacity and transparency
+        const bgColor = textData.backgroundColor || 'transparent';
+        if (bgColor === 'transparent') {
+          setTextBgColor('#ffffff');
+          setTextBgTransparent(true);
+          setTextBgOpacity(100);
+        } else if (bgColor.startsWith('rgba')) {
+          // Parse rgba format
+          const match = bgColor.match(/rgba\((\d+),\s*(\d+),\s*(\d+),\s*([\d.]+)\)/);
+          if (match) {
+            const r = parseInt(match[1]).toString(16).padStart(2, '0');
+            const g = parseInt(match[2]).toString(16).padStart(2, '0');
+            const b = parseInt(match[3]).toString(16).padStart(2, '0');
+            setTextBgColor(`#${r}${g}${b}`);
+            setTextBgOpacity(Math.round(parseFloat(match[4]) * 100));
+            setTextBgTransparent(false);
+          }
+        } else {
+          setTextBgColor(bgColor);
+          setTextBgOpacity(100);
+          setTextBgTransparent(false);
+        }
+
         setTextBorderColor(textData.borderColor || '#000000');
         setTextBorderStyle(textData.borderStyle || 'none');
         setTextBorderWidth(textData.borderWidth || 1);
@@ -77,7 +115,36 @@ const StylePanel: React.FC<StylePanelProps> = ({
         // Group/Network Zone specific
         const groupData = data as GroupNodeData;
         setNodeColor(groupData.borderColor || '#ff6b6b');
-        setNodeBgColor(groupData.backgroundColor || '#ffb3ba40');
+
+        // Parse background color for opacity and transparency
+        const bgColor = groupData.backgroundColor || '#ffb3ba40';
+        if (bgColor === 'transparent') {
+          setNodeBgColor('#ffb3ba');
+          setNodeBgTransparent(true);
+          setNodeBgOpacity(100);
+        } else if (bgColor.startsWith('rgba')) {
+          // Parse rgba format
+          const match = bgColor.match(/rgba\((\d+),\s*(\d+),\s*(\d+),\s*([\d.]+)\)/);
+          if (match) {
+            const r = parseInt(match[1]).toString(16).padStart(2, '0');
+            const g = parseInt(match[2]).toString(16).padStart(2, '0');
+            const b = parseInt(match[3]).toString(16).padStart(2, '0');
+            setNodeBgColor(`#${r}${g}${b}`);
+            setNodeBgOpacity(Math.round(parseFloat(match[4]) * 100));
+            setNodeBgTransparent(false);
+          }
+        } else if (bgColor.startsWith('#') && bgColor.length === 9) {
+          // Parse hex with alpha channel (e.g., #ffb3ba40)
+          setNodeBgColor(bgColor.substring(0, 7));
+          const alpha = parseInt(bgColor.substring(7, 9), 16);
+          setNodeBgOpacity(Math.round((alpha / 255) * 100));
+          setNodeBgTransparent(false);
+        } else {
+          setNodeBgColor(bgColor);
+          setNodeBgOpacity(100);
+          setNodeBgTransparent(false);
+        }
+
         setNodeDescription(groupData.description || '');
 
         // Load connections array or migrate from old format
@@ -168,13 +235,19 @@ const StylePanel: React.FC<StylePanelProps> = ({
       if (selectedNode.type === 'text') {
         updates.fontSize = textFontSize;
         updates.fontColor = textFontColor;
-        updates.backgroundColor = textBgColor;
+        // Set background color based on transparent flag and opacity
+        updates.backgroundColor = textBgTransparent
+          ? 'transparent'
+          : hexToRgba(textBgColor, textBgOpacity);
         updates.borderColor = textBorderColor;
         updates.borderStyle = textBorderStyle;
         updates.borderWidth = textBorderWidth;
       } else if (selectedNode.type === 'group') {
         updates.borderColor = nodeColor;
-        updates.backgroundColor = nodeBgColor;
+        // Set background color based on transparent flag and opacity
+        updates.backgroundColor = nodeBgTransparent
+          ? 'transparent'
+          : hexToRgba(nodeBgColor, nodeBgOpacity);
         updates.description = nodeDescription;
         updates.connections = connections;
       } else {
@@ -298,23 +371,23 @@ const StylePanel: React.FC<StylePanelProps> = ({
 
   const getConnectionTypeBadgeColor = (type: string): string => {
     switch (type) {
-      case 'rdp': return '#0078d4';
-      case 'ssh': return '#f7a41d';
-      case 'browser': return '#4285f4';
-      case 'custom': return '#7b1fa2';
-      default: return '#666666';
+      case 'rdp': return theme.accent.blue;
+      case 'ssh': return theme.accent.orange;
+      case 'browser': return theme.accent.blueLight;
+      case 'custom': return theme.accent.purple;
+      default: return theme.text.tertiary;
     }
   };
 
   const presetColors = [
-    { name: 'Blue', value: '#5d7fa3' },
-    { name: 'Green', value: '#6b8f71' },
-    { name: 'Red', value: '#b06c6c' },
-    { name: 'Orange', value: '#c89b6e' },
-    { name: 'Purple', value: '#8a7a9e' },
-    { name: 'Pink', value: '#b5788c' },
-    { name: 'Teal', value: '#6b9990' },
-    { name: 'Gray', value: '#7a8a95' }
+    { name: 'Blue', value: theme.swatches.blue },
+    { name: 'Green', value: theme.swatches.green },
+    { name: 'Red', value: theme.swatches.red },
+    { name: 'Orange', value: theme.swatches.orange },
+    { name: 'Purple', value: theme.swatches.purple },
+    { name: 'Pink', value: theme.swatches.pink },
+    { name: 'Teal', value: theme.swatches.teal },
+    { name: 'Gray', value: theme.swatches.gray }
   ];
 
   return (
@@ -325,26 +398,32 @@ const StylePanel: React.FC<StylePanelProps> = ({
         top: '0',
         width: '320px',
         height: '100vh',
-        background: '#e8e8e8',
-        boxShadow: '-2px 0 8px rgba(0,0,0,0.15)',
-        transition: 'right 0.3s ease',
-        zIndex: 1000,
+        background: theme.background.secondary,
+        boxShadow: theme.shadow.lg,
+        transition: theme.transition.slow,
+        zIndex: theme.zIndex.dropdown,
         display: 'flex',
         flexDirection: 'column',
-        color: '#333',
-        overflowY: 'auto'
+        color: theme.text.primary,
+        overflowY: 'auto',
+        borderLeft: `1px solid ${theme.border.default}`
       }}
     >
       {/* Header */}
       <div style={{
-        padding: '12px 16px',
-        borderBottom: '1px solid #d0d0d0',
-        background: '#d8d8d8',
+        padding: `${theme.spacing.lg} ${theme.spacing.xl}`,
+        borderBottom: `1px solid ${theme.border.default}`,
+        background: theme.background.primary,
         position: 'sticky',
         top: 0,
         zIndex: 10
       }}>
-        <h3 style={{ margin: 0, fontSize: '14px', fontWeight: '600', color: '#333' }}>
+        <h3 style={{
+          margin: 0,
+          fontSize: theme.fontSize.base,
+          fontWeight: theme.fontWeight.semibold,
+          color: theme.text.primary
+        }}>
           {selectedNode ? 'Node Style' : selectedEdge ? 'Edge Style' : 'Properties'}
         </h3>
       </div>
@@ -353,8 +432,8 @@ const StylePanel: React.FC<StylePanelProps> = ({
       {selectedNode && selectedNode.type !== 'text' && (
         <div style={{
           display: 'flex',
-          borderBottom: '2px solid #d0d0d0',
-          background: '#d8d8d8',
+          borderBottom: `2px solid ${theme.border.default}`,
+          background: theme.background.primary,
           position: 'sticky',
           top: '49px',
           zIndex: 10
@@ -363,21 +442,21 @@ const StylePanel: React.FC<StylePanelProps> = ({
             onClick={() => setActiveTab('connection')}
             style={{
               flex: 1,
-              padding: '10px 16px',
+              padding: `${theme.spacing.md} ${theme.spacing.xl}`,
               border: 'none',
-              background: activeTab === 'connection' ? '#e8e8e8' : 'transparent',
-              color: activeTab === 'connection' ? '#007bff' : '#666',
+              background: activeTab === 'connection' ? theme.background.secondary : 'transparent',
+              color: activeTab === 'connection' ? theme.accent.blue : theme.text.secondary,
               cursor: 'pointer',
-              fontSize: '12px',
-              fontWeight: activeTab === 'connection' ? '600' : '500',
-              borderBottom: activeTab === 'connection' ? '3px solid #007bff' : '3px solid transparent',
-              transition: 'all 0.2s',
+              fontSize: theme.fontSize.sm,
+              fontWeight: activeTab === 'connection' ? theme.fontWeight.semibold : theme.fontWeight.medium,
+              borderBottom: activeTab === 'connection' ? `3px solid ${theme.accent.blue}` : '3px solid transparent',
+              transition: theme.transition.normal,
               textTransform: 'uppercase',
               letterSpacing: '0.5px'
             }}
             onMouseEnter={(e) => {
               if (activeTab !== 'connection') {
-                e.currentTarget.style.background = '#cfcfcf';
+                e.currentTarget.style.background = theme.background.hover;
               }
             }}
             onMouseLeave={(e) => {
@@ -392,21 +471,21 @@ const StylePanel: React.FC<StylePanelProps> = ({
             onClick={() => setActiveTab('style')}
             style={{
               flex: 1,
-              padding: '10px 16px',
+              padding: `${theme.spacing.md} ${theme.spacing.xl}`,
               border: 'none',
-              background: activeTab === 'style' ? '#e8e8e8' : 'transparent',
-              color: activeTab === 'style' ? '#007bff' : '#666',
+              background: activeTab === 'style' ? theme.background.secondary : 'transparent',
+              color: activeTab === 'style' ? theme.accent.blue : theme.text.secondary,
               cursor: 'pointer',
-              fontSize: '12px',
-              fontWeight: activeTab === 'style' ? '600' : '500',
-              borderBottom: activeTab === 'style' ? '3px solid #007bff' : '3px solid transparent',
-              transition: 'all 0.2s',
+              fontSize: theme.fontSize.sm,
+              fontWeight: activeTab === 'style' ? theme.fontWeight.semibold : theme.fontWeight.medium,
+              borderBottom: activeTab === 'style' ? `3px solid ${theme.accent.blue}` : '3px solid transparent',
+              transition: theme.transition.normal,
               textTransform: 'uppercase',
               letterSpacing: '0.5px'
             }}
             onMouseEnter={(e) => {
               if (activeTab !== 'style') {
-                e.currentTarget.style.background = '#cfcfcf';
+                e.currentTarget.style.background = theme.background.hover;
               }
             }}
             onMouseLeave={(e) => {
@@ -422,12 +501,18 @@ const StylePanel: React.FC<StylePanelProps> = ({
 
       {/* Node Styling */}
       {selectedNode && (
-        <div style={{ padding: '16px' }}>
+        <div style={{ padding: theme.spacing.xl }}>
           {/* Text Node - No tabs, just style content */}
           {selectedNode.type === 'text' && (
             <>
-              <div style={{ marginBottom: '12px' }}>
-                <label style={{ display: 'block', fontSize: '11px', marginBottom: '4px', fontWeight: '500', color: '#666' }}>
+              <div style={{ marginBottom: theme.spacing.lg }}>
+                <label style={{
+                  display: 'block',
+                  fontSize: theme.fontSize.sm,
+                  marginBottom: theme.spacing.xs,
+                  fontWeight: theme.fontWeight.medium,
+                  color: theme.text.secondary
+                }}>
                   Text
                 </label>
                 <input
@@ -437,19 +522,25 @@ const StylePanel: React.FC<StylePanelProps> = ({
                   onBlur={handleNodeUpdate}
                   style={{
                     width: '100%',
-                    padding: '6px 8px',
-                    border: '1px solid #ccc',
-                    borderRadius: '4px',
-                    background: '#fff',
-                    color: '#333',
-                    fontSize: '12px',
+                    padding: `${theme.spacing.sm} ${theme.spacing.md}`,
+                    border: `1px solid ${theme.border.default}`,
+                    borderRadius: theme.radius.sm,
+                    background: theme.background.tertiary,
+                    color: theme.text.primary,
+                    fontSize: theme.fontSize.sm,
                     boxSizing: 'border-box'
                   }}
                 />
               </div>
 
-              <div style={{ marginBottom: '12px' }}>
-                <label style={{ display: 'block', fontSize: '11px', marginBottom: '4px', fontWeight: '500', color: '#666' }}>
+              <div style={{ marginBottom: theme.spacing.lg }}>
+                <label style={{
+                  display: 'block',
+                  fontSize: theme.fontSize.sm,
+                  marginBottom: theme.spacing.xs,
+                  fontWeight: theme.fontWeight.medium,
+                  color: theme.text.secondary
+                }}>
                   Font Size
                 </label>
                 <input
@@ -461,19 +552,25 @@ const StylePanel: React.FC<StylePanelProps> = ({
                   max="72"
                   style={{
                     width: '100%',
-                    padding: '6px 8px',
-                    border: '1px solid #ccc',
-                    borderRadius: '4px',
-                    background: '#fff',
-                    color: '#333',
-                    fontSize: '12px',
+                    padding: `${theme.spacing.sm} ${theme.spacing.md}`,
+                    border: `1px solid ${theme.border.default}`,
+                    borderRadius: theme.radius.sm,
+                    background: theme.background.tertiary,
+                    color: theme.text.primary,
+                    fontSize: theme.fontSize.sm,
                     boxSizing: 'border-box'
                   }}
                 />
               </div>
 
-              <div style={{ marginBottom: '12px' }}>
-                <label style={{ display: 'block', fontSize: '11px', marginBottom: '4px', fontWeight: '500', color: '#666' }}>
+              <div style={{ marginBottom: theme.spacing.lg }}>
+                <label style={{
+                  display: 'block',
+                  fontSize: theme.fontSize.sm,
+                  marginBottom: theme.spacing.xs,
+                  fontWeight: theme.fontWeight.medium,
+                  color: theme.text.secondary
+                }}>
                   Font Color
                 </label>
                 <input
@@ -484,59 +581,100 @@ const StylePanel: React.FC<StylePanelProps> = ({
                   style={{
                     width: '100%',
                     height: '32px',
-                    border: '1px solid #ccc',
-                    borderRadius: '4px',
+                    border: `1px solid ${theme.border.default}`,
+                    borderRadius: theme.radius.sm,
                     cursor: 'pointer',
-                    background: '#fff'
+                    background: theme.background.tertiary
                   }}
                 />
               </div>
 
-              <div style={{ marginBottom: '12px' }}>
-                <label style={{ display: 'block', fontSize: '11px', marginBottom: '4px', fontWeight: '500', color: '#666' }}>
+              <div style={{ marginBottom: theme.spacing.lg }}>
+                <label style={{
+                  display: 'block',
+                  fontSize: theme.fontSize.sm,
+                  marginBottom: theme.spacing.xs,
+                  fontWeight: theme.fontWeight.medium,
+                  color: theme.text.secondary
+                }}>
                   Background Color
                 </label>
                 <input
                   type="color"
-                  value={textBgColor === 'transparent' ? '#ffffff' : textBgColor}
+                  value={textBgColor}
                   onChange={(e) => setTextBgColor(e.target.value)}
                   onBlur={handleNodeUpdate}
+                  disabled={textBgTransparent}
                   style={{
                     width: '100%',
                     height: '32px',
-                    border: '1px solid #ccc',
-                    borderRadius: '4px',
-                    cursor: 'pointer',
-                    background: '#fff'
+                    border: `1px solid ${theme.border.default}`,
+                    borderRadius: theme.radius.sm,
+                    cursor: textBgTransparent ? 'not-allowed' : 'pointer',
+                    background: theme.background.tertiary,
+                    opacity: textBgTransparent ? 0.5 : 1
                   }}
                 />
                 <label style={{
                   display: 'flex',
                   alignItems: 'center',
-                  gap: '6px',
-                  marginTop: '4px',
-                  fontSize: '10px',
-                  color: '#666',
+                  gap: theme.spacing.sm,
+                  marginTop: theme.spacing.md,
+                  fontSize: theme.fontSize.sm,
+                  color: theme.text.secondary,
                   cursor: 'pointer'
                 }}>
                   <input
                     type="checkbox"
-                    checked={textBgColor === 'transparent'}
+                    checked={textBgTransparent}
                     onChange={(e) => {
-                      setTextBgColor(e.target.checked ? 'transparent' : '#ffffff');
+                      setTextBgTransparent(e.target.checked);
                       setTimeout(handleNodeUpdate, 0);
                     }}
-                    style={{ width: '14px', height: '14px', cursor: 'pointer' }}
+                    style={{ width: '16px', height: '16px', cursor: 'pointer' }}
                   />
-                  Transparent
+                  Transparent Background
                 </label>
+
+                {/* Opacity Slider */}
+                <div style={{ marginTop: theme.spacing.md }}>
+                  <label style={{
+                    display: 'block',
+                    fontSize: theme.fontSize.sm,
+                    marginBottom: theme.spacing.xs,
+                    fontWeight: theme.fontWeight.medium,
+                    color: textBgTransparent ? theme.text.tertiary : theme.text.secondary
+                  }}>
+                    Opacity: {textBgOpacity}%
+                  </label>
+                  <input
+                    type="range"
+                    min="0"
+                    max="100"
+                    value={textBgOpacity}
+                    onChange={(e) => setTextBgOpacity(parseInt(e.target.value))}
+                    onMouseUp={handleNodeUpdate}
+                    disabled={textBgTransparent}
+                    style={{
+                      width: '100%',
+                      cursor: textBgTransparent ? 'not-allowed' : 'pointer',
+                      opacity: textBgTransparent ? 0.5 : 1
+                    }}
+                  />
+                </div>
               </div>
 
-              <div style={{ marginBottom: '12px' }}>
-                <label style={{ display: 'block', fontSize: '11px', marginBottom: '4px', fontWeight: '500', color: '#666' }}>
+              <div style={{ marginBottom: theme.spacing.lg }}>
+                <label style={{
+                  display: 'block',
+                  fontSize: theme.fontSize.sm,
+                  marginBottom: theme.spacing.xs,
+                  fontWeight: theme.fontWeight.medium,
+                  color: theme.text.secondary
+                }}>
                   Border Style
                 </label>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '6px' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: theme.spacing.sm }}>
                   {(['none', 'solid', 'dashed', 'dotted'] as const).map((style) => (
                     <button
                       key={style}
@@ -545,14 +683,14 @@ const StylePanel: React.FC<StylePanelProps> = ({
                         setTimeout(handleNodeUpdate, 0);
                       }}
                       style={{
-                        padding: '6px',
-                        border: textBorderStyle === style ? '1px solid #333' : '1px solid #ccc',
-                        borderRadius: '4px',
-                        background: textBorderStyle === style ? '#bbb' : '#fff',
-                        color: '#333',
+                        padding: theme.spacing.sm,
+                        border: textBorderStyle === style ? `1px solid ${theme.text.primary}` : `1px solid ${theme.border.default}`,
+                        borderRadius: theme.radius.sm,
+                        background: textBorderStyle === style ? theme.background.active : theme.background.tertiary,
+                        color: theme.text.primary,
                         cursor: 'pointer',
-                        fontSize: '10px',
-                        fontWeight: '500',
+                        fontSize: theme.fontSize.xs,
+                        fontWeight: theme.fontWeight.medium,
                         textTransform: 'capitalize'
                       }}
                     >
@@ -564,8 +702,14 @@ const StylePanel: React.FC<StylePanelProps> = ({
 
               {textBorderStyle !== 'none' && (
                 <>
-                  <div style={{ marginBottom: '12px' }}>
-                    <label style={{ display: 'block', fontSize: '11px', marginBottom: '4px', fontWeight: '500', color: '#666' }}>
+                  <div style={{ marginBottom: theme.spacing.lg }}>
+                    <label style={{
+                      display: 'block',
+                      fontSize: theme.fontSize.sm,
+                      marginBottom: theme.spacing.xs,
+                      fontWeight: theme.fontWeight.medium,
+                      color: theme.text.secondary
+                    }}>
                       Border Color
                     </label>
                     <input
@@ -576,16 +720,22 @@ const StylePanel: React.FC<StylePanelProps> = ({
                       style={{
                         width: '100%',
                         height: '32px',
-                        border: '1px solid #ccc',
-                        borderRadius: '4px',
+                        border: `1px solid ${theme.border.default}`,
+                        borderRadius: theme.radius.sm,
                         cursor: 'pointer',
-                        background: '#fff'
+                        background: theme.background.tertiary
                       }}
                     />
                   </div>
 
-                  <div style={{ marginBottom: '12px' }}>
-                    <label style={{ display: 'block', fontSize: '11px', marginBottom: '4px', fontWeight: '500', color: '#666' }}>
+                  <div style={{ marginBottom: theme.spacing.lg }}>
+                    <label style={{
+                      display: 'block',
+                      fontSize: theme.fontSize.sm,
+                      marginBottom: theme.spacing.xs,
+                      fontWeight: theme.fontWeight.medium,
+                      color: theme.text.secondary
+                    }}>
                       Border Width
                     </label>
                     <input
@@ -597,12 +747,12 @@ const StylePanel: React.FC<StylePanelProps> = ({
                       max="10"
                       style={{
                         width: '100%',
-                        padding: '6px 8px',
-                        border: '1px solid #ccc',
-                        borderRadius: '4px',
-                        background: '#fff',
-                        color: '#333',
-                        fontSize: '12px',
+                        padding: `${theme.spacing.sm} ${theme.spacing.md}`,
+                        border: `1px solid ${theme.border.default}`,
+                        borderRadius: theme.radius.sm,
+                        background: theme.background.tertiary,
+                        color: theme.text.primary,
+                        fontSize: theme.fontSize.sm,
                         boxSizing: 'border-box'
                       }}
                     />
@@ -620,8 +770,14 @@ const StylePanel: React.FC<StylePanelProps> = ({
                 <>
                   {/* Connections List - Always visible */}
                   {connections.length > 0 && (
-                    <div style={{ marginBottom: '16px' }}>
-                      <label style={{ display: 'block', fontSize: '11px', marginBottom: '8px', fontWeight: '500', color: '#666' }}>
+                    <div style={{ marginBottom: theme.spacing.xl }}>
+                      <label style={{
+                        display: 'block',
+                        fontSize: theme.fontSize.sm,
+                        marginBottom: theme.spacing.md,
+                        fontWeight: theme.fontWeight.medium,
+                        color: theme.text.secondary
+                      }}>
                         Configured Connections
                       </label>
                           {connections.map((connection) => (
@@ -630,23 +786,23 @@ const StylePanel: React.FC<StylePanelProps> = ({
                               style={{
                                 display: 'flex',
                                 alignItems: 'center',
-                                gap: '8px',
-                                padding: '8px',
-                                marginBottom: '8px',
-                                background: '#fff',
-                                border: '1px solid #ccc',
-                                borderRadius: '4px',
-                                fontSize: '11px'
+                                gap: theme.spacing.md,
+                                padding: theme.spacing.md,
+                                marginBottom: theme.spacing.md,
+                                background: theme.background.tertiary,
+                                border: `1px solid ${theme.border.default}`,
+                                borderRadius: theme.radius.sm,
+                                fontSize: theme.fontSize.sm
                               }}
                             >
                               {/* Connection Type Badge */}
                               <span style={{
-                                padding: '2px 6px',
-                                borderRadius: '3px',
+                                padding: `2px ${theme.spacing.sm}`,
+                                borderRadius: theme.radius.xs,
                                 background: getConnectionTypeBadgeColor(connection.type),
-                                color: '#fff',
-                                fontSize: '9px',
-                                fontWeight: '600',
+                                color: theme.text.inverted,
+                                fontSize: theme.fontSize.xs,
+                                fontWeight: theme.fontWeight.semibold,
                                 textTransform: 'uppercase',
                                 whiteSpace: 'nowrap'
                               }}>
@@ -657,8 +813,8 @@ const StylePanel: React.FC<StylePanelProps> = ({
                               <div style={{
                                 flex: 1,
                                 fontFamily: 'monospace',
-                                fontSize: '10px',
-                                color: '#333',
+                                fontSize: theme.fontSize.xs,
+                                color: theme.text.primary,
                                 overflow: 'hidden',
                                 textOverflow: 'ellipsis',
                                 whiteSpace: 'nowrap'
@@ -670,21 +826,21 @@ const StylePanel: React.FC<StylePanelProps> = ({
                               <button
                                 onClick={() => handleEditConnection(connection)}
                                 style={{
-                                  padding: '4px 8px',
-                                  border: '1px solid #ccc',
-                                  borderRadius: '3px',
-                                  background: '#fff',
-                                  color: '#333',
+                                  padding: `${theme.spacing.xs} ${theme.spacing.md}`,
+                                  border: `1px solid ${theme.border.default}`,
+                                  borderRadius: theme.radius.xs,
+                                  background: theme.background.tertiary,
+                                  color: theme.text.primary,
                                   cursor: 'pointer',
-                                  fontSize: '10px',
-                                  fontWeight: '500',
-                                  transition: 'all 0.2s'
+                                  fontSize: theme.fontSize.xs,
+                                  fontWeight: theme.fontWeight.medium,
+                                  transition: theme.transition.normal
                                 }}
                                 onMouseEnter={(e) => {
-                                  e.currentTarget.style.background = '#f5f5f5';
+                                  e.currentTarget.style.background = theme.background.hover;
                                 }}
                                 onMouseLeave={(e) => {
-                                  e.currentTarget.style.background = '#fff';
+                                  e.currentTarget.style.background = theme.background.tertiary;
                                 }}
                               >
                                 Edit
@@ -694,23 +850,23 @@ const StylePanel: React.FC<StylePanelProps> = ({
                               <button
                                 onClick={() => handleDeleteConnection(connection.id)}
                                 style={{
-                                  padding: '4px 8px',
-                                  border: '1px solid #e74c3c',
-                                  borderRadius: '3px',
-                                  background: '#fff',
-                                  color: '#e74c3c',
+                                  padding: `${theme.spacing.xs} ${theme.spacing.md}`,
+                                  border: `1px solid ${theme.accent.red}`,
+                                  borderRadius: theme.radius.xs,
+                                  background: theme.background.tertiary,
+                                  color: theme.accent.red,
                                   cursor: 'pointer',
-                                  fontSize: '10px',
-                                  fontWeight: '500',
-                                  transition: 'all 0.2s'
+                                  fontSize: theme.fontSize.xs,
+                                  fontWeight: theme.fontWeight.medium,
+                                  transition: theme.transition.normal
                                 }}
                                 onMouseEnter={(e) => {
-                                  e.currentTarget.style.background = '#e74c3c';
-                                  e.currentTarget.style.color = '#fff';
+                                  e.currentTarget.style.background = theme.accent.red;
+                                  e.currentTarget.style.color = theme.text.inverted;
                                 }}
                                 onMouseLeave={(e) => {
-                                  e.currentTarget.style.background = '#fff';
-                                  e.currentTarget.style.color = '#e74c3c';
+                                  e.currentTarget.style.background = theme.background.tertiary;
+                                  e.currentTarget.style.color = theme.accent.red;
                                 }}
                               >
                                 Delete
@@ -723,18 +879,18 @@ const StylePanel: React.FC<StylePanelProps> = ({
                   {/* No connections message */}
                   {connections.length === 0 && (
                     <div style={{
-                      padding: '20px',
+                      padding: theme.spacing.xxl,
                       textAlign: 'center',
-                      background: '#f8f9fa',
-                      border: '1px solid #dee2e6',
-                      borderRadius: '4px',
-                      marginBottom: '16px'
+                      background: theme.background.tertiary,
+                      border: `1px solid ${theme.border.default}`,
+                      borderRadius: theme.radius.sm,
+                      marginBottom: theme.spacing.xl
                     }}>
-                      <div style={{ fontSize: '24px', marginBottom: '8px' }}>🔌</div>
-                      <div style={{ fontSize: '11px', color: '#666', marginBottom: '4px' }}>
+                      <div style={{ fontSize: theme.fontSize.xxl, marginBottom: theme.spacing.md }}>🔌</div>
+                      <div style={{ fontSize: theme.fontSize.sm, color: theme.text.secondary, marginBottom: theme.spacing.xs }}>
                         No connections configured
                       </div>
-                      <div style={{ fontSize: '10px', color: '#999' }}>
+                      <div style={{ fontSize: theme.fontSize.xs, color: theme.text.tertiary }}>
                         Add a connection to enable remote access
                       </div>
                     </div>
@@ -745,29 +901,29 @@ const StylePanel: React.FC<StylePanelProps> = ({
                     onClick={handleAddConnection}
                     style={{
                       width: '100%',
-                      padding: '10px',
-                      border: '1px solid #007bff',
-                      borderRadius: '4px',
-                      background: '#007bff',
-                      color: '#fff',
+                      padding: theme.spacing.md,
+                      border: `1px solid ${theme.accent.blue}`,
+                      borderRadius: theme.radius.sm,
+                      background: theme.accent.blue,
+                      color: theme.text.inverted,
                       cursor: 'pointer',
-                      fontSize: '12px',
-                      fontWeight: '600',
-                      transition: 'all 0.2s',
+                      fontSize: theme.fontSize.sm,
+                      fontWeight: theme.fontWeight.semibold,
+                      transition: theme.transition.normal,
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
-                      gap: '6px',
-                      marginBottom: '16px'
+                      gap: theme.spacing.sm,
+                      marginBottom: theme.spacing.xl
                     }}
                     onMouseEnter={(e) => {
-                      e.currentTarget.style.background = '#0056b3';
+                      e.currentTarget.style.background = theme.accent.blueDark;
                     }}
                     onMouseLeave={(e) => {
-                      e.currentTarget.style.background = '#007bff';
+                      e.currentTarget.style.background = theme.accent.blue;
                     }}
                   >
-                    <span style={{ fontSize: '14px' }}>+</span>
+                    <span style={{ fontSize: theme.fontSize.base }}>+</span>
                     <span>Add Connection</span>
                   </button>
 
@@ -775,23 +931,29 @@ const StylePanel: React.FC<StylePanelProps> = ({
                   {showConnectionForm && (
                     <>
                       <div style={{
-                        marginBottom: '16px',
-                        padding: '12px',
-                        background: '#f8f9fa',
-                        border: '1px solid #dee2e6',
-                        borderRadius: '4px'
+                        marginBottom: theme.spacing.xl,
+                        padding: theme.spacing.lg,
+                        background: theme.background.tertiary,
+                        border: `1px solid ${theme.border.default}`,
+                        borderRadius: theme.radius.sm
                       }}>
                         <div style={{
-                          fontSize: '11px',
-                          fontWeight: '600',
-                          marginBottom: '12px',
-                          color: '#333'
+                          fontSize: theme.fontSize.sm,
+                          fontWeight: theme.fontWeight.semibold,
+                          marginBottom: theme.spacing.lg,
+                          color: theme.text.primary
                         }}>
                           {editingConnectionId ? 'Edit Connection' : 'New Connection'}
                         </div>
 
-                        <div style={{ marginBottom: '12px' }}>
-                          <label style={{ display: 'block', fontSize: '11px', marginBottom: '4px', fontWeight: '500', color: '#666' }}>
+                        <div style={{ marginBottom: theme.spacing.lg }}>
+                          <label style={{
+                            display: 'block',
+                            fontSize: theme.fontSize.sm,
+                            marginBottom: theme.spacing.xs,
+                            fontWeight: theme.fontWeight.medium,
+                            color: theme.text.secondary
+                          }}>
                             Connection Type
                           </label>
                           <select
@@ -804,12 +966,12 @@ const StylePanel: React.FC<StylePanelProps> = ({
                             }}
                             style={{
                               width: '100%',
-                              padding: '6px 8px',
-                              border: '1px solid #ccc',
-                              borderRadius: '4px',
-                              background: '#fff',
-                              color: '#333',
-                              fontSize: '12px',
+                              padding: `${theme.spacing.sm} ${theme.spacing.md}`,
+                              border: `1px solid ${theme.border.default}`,
+                              borderRadius: theme.radius.sm,
+                              background: theme.background.elevated,
+                              color: theme.text.primary,
+                              fontSize: theme.fontSize.sm,
                               boxSizing: 'border-box',
                               cursor: 'pointer'
                             }}
@@ -824,8 +986,14 @@ const StylePanel: React.FC<StylePanelProps> = ({
                         {/* RDP Settings */}
                         {nodeType === 'rdp' && (
                           <>
-                            <div style={{ marginBottom: '12px' }}>
-                              <label style={{ display: 'block', fontSize: '11px', marginBottom: '4px', fontWeight: '500', color: '#666' }}>
+                            <div style={{ marginBottom: theme.spacing.lg }}>
+                              <label style={{
+                                display: 'block',
+                                fontSize: theme.fontSize.sm,
+                                marginBottom: theme.spacing.xs,
+                                fontWeight: theme.fontWeight.medium,
+                                color: theme.text.secondary
+                              }}>
                                 Host
                               </label>
                               <input
@@ -835,19 +1003,25 @@ const StylePanel: React.FC<StylePanelProps> = ({
                                 placeholder="192.168.1.1"
                                 style={{
                                   width: '100%',
-                                  padding: '6px 8px',
-                                  border: '1px solid #ccc',
-                                  borderRadius: '4px',
-                                  background: '#fff',
-                                  color: '#333',
-                                  fontSize: '12px',
+                                  padding: `${theme.spacing.sm} ${theme.spacing.md}`,
+                                  border: `1px solid ${theme.border.default}`,
+                                  borderRadius: theme.radius.sm,
+                                  background: theme.background.elevated,
+                                  color: theme.text.primary,
+                                  fontSize: theme.fontSize.sm,
                                   fontFamily: 'monospace',
                                   boxSizing: 'border-box'
                                 }}
                               />
                             </div>
-                            <div style={{ marginBottom: '12px' }}>
-                              <label style={{ display: 'block', fontSize: '11px', marginBottom: '4px', fontWeight: '500', color: '#666' }}>
+                            <div style={{ marginBottom: theme.spacing.lg }}>
+                              <label style={{
+                                display: 'block',
+                                fontSize: theme.fontSize.sm,
+                                marginBottom: theme.spacing.xs,
+                                fontWeight: theme.fontWeight.medium,
+                                color: theme.text.secondary
+                              }}>
                                 Username (Optional)
                               </label>
                               <input
@@ -857,18 +1031,24 @@ const StylePanel: React.FC<StylePanelProps> = ({
                                 placeholder="administrator"
                                 style={{
                                   width: '100%',
-                                  padding: '6px 8px',
-                                  border: '1px solid #ccc',
-                                  borderRadius: '4px',
-                                  background: '#fff',
-                                  color: '#333',
-                                  fontSize: '12px',
+                                  padding: `${theme.spacing.sm} ${theme.spacing.md}`,
+                                  border: `1px solid ${theme.border.default}`,
+                                  borderRadius: theme.radius.sm,
+                                  background: theme.background.elevated,
+                                  color: theme.text.primary,
+                                  fontSize: theme.fontSize.sm,
                                   boxSizing: 'border-box'
                                 }}
                               />
                             </div>
-                            <div style={{ marginBottom: '12px' }}>
-                              <label style={{ display: 'block', fontSize: '11px', marginBottom: '4px', fontWeight: '500', color: '#666' }}>
+                            <div style={{ marginBottom: theme.spacing.lg }}>
+                              <label style={{
+                                display: 'block',
+                                fontSize: theme.fontSize.sm,
+                                marginBottom: theme.spacing.xs,
+                                fontWeight: theme.fontWeight.medium,
+                                color: theme.text.secondary
+                              }}>
                                 Password (Optional)
                               </label>
                               <input
@@ -878,12 +1058,12 @@ const StylePanel: React.FC<StylePanelProps> = ({
                                 placeholder="••••••••"
                                 style={{
                                   width: '100%',
-                                  padding: '6px 8px',
-                                  border: '1px solid #ccc',
-                                  borderRadius: '4px',
-                                  background: '#fff',
-                                  color: '#333',
-                                  fontSize: '12px',
+                                  padding: `${theme.spacing.sm} ${theme.spacing.md}`,
+                                  border: `1px solid ${theme.border.default}`,
+                                  borderRadius: theme.radius.sm,
+                                  background: theme.background.elevated,
+                                  color: theme.text.primary,
+                                  fontSize: theme.fontSize.sm,
                                   boxSizing: 'border-box'
                                 }}
                               />
@@ -894,8 +1074,14 @@ const StylePanel: React.FC<StylePanelProps> = ({
                         {/* SSH Settings */}
                         {nodeType === 'ssh' && (
                           <>
-                            <div style={{ marginBottom: '12px' }}>
-                              <label style={{ display: 'block', fontSize: '11px', marginBottom: '4px', fontWeight: '500', color: '#666' }}>
+                            <div style={{ marginBottom: theme.spacing.lg }}>
+                              <label style={{
+                                display: 'block',
+                                fontSize: theme.fontSize.sm,
+                                marginBottom: theme.spacing.xs,
+                                fontWeight: theme.fontWeight.medium,
+                                color: theme.text.secondary
+                              }}>
                                 Host
                               </label>
                               <input
@@ -905,19 +1091,25 @@ const StylePanel: React.FC<StylePanelProps> = ({
                                 placeholder="192.168.1.1"
                                 style={{
                                   width: '100%',
-                                  padding: '6px 8px',
-                                  border: '1px solid #ccc',
-                                  borderRadius: '4px',
-                                  background: '#fff',
-                                  color: '#333',
-                                  fontSize: '12px',
+                                  padding: `${theme.spacing.sm} ${theme.spacing.md}`,
+                                  border: `1px solid ${theme.border.default}`,
+                                  borderRadius: theme.radius.sm,
+                                  background: theme.background.elevated,
+                                  color: theme.text.primary,
+                                  fontSize: theme.fontSize.sm,
                                   fontFamily: 'monospace',
                                   boxSizing: 'border-box'
                                 }}
                               />
                             </div>
-                            <div style={{ marginBottom: '12px' }}>
-                              <label style={{ display: 'block', fontSize: '11px', marginBottom: '4px', fontWeight: '500', color: '#666' }}>
+                            <div style={{ marginBottom: theme.spacing.lg }}>
+                              <label style={{
+                                display: 'block',
+                                fontSize: theme.fontSize.sm,
+                                marginBottom: theme.spacing.xs,
+                                fontWeight: theme.fontWeight.medium,
+                                color: theme.text.secondary
+                              }}>
                                 Port
                               </label>
                               <input
@@ -927,19 +1119,25 @@ const StylePanel: React.FC<StylePanelProps> = ({
                                 placeholder="22"
                                 style={{
                                   width: '100%',
-                                  padding: '6px 8px',
-                                  border: '1px solid #ccc',
-                                  borderRadius: '4px',
-                                  background: '#fff',
-                                  color: '#333',
-                                  fontSize: '12px',
+                                  padding: `${theme.spacing.sm} ${theme.spacing.md}`,
+                                  border: `1px solid ${theme.border.default}`,
+                                  borderRadius: theme.radius.sm,
+                                  background: theme.background.elevated,
+                                  color: theme.text.primary,
+                                  fontSize: theme.fontSize.sm,
                                   fontFamily: 'monospace',
                                   boxSizing: 'border-box'
                                 }}
                               />
                             </div>
-                            <div style={{ marginBottom: '12px' }}>
-                              <label style={{ display: 'block', fontSize: '11px', marginBottom: '4px', fontWeight: '500', color: '#666' }}>
+                            <div style={{ marginBottom: theme.spacing.lg }}>
+                              <label style={{
+                                display: 'block',
+                                fontSize: theme.fontSize.sm,
+                                marginBottom: theme.spacing.xs,
+                                fontWeight: theme.fontWeight.medium,
+                                color: theme.text.secondary
+                              }}>
                                 Username
                               </label>
                               <input
@@ -949,18 +1147,24 @@ const StylePanel: React.FC<StylePanelProps> = ({
                                 placeholder="root"
                                 style={{
                                   width: '100%',
-                                  padding: '6px 8px',
-                                  border: '1px solid #ccc',
-                                  borderRadius: '4px',
-                                  background: '#fff',
-                                  color: '#333',
-                                  fontSize: '12px',
+                                  padding: `${theme.spacing.sm} ${theme.spacing.md}`,
+                                  border: `1px solid ${theme.border.default}`,
+                                  borderRadius: theme.radius.sm,
+                                  background: theme.background.elevated,
+                                  color: theme.text.primary,
+                                  fontSize: theme.fontSize.sm,
                                   boxSizing: 'border-box'
                                 }}
                               />
                             </div>
-                            <div style={{ marginBottom: '12px' }}>
-                              <label style={{ display: 'block', fontSize: '11px', marginBottom: '4px', fontWeight: '500', color: '#666' }}>
+                            <div style={{ marginBottom: theme.spacing.lg }}>
+                              <label style={{
+                                display: 'block',
+                                fontSize: theme.fontSize.sm,
+                                marginBottom: theme.spacing.xs,
+                                fontWeight: theme.fontWeight.medium,
+                                color: theme.text.secondary
+                              }}>
                                 Password
                               </label>
                               <input
@@ -970,12 +1174,12 @@ const StylePanel: React.FC<StylePanelProps> = ({
                                 placeholder="••••••••"
                                 style={{
                                   width: '100%',
-                                  padding: '6px 8px',
-                                  border: '1px solid #ccc',
-                                  borderRadius: '4px',
-                                  background: '#fff',
-                                  color: '#333',
-                                  fontSize: '12px',
+                                  padding: `${theme.spacing.sm} ${theme.spacing.md}`,
+                                  border: `1px solid ${theme.border.default}`,
+                                  borderRadius: theme.radius.sm,
+                                  background: theme.background.elevated,
+                                  color: theme.text.primary,
+                                  fontSize: theme.fontSize.sm,
                                   boxSizing: 'border-box'
                                 }}
                               />
@@ -985,8 +1189,14 @@ const StylePanel: React.FC<StylePanelProps> = ({
 
                         {/* Browser Settings */}
                         {nodeType === 'browser' && (
-                          <div style={{ marginBottom: '12px' }}>
-                            <label style={{ display: 'block', fontSize: '11px', marginBottom: '4px', fontWeight: '500', color: '#666' }}>
+                          <div style={{ marginBottom: theme.spacing.lg }}>
+                            <label style={{
+                              display: 'block',
+                              fontSize: theme.fontSize.sm,
+                              marginBottom: theme.spacing.xs,
+                              fontWeight: theme.fontWeight.medium,
+                              color: theme.text.secondary
+                            }}>
                               URL
                             </label>
                             <input
@@ -996,12 +1206,12 @@ const StylePanel: React.FC<StylePanelProps> = ({
                               placeholder="https://example.com"
                               style={{
                                 width: '100%',
-                                padding: '6px 8px',
-                                border: '1px solid #ccc',
-                                borderRadius: '4px',
-                                background: '#fff',
-                                color: '#333',
-                                fontSize: '12px',
+                                padding: `${theme.spacing.sm} ${theme.spacing.md}`,
+                                border: `1px solid ${theme.border.default}`,
+                                borderRadius: theme.radius.sm,
+                                background: theme.background.elevated,
+                                color: theme.text.primary,
+                                fontSize: theme.fontSize.sm,
                                 fontFamily: 'monospace',
                                 boxSizing: 'border-box'
                               }}
@@ -1011,8 +1221,14 @@ const StylePanel: React.FC<StylePanelProps> = ({
 
                         {/* Custom Command */}
                         {nodeType === 'custom' && (
-                          <div style={{ marginBottom: '12px' }}>
-                            <label style={{ display: 'block', fontSize: '11px', marginBottom: '4px', fontWeight: '500', color: '#666' }}>
+                          <div style={{ marginBottom: theme.spacing.lg }}>
+                            <label style={{
+                              display: 'block',
+                              fontSize: theme.fontSize.sm,
+                              marginBottom: theme.spacing.xs,
+                              fontWeight: theme.fontWeight.medium,
+                              color: theme.text.secondary
+                            }}>
                               Custom Command
                             </label>
                             <input
@@ -1023,12 +1239,12 @@ const StylePanel: React.FC<StylePanelProps> = ({
                               title="Enter command to execute in CMD (e.g., ping 8.8.8.8)"
                               style={{
                                 width: '100%',
-                                padding: '6px 8px',
-                                border: '1px solid #ccc',
-                                borderRadius: '4px',
-                                background: '#fff',
-                                color: '#333',
-                                fontSize: '11px',
+                                padding: `${theme.spacing.sm} ${theme.spacing.md}`,
+                                border: `1px solid ${theme.border.default}`,
+                                borderRadius: theme.radius.sm,
+                                background: theme.background.elevated,
+                                color: theme.text.primary,
+                                fontSize: theme.fontSize.sm,
                                 fontFamily: 'monospace',
                                 boxSizing: 'border-box'
                               }}
@@ -1037,26 +1253,26 @@ const StylePanel: React.FC<StylePanelProps> = ({
                         )}
 
                         {/* Action Buttons */}
-                        <div style={{ display: 'flex', gap: '8px', marginTop: '16px' }}>
+                        <div style={{ display: 'flex', gap: theme.spacing.md, marginTop: theme.spacing.xl }}>
                           <button
                             onClick={handleSaveConnection}
                             style={{
                               flex: 1,
-                              padding: '8px',
-                              border: '1px solid #28a745',
-                              borderRadius: '4px',
-                              background: '#28a745',
-                              color: '#fff',
+                              padding: theme.spacing.md,
+                              border: `1px solid ${theme.accent.green}`,
+                              borderRadius: theme.radius.sm,
+                              background: theme.accent.green,
+                              color: theme.text.inverted,
                               cursor: 'pointer',
-                              fontSize: '11px',
-                              fontWeight: '600',
-                              transition: 'all 0.2s'
+                              fontSize: theme.fontSize.sm,
+                              fontWeight: theme.fontWeight.semibold,
+                              transition: theme.transition.normal
                             }}
                             onMouseEnter={(e) => {
-                              e.currentTarget.style.background = '#218838';
+                              e.currentTarget.style.background = theme.accent.greenDark;
                             }}
                             onMouseLeave={(e) => {
-                              e.currentTarget.style.background = '#28a745';
+                              e.currentTarget.style.background = theme.accent.green;
                             }}
                           >
                             {editingConnectionId ? 'Update' : 'Save'}
@@ -1065,21 +1281,21 @@ const StylePanel: React.FC<StylePanelProps> = ({
                             onClick={handleCancelConnectionForm}
                             style={{
                               flex: 1,
-                              padding: '8px',
-                              border: '1px solid #6c757d',
-                              borderRadius: '4px',
-                              background: '#6c757d',
-                              color: '#fff',
+                              padding: theme.spacing.md,
+                              border: `1px solid ${theme.border.default}`,
+                              borderRadius: theme.radius.sm,
+                              background: theme.background.elevated,
+                              color: theme.text.primary,
                               cursor: 'pointer',
-                              fontSize: '11px',
-                              fontWeight: '600',
-                              transition: 'all 0.2s'
+                              fontSize: theme.fontSize.sm,
+                              fontWeight: theme.fontWeight.semibold,
+                              transition: theme.transition.normal
                             }}
                             onMouseEnter={(e) => {
-                              e.currentTarget.style.background = '#5a6268';
+                              e.currentTarget.style.background = theme.background.hover;
                             }}
                             onMouseLeave={(e) => {
-                              e.currentTarget.style.background = '#6c757d';
+                              e.currentTarget.style.background = theme.background.elevated;
                             }}
                           >
                             Cancel
@@ -1094,45 +1310,45 @@ const StylePanel: React.FC<StylePanelProps> = ({
                     onClick={handleSaveAllChanges}
                     style={{
                       width: '100%',
-                      padding: '12px',
-                      border: hasUnsavedChanges ? '2px solid #28a745' : '1px solid #ccc',
-                      borderRadius: '4px',
-                      background: hasUnsavedChanges ? '#28a745' : '#fff',
-                      color: hasUnsavedChanges ? '#fff' : '#666',
+                      padding: theme.spacing.lg,
+                      border: hasUnsavedChanges ? `2px solid ${theme.accent.green}` : `1px solid ${theme.border.default}`,
+                      borderRadius: theme.radius.sm,
+                      background: hasUnsavedChanges ? theme.accent.green : theme.background.tertiary,
+                      color: hasUnsavedChanges ? theme.text.inverted : theme.text.secondary,
                       cursor: 'pointer',
-                      fontSize: '13px',
-                      fontWeight: '600',
-                      transition: 'all 0.2s',
+                      fontSize: theme.fontSize.md,
+                      fontWeight: theme.fontWeight.semibold,
+                      transition: theme.transition.normal,
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
-                      gap: '8px',
-                      marginTop: '16px'
+                      gap: theme.spacing.md,
+                      marginTop: theme.spacing.xl
                     }}
                     onMouseEnter={(e) => {
                       if (hasUnsavedChanges) {
-                        e.currentTarget.style.background = '#218838';
+                        e.currentTarget.style.background = theme.accent.greenDark;
                       } else {
-                        e.currentTarget.style.background = '#f5f5f5';
+                        e.currentTarget.style.background = theme.background.hover;
                       }
                     }}
                     onMouseLeave={(e) => {
                       if (hasUnsavedChanges) {
-                        e.currentTarget.style.background = '#28a745';
+                        e.currentTarget.style.background = theme.accent.green;
                       } else {
-                        e.currentTarget.style.background = '#fff';
+                        e.currentTarget.style.background = theme.background.tertiary;
                       }
                     }}
                   >
-                    <span style={{ fontSize: '16px' }}>💾</span>
+                    <span style={{ fontSize: theme.fontSize.lg }}>💾</span>
                     <span>Save All Changes</span>
                     {hasUnsavedChanges && (
                       <span style={{
-                        fontSize: '10px',
-                        padding: '2px 6px',
+                        fontSize: theme.fontSize.xs,
+                        padding: `2px ${theme.spacing.sm}`,
                         background: 'rgba(255, 255, 255, 0.3)',
-                        borderRadius: '10px',
-                        fontWeight: '500'
+                        borderRadius: theme.radius.full,
+                        fontWeight: theme.fontWeight.medium
                       }}>
                         •
                       </span>
@@ -1144,8 +1360,14 @@ const StylePanel: React.FC<StylePanelProps> = ({
               {/* STYLE TAB */}
               {activeTab === 'style' && (
                 <>
-                  <div style={{ marginBottom: '12px' }}>
-                    <label style={{ display: 'block', fontSize: '11px', marginBottom: '4px', fontWeight: '500', color: '#666' }}>
+                  <div style={{ marginBottom: theme.spacing.lg }}>
+                    <label style={{
+                      display: 'block',
+                      fontSize: theme.fontSize.sm,
+                      marginBottom: theme.spacing.xs,
+                      fontWeight: theme.fontWeight.medium,
+                      color: theme.text.secondary
+                    }}>
                       Label
                     </label>
                     <input
@@ -1155,12 +1377,12 @@ const StylePanel: React.FC<StylePanelProps> = ({
                       onBlur={handleNodeUpdate}
                       style={{
                         width: '100%',
-                        padding: '6px 8px',
-                        border: '1px solid #ccc',
-                        borderRadius: '4px',
-                        background: '#fff',
-                        color: '#333',
-                        fontSize: '12px',
+                        padding: `${theme.spacing.sm} ${theme.spacing.md}`,
+                        border: `1px solid ${theme.border.default}`,
+                        borderRadius: theme.radius.sm,
+                        background: theme.background.tertiary,
+                        color: theme.text.primary,
+                        fontSize: theme.fontSize.sm,
                         boxSizing: 'border-box'
                       }}
                     />
@@ -1168,8 +1390,14 @@ const StylePanel: React.FC<StylePanelProps> = ({
 
                   {/* Operating System - only for enhanced nodes */}
                   {selectedNode.type !== 'group' && (
-                    <div style={{ marginBottom: '12px' }}>
-                      <label style={{ display: 'block', fontSize: '11px', marginBottom: '4px', fontWeight: '500', color: '#666' }}>
+                    <div style={{ marginBottom: theme.spacing.lg }}>
+                      <label style={{
+                        display: 'block',
+                        fontSize: theme.fontSize.sm,
+                        marginBottom: theme.spacing.xs,
+                        fontWeight: theme.fontWeight.medium,
+                        color: theme.text.secondary
+                      }}>
                         Operating System
                       </label>
                       <input
@@ -1177,15 +1405,14 @@ const StylePanel: React.FC<StylePanelProps> = ({
                         value={nodeOS}
                         onChange={(e) => setNodeOS(e.target.value)}
                         onBlur={handleNodeUpdate}
-                        
                         style={{
                           width: '100%',
-                          padding: '6px 8px',
-                          border: '1px solid #ccc',
-                          borderRadius: '4px',
-                          background: '#fff',
-                          color: '#333',
-                          fontSize: '12px',
+                          padding: `${theme.spacing.sm} ${theme.spacing.md}`,
+                          border: `1px solid ${theme.border.default}`,
+                          borderRadius: theme.radius.sm,
+                          background: theme.background.tertiary,
+                          color: theme.text.primary,
+                          fontSize: theme.fontSize.sm,
                           boxSizing: 'border-box'
                         }}
                       />
@@ -1196,15 +1423,21 @@ const StylePanel: React.FC<StylePanelProps> = ({
                   {selectedNode.type === 'group' ? (
                     <>
                       {/* Group nodes: Border and Background colors */}
-                      <div style={{ marginBottom: '12px' }}>
-                        <label style={{ display: 'block', fontSize: '11px', marginBottom: '6px', fontWeight: '500', color: '#666' }}>
+                      <div style={{ marginBottom: theme.spacing.lg }}>
+                        <label style={{
+                          display: 'block',
+                          fontSize: theme.fontSize.sm,
+                          marginBottom: theme.spacing.sm,
+                          fontWeight: theme.fontWeight.medium,
+                          color: theme.text.secondary
+                        }}>
                           Border Color
                         </label>
                         <div style={{
                           display: 'grid',
                           gridTemplateColumns: 'repeat(4, 1fr)',
-                          gap: '6px',
-                          marginBottom: '6px'
+                          gap: theme.spacing.sm,
+                          marginBottom: theme.spacing.sm
                         }}>
                           {presetColors.map((color) => (
                             <button
@@ -1216,11 +1449,11 @@ const StylePanel: React.FC<StylePanelProps> = ({
                               style={{
                                 width: '100%',
                                 height: '32px',
-                                border: nodeColor === color.value ? '2px solid #333' : '1px solid #ccc',
-                                borderRadius: '4px',
+                                border: nodeColor === color.value ? `2px solid ${theme.text.primary}` : `1px solid ${theme.border.default}`,
+                                borderRadius: theme.radius.sm,
                                 background: color.value,
                                 cursor: 'pointer',
-                                transition: 'all 0.2s'
+                                transition: theme.transition.normal
                               }}
                               title={color.name}
                             />
@@ -1234,16 +1467,22 @@ const StylePanel: React.FC<StylePanelProps> = ({
                           style={{
                             width: '100%',
                             height: '32px',
-                            border: '1px solid #ccc',
-                            borderRadius: '4px',
+                            border: `1px solid ${theme.border.default}`,
+                            borderRadius: theme.radius.sm,
                             cursor: 'pointer',
-                            background: '#fff'
+                            background: theme.background.tertiary
                           }}
                         />
                       </div>
 
-                      <div style={{ marginBottom: '12px' }}>
-                        <label style={{ display: 'block', fontSize: '11px', marginBottom: '6px', fontWeight: '500', color: '#666' }}>
+                      <div style={{ marginBottom: theme.spacing.lg }}>
+                        <label style={{
+                          display: 'block',
+                          fontSize: theme.fontSize.sm,
+                          marginBottom: theme.spacing.sm,
+                          fontWeight: theme.fontWeight.medium,
+                          color: theme.text.secondary
+                        }}>
                           Background Color
                         </label>
                         <input
@@ -1251,29 +1490,84 @@ const StylePanel: React.FC<StylePanelProps> = ({
                           value={nodeBgColor}
                           onChange={(e) => setNodeBgColor(e.target.value)}
                           onBlur={handleNodeUpdate}
+                          disabled={nodeBgTransparent}
                           style={{
                             width: '100%',
                             height: '32px',
-                            border: '1px solid #ccc',
-                            borderRadius: '4px',
-                            cursor: 'pointer',
-                            background: '#fff'
+                            border: `1px solid ${theme.border.default}`,
+                            borderRadius: theme.radius.sm,
+                            cursor: nodeBgTransparent ? 'not-allowed' : 'pointer',
+                            background: theme.background.tertiary,
+                            opacity: nodeBgTransparent ? 0.5 : 1
                           }}
                         />
+                        <label style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: theme.spacing.sm,
+                          marginTop: theme.spacing.md,
+                          fontSize: theme.fontSize.sm,
+                          color: theme.text.secondary,
+                          cursor: 'pointer'
+                        }}>
+                          <input
+                            type="checkbox"
+                            checked={nodeBgTransparent}
+                            onChange={(e) => {
+                              setNodeBgTransparent(e.target.checked);
+                              setTimeout(handleNodeUpdate, 0);
+                            }}
+                            style={{ width: '16px', height: '16px', cursor: 'pointer' }}
+                          />
+                          Transparent Background
+                        </label>
+
+                        {/* Opacity Slider */}
+                        <div style={{ marginTop: theme.spacing.md }}>
+                          <label style={{
+                            display: 'block',
+                            fontSize: theme.fontSize.sm,
+                            marginBottom: theme.spacing.xs,
+                            fontWeight: theme.fontWeight.medium,
+                            color: nodeBgTransparent ? theme.text.tertiary : theme.text.secondary
+                          }}>
+                            Opacity: {nodeBgOpacity}%
+                          </label>
+                          <input
+                            type="range"
+                            min="0"
+                            max="100"
+                            value={nodeBgOpacity}
+                            onChange={(e) => setNodeBgOpacity(parseInt(e.target.value))}
+                            onMouseUp={handleNodeUpdate}
+                            disabled={nodeBgTransparent}
+                            style={{
+                              width: '100%',
+                              cursor: nodeBgTransparent ? 'not-allowed' : 'pointer',
+                              opacity: nodeBgTransparent ? 0.5 : 1
+                            }}
+                          />
+                        </div>
                       </div>
                     </>
                   ) : (
                     <>
                       {/* Enhanced nodes: Single color picker */}
-                      <div style={{ marginBottom: '12px' }}>
-                        <label style={{ display: 'block', fontSize: '11px', marginBottom: '6px', fontWeight: '500', color: '#666' }}>
+                      <div style={{ marginBottom: theme.spacing.lg }}>
+                        <label style={{
+                          display: 'block',
+                          fontSize: theme.fontSize.sm,
+                          marginBottom: theme.spacing.sm,
+                          fontWeight: theme.fontWeight.medium,
+                          color: theme.text.secondary
+                        }}>
                           Color
                         </label>
                         <div style={{
                           display: 'grid',
                           gridTemplateColumns: 'repeat(4, 1fr)',
-                          gap: '6px',
-                          marginBottom: '6px'
+                          gap: theme.spacing.sm,
+                          marginBottom: theme.spacing.sm
                         }}>
                           {presetColors.map((color) => (
                             <button
@@ -1285,11 +1579,11 @@ const StylePanel: React.FC<StylePanelProps> = ({
                               style={{
                                 width: '100%',
                                 height: '32px',
-                                border: nodeColor === color.value ? '2px solid #333' : '1px solid #ccc',
-                                borderRadius: '4px',
+                                border: nodeColor === color.value ? `2px solid ${theme.text.primary}` : `1px solid ${theme.border.default}`,
+                                borderRadius: theme.radius.sm,
                                 background: color.value,
                                 cursor: 'pointer',
-                                transition: 'all 0.2s'
+                                transition: theme.transition.normal
                               }}
                               title={color.name}
                             />
@@ -1303,18 +1597,24 @@ const StylePanel: React.FC<StylePanelProps> = ({
                           style={{
                             width: '100%',
                             height: '32px',
-                            border: '1px solid #ccc',
-                            borderRadius: '4px',
+                            border: `1px solid ${theme.border.default}`,
+                            borderRadius: theme.radius.sm,
                             cursor: 'pointer',
-                            background: '#fff'
+                            background: theme.background.tertiary
                           }}
                         />
                       </div>
                     </>
                   )}
 
-                  <div style={{ marginBottom: '12px' }}>
-                    <label style={{ display: 'block', fontSize: '11px', marginBottom: '4px', fontWeight: '500', color: '#666' }}>
+                  <div style={{ marginBottom: theme.spacing.lg }}>
+                    <label style={{
+                      display: 'block',
+                      fontSize: theme.fontSize.sm,
+                      marginBottom: theme.spacing.xs,
+                      fontWeight: theme.fontWeight.medium,
+                      color: theme.text.secondary
+                    }}>
                       Description
                     </label>
                     <textarea
@@ -1324,12 +1624,12 @@ const StylePanel: React.FC<StylePanelProps> = ({
                       rows={3}
                       style={{
                         width: '100%',
-                        padding: '6px 8px',
-                        border: '1px solid #ccc',
-                        borderRadius: '4px',
-                        background: '#fff',
-                        color: '#333',
-                        fontSize: '11px',
+                        padding: `${theme.spacing.sm} ${theme.spacing.md}`,
+                        border: `1px solid ${theme.border.default}`,
+                        borderRadius: theme.radius.sm,
+                        background: theme.background.tertiary,
+                        color: theme.text.primary,
+                        fontSize: theme.fontSize.sm,
                         resize: 'vertical',
                         boxSizing: 'border-box',
                         fontFamily: 'inherit'
@@ -1339,30 +1639,40 @@ const StylePanel: React.FC<StylePanelProps> = ({
 
                   {/* Layer Order Controls - Only in Style Tab */}
                   {onMoveToFront && onMoveToBack && (
-                    <div style={{ marginTop: '16px', paddingTop: '16px', borderTop: '1px solid #d0d0d0' }}>
-                      <label style={{ display: 'block', fontSize: '11px', marginBottom: '8px', fontWeight: '500', color: '#666' }}>
+                    <div style={{
+                      marginTop: theme.spacing.xl,
+                      paddingTop: theme.spacing.xl,
+                      borderTop: `1px solid ${theme.border.default}`
+                    }}>
+                      <label style={{
+                        display: 'block',
+                        fontSize: theme.fontSize.sm,
+                        marginBottom: theme.spacing.md,
+                        fontWeight: theme.fontWeight.medium,
+                        color: theme.text.secondary
+                      }}>
                         Layer Order
                       </label>
-                      <div style={{ display: 'flex', gap: '8px' }}>
+                      <div style={{ display: 'flex', gap: theme.spacing.md }}>
                         <button
                           onClick={() => onMoveToFront(selectedNode.id)}
                           style={{
                             flex: 1,
-                            padding: '8px',
-                            border: '1px solid #ccc',
-                            borderRadius: '4px',
-                            background: '#fff',
-                            color: '#333',
+                            padding: theme.spacing.md,
+                            border: `1px solid ${theme.border.default}`,
+                            borderRadius: theme.radius.sm,
+                            background: theme.background.tertiary,
+                            color: theme.text.primary,
                             cursor: 'pointer',
-                            fontSize: '11px',
-                            fontWeight: '500',
-                            transition: 'all 0.2s'
+                            fontSize: theme.fontSize.sm,
+                            fontWeight: theme.fontWeight.medium,
+                            transition: theme.transition.normal
                           }}
                           onMouseEnter={(e) => {
-                            e.currentTarget.style.background = '#f5f5f5';
+                            e.currentTarget.style.background = theme.background.hover;
                           }}
                           onMouseLeave={(e) => {
-                            e.currentTarget.style.background = '#fff';
+                            e.currentTarget.style.background = theme.background.tertiary;
                           }}
                         >
                           Bring to Front
@@ -1371,21 +1681,21 @@ const StylePanel: React.FC<StylePanelProps> = ({
                           onClick={() => onMoveToBack(selectedNode.id)}
                           style={{
                             flex: 1,
-                            padding: '8px',
-                            border: '1px solid #ccc',
-                            borderRadius: '4px',
-                            background: '#fff',
-                            color: '#333',
+                            padding: theme.spacing.md,
+                            border: `1px solid ${theme.border.default}`,
+                            borderRadius: theme.radius.sm,
+                            background: theme.background.tertiary,
+                            color: theme.text.primary,
                             cursor: 'pointer',
-                            fontSize: '11px',
-                            fontWeight: '500',
-                            transition: 'all 0.2s'
+                            fontSize: theme.fontSize.sm,
+                            fontWeight: theme.fontWeight.medium,
+                            transition: theme.transition.normal
                           }}
                           onMouseEnter={(e) => {
-                            e.currentTarget.style.background = '#f5f5f5';
+                            e.currentTarget.style.background = theme.background.hover;
                           }}
                           onMouseLeave={(e) => {
-                            e.currentTarget.style.background = '#fff';
+                            e.currentTarget.style.background = theme.background.tertiary;
                           }}
                         >
                           Send to Back
@@ -1403,9 +1713,15 @@ const StylePanel: React.FC<StylePanelProps> = ({
 
       {/* Edge Styling */}
       {selectedEdge && (
-        <div style={{ padding: '16px' }}>
-          <div style={{ marginBottom: '12px' }}>
-            <label style={{ display: 'block', fontSize: '11px', marginBottom: '4px', fontWeight: '500', color: '#666' }}>
+        <div style={{ padding: theme.spacing.xl }}>
+          <div style={{ marginBottom: theme.spacing.lg }}>
+            <label style={{
+              display: 'block',
+              fontSize: theme.fontSize.sm,
+              marginBottom: theme.spacing.xs,
+              fontWeight: theme.fontWeight.medium,
+              color: theme.text.secondary
+            }}>
               Label
             </label>
             <input
@@ -1413,25 +1729,30 @@ const StylePanel: React.FC<StylePanelProps> = ({
               value={edgeLabel}
               onChange={(e) => setEdgeLabel(e.target.value)}
               onBlur={handleEdgeUpdate}
-              
               style={{
                 width: '100%',
-                padding: '6px 8px',
-                border: '1px solid #ccc',
-                borderRadius: '4px',
-                background: '#fff',
-                color: '#333',
-                fontSize: '12px',
+                padding: `${theme.spacing.sm} ${theme.spacing.md}`,
+                border: `1px solid ${theme.border.default}`,
+                borderRadius: theme.radius.sm,
+                background: theme.background.tertiary,
+                color: theme.text.primary,
+                fontSize: theme.fontSize.sm,
                 boxSizing: 'border-box'
               }}
             />
           </div>
 
-          <div style={{ marginBottom: '12px' }}>
-            <label style={{ display: 'block', fontSize: '11px', marginBottom: '4px', fontWeight: '500', color: '#666' }}>
+          <div style={{ marginBottom: theme.spacing.lg }}>
+            <label style={{
+              display: 'block',
+              fontSize: theme.fontSize.sm,
+              marginBottom: theme.spacing.xs,
+              fontWeight: theme.fontWeight.medium,
+              color: theme.text.secondary
+            }}>
               Line Style
             </label>
-            <div style={{ display: 'flex', gap: '6px' }}>
+            <div style={{ display: 'flex', gap: theme.spacing.sm }}>
               {(['solid', 'dashed', 'dotted'] as const).map((style) => (
                 <button
                   key={style}
@@ -1441,14 +1762,14 @@ const StylePanel: React.FC<StylePanelProps> = ({
                   }}
                   style={{
                     flex: 1,
-                    padding: '6px',
-                    border: edgeStyle === style ? '1px solid #333' : '1px solid #ccc',
-                    borderRadius: '4px',
-                    background: edgeStyle === style ? '#bbb' : '#fff',
-                    color: '#333',
+                    padding: theme.spacing.sm,
+                    border: edgeStyle === style ? `1px solid ${theme.text.primary}` : `1px solid ${theme.border.default}`,
+                    borderRadius: theme.radius.sm,
+                    background: edgeStyle === style ? theme.background.active : theme.background.tertiary,
+                    color: theme.text.primary,
                     cursor: 'pointer',
-                    fontSize: '10px',
-                    fontWeight: '500',
+                    fontSize: theme.fontSize.xs,
+                    fontWeight: theme.fontWeight.medium,
                     textTransform: 'capitalize'
                   }}
                 >
@@ -1458,11 +1779,17 @@ const StylePanel: React.FC<StylePanelProps> = ({
             </div>
           </div>
 
-          <div style={{ marginBottom: '12px' }}>
-            <label style={{ display: 'block', fontSize: '11px', marginBottom: '4px', fontWeight: '500', color: '#666' }}>
+          <div style={{ marginBottom: theme.spacing.lg }}>
+            <label style={{
+              display: 'block',
+              fontSize: theme.fontSize.sm,
+              marginBottom: theme.spacing.xs,
+              fontWeight: theme.fontWeight.medium,
+              color: theme.text.secondary
+            }}>
               Routing
             </label>
-            <div style={{ display: 'flex', gap: '6px' }}>
+            <div style={{ display: 'flex', gap: theme.spacing.sm }}>
               {(['bezier', 'smoothstep', 'straight'] as const).map((routing) => (
                 <button
                   key={routing}
@@ -1472,14 +1799,14 @@ const StylePanel: React.FC<StylePanelProps> = ({
                   }}
                   style={{
                     flex: 1,
-                    padding: '6px',
-                    border: edgeRouting === routing ? '1px solid #333' : '1px solid #ccc',
-                    borderRadius: '4px',
-                    background: edgeRouting === routing ? '#bbb' : '#fff',
-                    color: '#333',
+                    padding: theme.spacing.sm,
+                    border: edgeRouting === routing ? `1px solid ${theme.text.primary}` : `1px solid ${theme.border.default}`,
+                    borderRadius: theme.radius.sm,
+                    background: edgeRouting === routing ? theme.background.active : theme.background.tertiary,
+                    color: theme.text.primary,
                     cursor: 'pointer',
-                    fontSize: '9px',
-                    fontWeight: '500',
+                    fontSize: theme.fontSize.xs,
+                    fontWeight: theme.fontWeight.medium,
                     textTransform: 'capitalize'
                   }}
                 >
@@ -1489,15 +1816,15 @@ const StylePanel: React.FC<StylePanelProps> = ({
             </div>
           </div>
 
-          <div style={{ marginBottom: '12px' }}>
+          <div style={{ marginBottom: theme.spacing.lg }}>
             <label style={{
               display: 'flex',
               alignItems: 'center',
-              gap: '8px',
+              gap: theme.spacing.md,
               cursor: 'pointer',
-              fontSize: '11px',
-              fontWeight: '500',
-              color: '#666'
+              fontSize: theme.fontSize.sm,
+              fontWeight: theme.fontWeight.medium,
+              color: theme.text.secondary
             }}>
               <input
                 type="checkbox"
@@ -1512,8 +1839,14 @@ const StylePanel: React.FC<StylePanelProps> = ({
             </label>
           </div>
 
-          <div style={{ marginBottom: '12px' }}>
-            <label style={{ display: 'block', fontSize: '11px', marginBottom: '4px', fontWeight: '500', color: '#666' }}>
+          <div style={{ marginBottom: theme.spacing.lg }}>
+            <label style={{
+              display: 'block',
+              fontSize: theme.fontSize.sm,
+              marginBottom: theme.spacing.xs,
+              fontWeight: theme.fontWeight.medium,
+              color: theme.text.secondary
+            }}>
               Color
             </label>
             <input
@@ -1524,10 +1857,10 @@ const StylePanel: React.FC<StylePanelProps> = ({
               style={{
                 width: '100%',
                 height: '32px',
-                border: '1px solid #ccc',
-                borderRadius: '4px',
+                border: `1px solid ${theme.border.default}`,
+                borderRadius: theme.radius.sm,
                 cursor: 'pointer',
-                background: '#fff'
+                background: theme.background.tertiary
               }}
             />
           </div>
@@ -1537,12 +1870,12 @@ const StylePanel: React.FC<StylePanelProps> = ({
 
       {!selectedNode && !selectedEdge && (
         <div style={{
-          padding: '40px 20px',
+          padding: `${theme.spacing.xxxl} ${theme.spacing.xxl}`,
           textAlign: 'center',
-          color: '#999'
+          color: theme.text.tertiary
         }}>
-          <div style={{ fontSize: '36px', marginBottom: '12px' }}>✏️</div>
-          <p style={{ fontSize: '12px', margin: 0 }}>
+          <div style={{ fontSize: theme.fontSize.xxxl, marginBottom: theme.spacing.lg }}>✏️</div>
+          <p style={{ fontSize: theme.fontSize.sm, margin: 0 }}>
             Select a node or edge to customize
           </p>
         </div>
@@ -1558,25 +1891,26 @@ const StylePanel: React.FC<StylePanelProps> = ({
           transform: 'translateY(-50%)',
           width: '30px',
           height: '60px',
-          border: 'none',
-          borderTopLeftRadius: '6px',
-          borderBottomLeftRadius: '6px',
-          background: '#e8e8e8',
-          color: '#333',
+          border: `1px solid ${theme.border.default}`,
+          borderRight: 'none',
+          borderTopLeftRadius: theme.radius.md,
+          borderBottomLeftRadius: theme.radius.md,
+          background: theme.background.secondary,
+          color: theme.text.primary,
           cursor: 'pointer',
-          fontSize: '16px',
-          boxShadow: '-2px 0 8px rgba(0,0,0,0.15)',
-          transition: 'right 0.3s ease',
+          fontSize: theme.fontSize.lg,
+          boxShadow: theme.shadow.md,
+          transition: theme.transition.slow,
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
           zIndex: 999
         }}
         onMouseEnter={(e) => {
-          e.currentTarget.style.background = '#d0d0d0';
+          e.currentTarget.style.background = theme.background.hover;
         }}
         onMouseLeave={(e) => {
-          e.currentTarget.style.background = '#e8e8e8';
+          e.currentTarget.style.background = theme.background.secondary;
         }}
       >
         {isOpen ? '▶' : '◀'}
