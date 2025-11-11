@@ -300,7 +300,7 @@ const App: React.FC = () => {
         data: {
           label: '',
           style: 'solid',
-          color: '#000000',
+          color: '#ffffff',
           animated: false,
           routingType: 'bezier'
         } as CustomEdgeData

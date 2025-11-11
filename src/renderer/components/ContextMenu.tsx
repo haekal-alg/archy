@@ -94,7 +94,7 @@ const ContextMenu: React.FC<ContextMenuProps> = ({
                   onMouseLeave={() => setHoveredIndex(null)}
                   style={{
                     width: '100%',
-                    padding: '6px 12px',
+                    padding: '8px 16px',
                     border: 'none',
                     background: isHovered ? 'rgba(255, 255, 255, 0.08)' : 'transparent',
                     color: theme.text.primary,
@@ -117,7 +117,7 @@ const ContextMenu: React.FC<ContextMenuProps> = ({
           <div
             style={{
               width: '100%',
-              padding: '6px 12px',
+              padding: '8px 16px',
               color: theme.text.tertiary,
               fontSize: theme.fontSize.sm,
               fontStyle: 'italic'
@@ -128,7 +128,7 @@ const ContextMenu: React.FC<ContextMenuProps> = ({
         )}
 
         {/* Separator between connection settings and asset controls */}
-        {showConnect && connections.length > 0 && (
+        {showConnect && (
           <div style={{
             borderTop: '1px solid #808080',
             margin: '4px 0'
@@ -150,7 +150,7 @@ const ContextMenu: React.FC<ContextMenuProps> = ({
               onMouseLeave={() => setHoveredIndex(null)}
               style={{
                 width: '100%',
-                padding: '6px 12px',
+                padding: '8px 16px',
                 border: 'none',
                 background: isHovered ? 'rgba(255, 255, 255, 0.08)' : 'transparent',
                 color: theme.text.primary,
@@ -181,7 +181,7 @@ const ContextMenu: React.FC<ContextMenuProps> = ({
               onMouseLeave={() => setHoveredIndex(null)}
               style={{
                 width: '100%',
-                padding: '6px 12px',
+                padding: '8px 16px',
                 border: 'none',
                 background: isHovered ? 'rgba(255, 92, 92, 0.15)' : 'transparent',
                 color: '#ff5c5c',
