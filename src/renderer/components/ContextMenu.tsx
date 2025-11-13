@@ -65,12 +65,15 @@ const ContextMenu: React.FC<ContextMenuProps> = ({
           position: 'fixed',
           top: y,
           left: x,
-          background: theme.background.canvas,
-          border: '1px solid #808080',
-          borderRadius: '4px',
-          boxShadow: 'none',
+          background: 'rgba(50, 50, 55, 0.65)',
+          backdropFilter: 'blur(60px) saturate(200%) brightness(1.1)',
+          WebkitBackdropFilter: 'blur(60px) saturate(200%) brightness(1.1)',
+          border: '1px solid rgba(255, 255, 255, 0.25)',
+          borderTop: '1px solid rgba(255, 255, 255, 0.35)',
+          borderRadius: '12px',
+          boxShadow: '0 8px 32px rgba(0, 0, 0, 0.5), 0 2px 8px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.1)',
           zIndex: 9999,
-          minWidth: '180px',
+          minWidth: '200px',
           overflow: 'hidden',
           pointerEvents: 'auto'
         }}
@@ -96,12 +99,12 @@ const ContextMenu: React.FC<ContextMenuProps> = ({
                     width: '100%',
                     padding: '8px 16px',
                     border: 'none',
-                    background: isHovered ? 'rgba(255, 255, 255, 0.08)' : 'transparent',
+                    background: isHovered ? 'rgba(255, 255, 255, 0.2)' : 'transparent',
                     color: theme.text.primary,
                     textAlign: 'left',
                     cursor: 'pointer',
                     fontSize: theme.fontSize.sm,
-                    transition: 'background 0.15s ease',
+                    transition: 'background 0.12s ease-out',
                     outline: 'none'
                   }}
                 >
@@ -130,7 +133,7 @@ const ContextMenu: React.FC<ContextMenuProps> = ({
         {/* Separator between connection settings and asset controls */}
         {showConnect && (
           <div style={{
-            borderTop: '1px solid #808080',
+            borderTop: '1px solid rgba(255, 255, 255, 0.15)',
             margin: '4px 0'
           }} />
         )}
@@ -152,12 +155,12 @@ const ContextMenu: React.FC<ContextMenuProps> = ({
                 width: '100%',
                 padding: '8px 16px',
                 border: 'none',
-                background: isHovered ? 'rgba(255, 255, 255, 0.08)' : 'transparent',
+                background: isHovered ? 'rgba(255, 255, 255, 0.2)' : 'transparent',
                 color: theme.text.primary,
                 textAlign: 'left',
                 cursor: 'pointer',
                 fontSize: theme.fontSize.sm,
-                transition: 'background 0.15s ease',
+                transition: 'background 0.12s ease-out',
                 outline: 'none'
               }}
             >
@@ -183,12 +186,12 @@ const ContextMenu: React.FC<ContextMenuProps> = ({
                 width: '100%',
                 padding: '8px 16px',
                 border: 'none',
-                background: isHovered ? 'rgba(255, 92, 92, 0.15)' : 'transparent',
+                background: isHovered ? 'rgba(255, 92, 92, 0.25)' : 'transparent',
                 color: '#ff5c5c',
                 textAlign: 'left',
                 cursor: 'pointer',
                 fontSize: theme.fontSize.sm,
-                transition: 'background 0.15s ease',
+                transition: 'background 0.12s ease-out',
                 outline: 'none'
               }}
             >
