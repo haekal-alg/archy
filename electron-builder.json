@@ -2,15 +2,40 @@
   "appId": "com.archy.app",
   "productName": "Archy",
   "directories": {
-    "output": "release"
+    "output": "release",
+    "buildResources": "build"
   },
   "files": [
     "dist/**/*",
-    "package.json"
+    "package.json",
+    "node_modules/**/*",
+    "!**/*.map",
+    "!**/*.ts",
+    "!**/*.md",
+    "!**/LICENSE*",
+    "!**/README*",
+    "!**/CHANGELOG*",
+    "!**/.github",
+    "!**/test",
+    "!**/tests",
+    "!**/__tests__",
+    "!**/docs",
+    "!**/examples",
+    "!**/*.d.ts"
   ],
+  "asarUnpack": [
+    "node_modules/cpu-features/**/*"
+  ],
+  "npmRebuild": false,
+  "compression": "maximum",
+  "electronLanguages": ["en-US"],
+  "asar": true,
   "win": {
-    "target": ["nsis"],
-    "icon": "assets/icon.ico"
+    "target": [{
+      "target": "portable",
+      "arch": ["x64"]
+    }],
+    "icon": "build/icon.ico"
   },
   "linux": {
     "target": ["AppImage"],

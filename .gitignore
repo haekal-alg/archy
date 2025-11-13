@@ -42,12 +42,13 @@ yarn-debug.log*
 yarn-error.log*
 lerna-debug.log*
 
-# Electron Store (contains credentials - DO NOT COMMIT!)
-*.json
-!package.json
-!package-lock.json
-!tsconfig.json
-!electron-builder.json
+# Electron Store (contains user data and credentials)
+# Uncomment if you don't want to commit saved diagrams
+# *.json
+# !package.json
+# !package-lock.json
+# !tsconfig.json
+# !electron-builder.json
 
 # Temporary files
 tmp/
@@ -59,15 +60,11 @@ temp/
 *.zip
 *.tar.gz
 
-# Windows
+# Platform specific installers
 *.exe
 *.msi
-
-# macOS
 *.dmg
 *.pkg
-
-# Linux
 *.AppImage
 *.deb
 *.rpm
@@ -84,12 +81,11 @@ temp/
 # Optional eslint cache
 .eslintcache
 
-# Production
-/build
-
 # Misc
 .claude/
 nul
-
 architectures/
 improvement.txt
+
+# Keep build folder (contains app icons)
+!build/

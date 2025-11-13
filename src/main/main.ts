@@ -84,9 +84,15 @@ function createMenu() {
 }
 
 function createWindow() {
+  // Determine icon path - __dirname is 'dist' folder, build is at same level as dist
+  const iconPath = process.platform === 'win32'
+    ? path.join(__dirname, '../build/icon.ico')
+    : path.join(__dirname, '../build/icon.png');
+
   mainWindow = new BrowserWindow({
     width: 1400,
     height: 900,
+    icon: iconPath,
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,
