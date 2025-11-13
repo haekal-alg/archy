@@ -39,7 +39,24 @@ const StylePanel: React.FC<StylePanelProps> = ({
     return `rgba(${r}, ${g}, ${b}, ${opacity / 100})`;
   };
 
-  const [activeTab, setActiveTab] = useState<'connection' | 'style'>('style');
+  // Base input style for connection form inputs
+  const connectionInputStyle = {
+    width: '100%',
+    padding: `${theme.spacing.sm} ${theme.spacing.md}`,
+    border: `1px solid ${theme.border.default}`,
+    borderRadius: theme.radius.sm,
+    background: theme.background.elevated,
+    color: theme.text.primary,
+    fontSize: theme.fontSize.sm,
+    boxSizing: 'border-box' as const,
+    pointerEvents: 'auto' as const,
+    userSelect: 'text' as const,
+    WebkitUserSelect: 'text' as const,
+    cursor: 'text' as const,
+    outline: 'none' as const
+  };
+
+  const [activeTab, setActiveTab] = useState<'connection' | 'property'>('connection');
   const [nodeLabel, setNodeLabel] = useState('');
   const [nodeColor, setNodeColor] = useState('#1976d2');
   const [nodeBgColor, setNodeBgColor] = useState('#ffb3ba40');
@@ -77,6 +94,11 @@ const StylePanel: React.FC<StylePanelProps> = ({
 
   useEffect(() => {
     if (selectedNode) {
+      // Set default tab to 'connection' for device/group nodes
+      if (selectedNode.type !== 'text') {
+        setActiveTab('connection');
+      }
+
       const data = selectedNode.data as unknown as EnhancedDeviceData | GroupNodeData | TextNodeData;
       setNodeLabel(data.label || '');
 
@@ -392,6 +414,12 @@ const StylePanel: React.FC<StylePanelProps> = ({
 
   return (
     <div
+      onMouseDown={(e) => {
+        // Stop propagation to ReactFlow only when panel is open
+        if (isOpen) {
+          e.stopPropagation();
+        }
+      }}
       style={{
         position: 'fixed',
         right: isOpen ? '0' : '-320px',
@@ -401,12 +429,13 @@ const StylePanel: React.FC<StylePanelProps> = ({
         background: theme.background.secondary,
         boxShadow: theme.shadow.lg,
         transition: theme.transition.slow,
-        zIndex: theme.zIndex.dropdown,
+        zIndex: 10000,
         display: 'flex',
         flexDirection: 'column',
         color: theme.text.primary,
         overflowY: 'auto',
-        borderLeft: `1px solid ${theme.border.default}`
+        borderLeft: `1px solid ${theme.border.default}`,
+        pointerEvents: isOpen ? 'auto' : 'none'
       }}
     >
       {/* Header */}
@@ -424,7 +453,7 @@ const StylePanel: React.FC<StylePanelProps> = ({
           fontWeight: theme.fontWeight.semibold,
           color: theme.text.primary
         }}>
-          {selectedNode ? 'Node Style' : selectedEdge ? 'Edge Style' : 'Properties'}
+          Properties
         </h3>
       </div>
 
@@ -468,33 +497,33 @@ const StylePanel: React.FC<StylePanelProps> = ({
             Connection
           </button>
           <button
-            onClick={() => setActiveTab('style')}
+            onClick={() => setActiveTab('property')}
             style={{
               flex: 1,
               padding: `${theme.spacing.md} ${theme.spacing.xl}`,
               border: 'none',
-              background: activeTab === 'style' ? theme.background.secondary : 'transparent',
-              color: activeTab === 'style' ? theme.accent.blue : theme.text.secondary,
+              background: activeTab === 'property' ? theme.background.secondary : 'transparent',
+              color: activeTab === 'property' ? theme.accent.blue : theme.text.secondary,
               cursor: 'pointer',
               fontSize: theme.fontSize.sm,
-              fontWeight: activeTab === 'style' ? theme.fontWeight.semibold : theme.fontWeight.medium,
-              borderBottom: activeTab === 'style' ? `3px solid ${theme.accent.blue}` : '3px solid transparent',
+              fontWeight: activeTab === 'property' ? theme.fontWeight.semibold : theme.fontWeight.medium,
+              borderBottom: activeTab === 'property' ? `3px solid ${theme.accent.blue}` : '3px solid transparent',
               transition: theme.transition.normal,
               textTransform: 'uppercase',
               letterSpacing: '0.5px'
             }}
             onMouseEnter={(e) => {
-              if (activeTab !== 'style') {
+              if (activeTab !== 'property') {
                 e.currentTarget.style.background = theme.background.hover;
               }
             }}
             onMouseLeave={(e) => {
-              if (activeTab !== 'style') {
+              if (activeTab !== 'property') {
                 e.currentTarget.style.background = 'transparent';
               }
             }}
           >
-            Style
+            Property
           </button>
         </div>
       )}
@@ -930,13 +959,18 @@ const StylePanel: React.FC<StylePanelProps> = ({
                   {/* Show connection form when adding/editing */}
                   {showConnectionForm && (
                     <>
-                      <div style={{
-                        marginBottom: theme.spacing.xl,
-                        padding: theme.spacing.lg,
-                        background: theme.background.tertiary,
-                        border: `1px solid ${theme.border.default}`,
-                        borderRadius: theme.radius.sm
-                      }}>
+                      <div
+                        style={{
+                          marginBottom: theme.spacing.xl,
+                          padding: theme.spacing.lg,
+                          background: theme.background.tertiary,
+                          border: `1px solid ${theme.border.default}`,
+                          borderRadius: theme.radius.sm,
+                          pointerEvents: 'auto',
+                          position: 'relative',
+                          zIndex: 100
+                        }}
+                      >
                         <div style={{
                           fontSize: theme.fontSize.sm,
                           fontWeight: theme.fontWeight.semibold,
@@ -964,6 +998,9 @@ const StylePanel: React.FC<StylePanelProps> = ({
                                 setNodeCustomCommand('');
                               }
                             }}
+                            onMouseDown={(e) => e.stopPropagation()}
+                            onFocus={(e) => e.stopPropagation()}
+                            tabIndex={0}
                             style={{
                               width: '100%',
                               padding: `${theme.spacing.sm} ${theme.spacing.md}`,
@@ -973,7 +1010,8 @@ const StylePanel: React.FC<StylePanelProps> = ({
                               color: theme.text.primary,
                               fontSize: theme.fontSize.sm,
                               boxSizing: 'border-box',
-                              cursor: 'pointer'
+                              cursor: 'pointer',
+                              pointerEvents: 'auto'
                             }}
                           >
                             <option value="rdp">RDP</option>
@@ -1000,17 +1038,17 @@ const StylePanel: React.FC<StylePanelProps> = ({
                                 type="text"
                                 value={nodeHost}
                                 onChange={(e) => setNodeHost(e.target.value)}
+                                onMouseDown={(e) => {
+                                  e.stopPropagation();
+                                  e.currentTarget.focus();
+                                }}
+                                onFocus={(e) => e.stopPropagation()}
                                 placeholder="192.168.1.1"
+                                autoComplete="off"
+                                tabIndex={0}
                                 style={{
-                                  width: '100%',
-                                  padding: `${theme.spacing.sm} ${theme.spacing.md}`,
-                                  border: `1px solid ${theme.border.default}`,
-                                  borderRadius: theme.radius.sm,
-                                  background: theme.background.elevated,
-                                  color: theme.text.primary,
-                                  fontSize: theme.fontSize.sm,
-                                  fontFamily: 'monospace',
-                                  boxSizing: 'border-box'
+                                  ...connectionInputStyle,
+                                  fontFamily: 'monospace'
                                 }}
                               />
                             </div>
@@ -1028,17 +1066,15 @@ const StylePanel: React.FC<StylePanelProps> = ({
                                 type="text"
                                 value={nodeUsername}
                                 onChange={(e) => setNodeUsername(e.target.value)}
-                                placeholder="administrator"
-                                style={{
-                                  width: '100%',
-                                  padding: `${theme.spacing.sm} ${theme.spacing.md}`,
-                                  border: `1px solid ${theme.border.default}`,
-                                  borderRadius: theme.radius.sm,
-                                  background: theme.background.elevated,
-                                  color: theme.text.primary,
-                                  fontSize: theme.fontSize.sm,
-                                  boxSizing: 'border-box'
+                                onMouseDown={(e) => {
+                                  e.stopPropagation();
+                                  e.currentTarget.focus();
                                 }}
+                                onFocus={(e) => e.stopPropagation()}
+                                placeholder="administrator"
+                                autoComplete="off"
+                                tabIndex={0}
+                                style={connectionInputStyle}
                               />
                             </div>
                             <div style={{ marginBottom: theme.spacing.lg }}>
@@ -1055,17 +1091,15 @@ const StylePanel: React.FC<StylePanelProps> = ({
                                 type="password"
                                 value={nodePassword}
                                 onChange={(e) => setNodePassword(e.target.value)}
-                                placeholder="••••••••"
-                                style={{
-                                  width: '100%',
-                                  padding: `${theme.spacing.sm} ${theme.spacing.md}`,
-                                  border: `1px solid ${theme.border.default}`,
-                                  borderRadius: theme.radius.sm,
-                                  background: theme.background.elevated,
-                                  color: theme.text.primary,
-                                  fontSize: theme.fontSize.sm,
-                                  boxSizing: 'border-box'
+                                onMouseDown={(e) => {
+                                  e.stopPropagation();
+                                  e.currentTarget.focus();
                                 }}
+                                onFocus={(e) => e.stopPropagation()}
+                                placeholder="••••••••"
+                                autoComplete="off"
+                                tabIndex={0}
+                                style={connectionInputStyle}
                               />
                             </div>
                           </>
@@ -1088,17 +1122,17 @@ const StylePanel: React.FC<StylePanelProps> = ({
                                 type="text"
                                 value={nodeHost}
                                 onChange={(e) => setNodeHost(e.target.value)}
+                                onMouseDown={(e) => {
+                                  e.stopPropagation();
+                                  e.currentTarget.focus();
+                                }}
+                                onFocus={(e) => e.stopPropagation()}
                                 placeholder="192.168.1.1"
+                                autoComplete="off"
+                                tabIndex={0}
                                 style={{
-                                  width: '100%',
-                                  padding: `${theme.spacing.sm} ${theme.spacing.md}`,
-                                  border: `1px solid ${theme.border.default}`,
-                                  borderRadius: theme.radius.sm,
-                                  background: theme.background.elevated,
-                                  color: theme.text.primary,
-                                  fontSize: theme.fontSize.sm,
-                                  fontFamily: 'monospace',
-                                  boxSizing: 'border-box'
+                                  ...connectionInputStyle,
+                                  fontFamily: 'monospace'
                                 }}
                               />
                             </div>
@@ -1116,17 +1150,17 @@ const StylePanel: React.FC<StylePanelProps> = ({
                                 type="number"
                                 value={nodePort}
                                 onChange={(e) => setNodePort(parseInt(e.target.value) || 22)}
+                                onMouseDown={(e) => {
+                                  e.stopPropagation();
+                                  e.currentTarget.focus();
+                                }}
+                                onFocus={(e) => e.stopPropagation()}
                                 placeholder="22"
+                                autoComplete="off"
+                                tabIndex={0}
                                 style={{
-                                  width: '100%',
-                                  padding: `${theme.spacing.sm} ${theme.spacing.md}`,
-                                  border: `1px solid ${theme.border.default}`,
-                                  borderRadius: theme.radius.sm,
-                                  background: theme.background.elevated,
-                                  color: theme.text.primary,
-                                  fontSize: theme.fontSize.sm,
-                                  fontFamily: 'monospace',
-                                  boxSizing: 'border-box'
+                                  ...connectionInputStyle,
+                                  fontFamily: 'monospace'
                                 }}
                               />
                             </div>
@@ -1144,17 +1178,15 @@ const StylePanel: React.FC<StylePanelProps> = ({
                                 type="text"
                                 value={nodeUsername}
                                 onChange={(e) => setNodeUsername(e.target.value)}
-                                placeholder="root"
-                                style={{
-                                  width: '100%',
-                                  padding: `${theme.spacing.sm} ${theme.spacing.md}`,
-                                  border: `1px solid ${theme.border.default}`,
-                                  borderRadius: theme.radius.sm,
-                                  background: theme.background.elevated,
-                                  color: theme.text.primary,
-                                  fontSize: theme.fontSize.sm,
-                                  boxSizing: 'border-box'
+                                onMouseDown={(e) => {
+                                  e.stopPropagation();
+                                  e.currentTarget.focus();
                                 }}
+                                onFocus={(e) => e.stopPropagation()}
+                                placeholder="root"
+                                autoComplete="off"
+                                tabIndex={0}
+                                style={connectionInputStyle}
                               />
                             </div>
                             <div style={{ marginBottom: theme.spacing.lg }}>
@@ -1171,17 +1203,15 @@ const StylePanel: React.FC<StylePanelProps> = ({
                                 type="password"
                                 value={nodePassword}
                                 onChange={(e) => setNodePassword(e.target.value)}
-                                placeholder="••••••••"
-                                style={{
-                                  width: '100%',
-                                  padding: `${theme.spacing.sm} ${theme.spacing.md}`,
-                                  border: `1px solid ${theme.border.default}`,
-                                  borderRadius: theme.radius.sm,
-                                  background: theme.background.elevated,
-                                  color: theme.text.primary,
-                                  fontSize: theme.fontSize.sm,
-                                  boxSizing: 'border-box'
+                                onMouseDown={(e) => {
+                                  e.stopPropagation();
+                                  e.currentTarget.focus();
                                 }}
+                                onFocus={(e) => e.stopPropagation()}
+                                placeholder="••••••••"
+                                autoComplete="off"
+                                tabIndex={0}
+                                style={connectionInputStyle}
                               />
                             </div>
                           </>
@@ -1203,17 +1233,17 @@ const StylePanel: React.FC<StylePanelProps> = ({
                               type="text"
                               value={nodeHost}
                               onChange={(e) => setNodeHost(e.target.value)}
+                              onMouseDown={(e) => {
+                                e.stopPropagation();
+                                e.currentTarget.focus();
+                              }}
+                              onFocus={(e) => e.stopPropagation()}
                               placeholder="https://example.com"
+                              autoComplete="off"
+                              tabIndex={0}
                               style={{
-                                width: '100%',
-                                padding: `${theme.spacing.sm} ${theme.spacing.md}`,
-                                border: `1px solid ${theme.border.default}`,
-                                borderRadius: theme.radius.sm,
-                                background: theme.background.elevated,
-                                color: theme.text.primary,
-                                fontSize: theme.fontSize.sm,
-                                fontFamily: 'monospace',
-                                boxSizing: 'border-box'
+                                ...connectionInputStyle,
+                                fontFamily: 'monospace'
                               }}
                             />
                           </div>
@@ -1235,18 +1265,18 @@ const StylePanel: React.FC<StylePanelProps> = ({
                               type="text"
                               value={nodeCustomCommand}
                               onChange={(e) => setNodeCustomCommand(e.target.value)}
+                              onMouseDown={(e) => {
+                                e.stopPropagation();
+                                e.currentTarget.focus();
+                              }}
+                              onFocus={(e) => e.stopPropagation()}
                               placeholder="ping 8.8.8.8"
                               title="Enter command to execute in CMD (e.g., ping 8.8.8.8)"
+                              autoComplete="off"
+                              tabIndex={0}
                               style={{
-                                width: '100%',
-                                padding: `${theme.spacing.sm} ${theme.spacing.md}`,
-                                border: `1px solid ${theme.border.default}`,
-                                borderRadius: theme.radius.sm,
-                                background: theme.background.elevated,
-                                color: theme.text.primary,
-                                fontSize: theme.fontSize.sm,
-                                fontFamily: 'monospace',
-                                boxSizing: 'border-box'
+                                ...connectionInputStyle,
+                                fontFamily: 'monospace'
                               }}
                             />
                           </div>
@@ -1357,8 +1387,8 @@ const StylePanel: React.FC<StylePanelProps> = ({
                 </>
               )}
 
-              {/* STYLE TAB */}
-              {activeTab === 'style' && (
+              {/* PROPERTY TAB */}
+              {activeTab === 'property' && (
                 <>
                   <div style={{ marginBottom: theme.spacing.lg }}>
                     <label style={{
@@ -1904,7 +1934,8 @@ const StylePanel: React.FC<StylePanelProps> = ({
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          zIndex: 999
+          zIndex: 10001,
+          pointerEvents: 'auto'
         }}
         onMouseEnter={(e) => {
           e.currentTarget.style.background = theme.background.hover;
