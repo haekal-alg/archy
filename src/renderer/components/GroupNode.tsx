@@ -143,7 +143,7 @@ const GroupNode: React.FC<NodeProps> = ({ data, selected }) => {
           borderRadius: theme.radius.xl,
           padding: theme.spacing.xl,
           position: 'relative',
-          boxShadow: theme.shadow.md,
+          boxShadow: 'none',
         }}
       >
         {/* Title Bar - only show if label exists */}
@@ -176,12 +176,12 @@ const GroupNode: React.FC<NodeProps> = ({ data, selected }) => {
               left: '20px',
               right: '20px',
               fontSize: theme.fontSize.sm,
-              color: theme.text.secondary,
+              color: theme.text.primary,
               fontStyle: 'italic',
-              background: theme.background.elevated,
+              background: 'transparent',
               padding: `${theme.spacing.sm} ${theme.spacing.lg}`,
               borderRadius: theme.radius.md,
-              border: `1px solid ${borderColor}40`
+              border: 'none'
             }}
           >
             {groupData.description}
@@ -196,14 +196,14 @@ const GroupNode: React.FC<NodeProps> = ({ data, selected }) => {
               top: '12px',
               right: '12px',
               fontSize: theme.fontSize.xs,
-              color: theme.text.secondary,
-              background: theme.background.elevated,
+              color: theme.text.primary,
+              background: 'transparent',
               padding: `${theme.spacing.xs} ${theme.spacing.md}`,
               borderRadius: theme.radius.sm,
               display: 'flex',
               alignItems: 'center',
               gap: theme.spacing.xs,
-              border: `1px solid ${theme.border.default}`
+              border: 'none'
             }}
           >
             <span style={{ fontSize: '12px' }}>⚠️</span>

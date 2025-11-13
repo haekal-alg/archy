@@ -115,3 +115,8 @@ textarea:focus {
 .react-flow__node:not(.dragging) {
   transition: box-shadow 0.2s ease !important;
 }
+
+/* Group Node - Transparent Background */
+.react-flow__node-group {
+  background: transparent !important;
+}

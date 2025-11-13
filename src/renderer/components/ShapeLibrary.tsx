@@ -56,14 +56,16 @@ const ShapeLibrary: React.FC<ShapeLibraryProps> = ({ onAddNode, onAddGroup, onAd
         top: '0',
         width: '240px',
         height: '100vh',
-        background: theme.background.secondary,
-        boxShadow: theme.shadow.lg,
+        background: 'rgba(30, 33, 51, 0.65)',
+        backdropFilter: 'blur(60px) saturate(200%) brightness(1.1)',
+        WebkitBackdropFilter: 'blur(60px) saturate(200%) brightness(1.1)',
+        boxShadow: '0 8px 32px rgba(0, 0, 0, 0.5), 0 2px 8px rgba(0, 0, 0, 0.3), inset 1px 0 0 rgba(255, 255, 255, 0.1)',
         transition: theme.transition.slow,
         zIndex: theme.zIndex.sticky,
         display: 'flex',
         flexDirection: 'column',
         color: theme.text.primary,
-        borderRight: `1px solid ${theme.border.default}`
+        borderRight: '1px solid rgba(255, 255, 255, 0.25)'
       }}
     >
       {/* Header */}
@@ -238,11 +240,13 @@ const ShapeLibrary: React.FC<ShapeLibraryProps> = ({ onAddNode, onAddGroup, onAd
           transform: 'translateY(-50%)',
           width: '30px',
           height: '60px',
-          border: `1px solid ${theme.border.default}`,
+          border: '1px solid rgba(255, 255, 255, 0.25)',
           borderLeft: 'none',
           borderTopRightRadius: theme.radius.md,
           borderBottomRightRadius: theme.radius.md,
-          background: theme.background.secondary,
+          background: 'rgba(30, 33, 51, 0.65)',
+          backdropFilter: 'blur(60px) saturate(200%) brightness(1.1)',
+          WebkitBackdropFilter: 'blur(60px) saturate(200%) brightness(1.1)',
           color: theme.text.primary,
           cursor: 'pointer',
           fontSize: theme.fontSize.lg,
