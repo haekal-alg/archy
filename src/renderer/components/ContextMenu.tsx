@@ -70,10 +70,11 @@ const ContextMenu: React.FC<ContextMenuProps> = ({
           WebkitBackdropFilter: 'blur(60px) saturate(200%) brightness(1.1)',
           border: '1px solid rgba(255, 255, 255, 0.25)',
           borderTop: '1px solid rgba(255, 255, 255, 0.35)',
-          borderRadius: '12px',
+          borderRadius: '10px',
           boxShadow: '0 8px 32px rgba(0, 0, 0, 0.5), 0 2px 8px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.1)',
           zIndex: 9999,
-          minWidth: '200px',
+          width: '200px',
+          padding: '4px',
           overflow: 'hidden',
           pointerEvents: 'auto'
         }}
@@ -97,9 +98,10 @@ const ContextMenu: React.FC<ContextMenuProps> = ({
                   onMouseLeave={() => setHoveredIndex(null)}
                   style={{
                     width: '100%',
-                    padding: '8px 16px',
+                    padding: '6px 12px',
                     border: 'none',
                     background: isHovered ? 'rgba(255, 255, 255, 0.2)' : 'transparent',
+                    borderRadius: '6px',
                     color: theme.text.primary,
                     textAlign: 'left',
                     cursor: 'pointer',
@@ -134,7 +136,7 @@ const ContextMenu: React.FC<ContextMenuProps> = ({
         {showConnect && (
           <div style={{
             borderTop: '1px solid rgba(255, 255, 255, 0.15)',
-            margin: '4px 0'
+            margin: '6px 0'
           }} />
         )}
 
@@ -153,9 +155,10 @@ const ContextMenu: React.FC<ContextMenuProps> = ({
               onMouseLeave={() => setHoveredIndex(null)}
               style={{
                 width: '100%',
-                padding: '8px 16px',
+                padding: '6px 12px',
                 border: 'none',
                 background: isHovered ? 'rgba(255, 255, 255, 0.2)' : 'transparent',
+                borderRadius: '6px',
                 color: theme.text.primary,
                 textAlign: 'left',
                 cursor: 'pointer',
@@ -184,9 +187,10 @@ const ContextMenu: React.FC<ContextMenuProps> = ({
               onMouseLeave={() => setHoveredIndex(null)}
               style={{
                 width: '100%',
-                padding: '8px 16px',
+                padding: '6px 12px',
                 border: 'none',
                 background: isHovered ? 'rgba(255, 92, 92, 0.25)' : 'transparent',
+                borderRadius: '6px',
                 color: '#ff5c5c',
                 textAlign: 'left',
                 cursor: 'pointer',
