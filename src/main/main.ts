@@ -212,11 +212,47 @@ ipcMain.handle('execute-command', async (event, { command }) => {
   });
 });
 
-// Save diagram - show save dialog
-ipcMain.handle('save-diagram', async (event, { name, data }) => {
+// Save diagram - if filePath provided, save directly; otherwise show save dialog
+ipcMain.handle('save-diagram', async (event, { name, data, filePath }) => {
+  try {
+    let targetPath = filePath;
+
+    // If no file path provided, show save dialog
+    if (!targetPath) {
+      const result = await dialog.showSaveDialog(mainWindow!, {
+        title: 'Save Diagram',
+        defaultPath: `${name}.json`,
+        filters: [
+          { name: 'JSON Files', extensions: ['json'] },
+          { name: 'All Files', extensions: ['*'] }
+        ]
+      });
+
+      if (result.canceled || !result.filePath) {
+        return { success: false, canceled: true };
+      }
+
+      targetPath = result.filePath;
+    }
+
+    // Save to the file
+    const jsonString = JSON.stringify(data, null, 2);
+    fs.writeFileSync(targetPath, jsonString);
+
+    // Also save to electron-store for quick access
+    store.set(`diagram.${name}`, data);
+
+    return { success: true, path: targetPath };
+  } catch (error: any) {
+    return { success: false, error: error.message };
+  }
+});
+
+// Save diagram as - always show save dialog
+ipcMain.handle('save-diagram-as', async (event, { name, data }) => {
   try {
     const result = await dialog.showSaveDialog(mainWindow!, {
-      title: 'Save Diagram',
+      title: 'Save Diagram As',
       defaultPath: `${name}.json`,
       filters: [
         { name: 'JSON Files', extensions: ['json'] },
@@ -257,7 +293,12 @@ ipcMain.handle('load-diagram', async () => {
       const fileContent = fs.readFileSync(filePath, 'utf-8');
       const data = JSON.parse(fileContent);
 
-      return { success: true, data, filename: path.basename(filePath, '.json') };
+      return {
+        success: true,
+        data,
+        filename: path.basename(filePath, '.json'),
+        filePath: filePath
+      };
     }
 
     return { success: false, canceled: true };

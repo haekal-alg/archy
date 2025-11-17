@@ -1,126 +1,111 @@
-# Archy - Visual Network Architecture Tool
+<div align="center">
+  <img src="build/icon.png" alt="Archy Logo" width="120"/>
+  <h1>Archy</h1>
+  <p><strong>Visual Network Architecture Tool</strong></p>
+  <p>Design your network topology and connect to devices with a single click</p>
+</div>
 
-A desktop application that combines network architecture visualization with seamless remote access capabilities. Design your network topology and connect to devices with a single click.
+---
 
-## Features
+## What is Archy?
 
-- **Visual Diagramming**: Drag-and-drop interface to create network architecture diagrams
-- **One-Click Remote Access**:
-  - RDP for Windows machines
-  - SSH for Linux boxes
-- **Credential Management**: Store connection credentials securely within each device node
-- **Save/Load Diagrams**: Persist your network architectures and load them anytime
-- **Interactive Canvas**: Pan, zoom, and arrange your network layout
-- **Multiple Device Types**: Support for Windows, Linux, and generic devices
+Archy is a desktop application that makes managing your network infrastructure easy. Draw your network diagram, store connection details, and connect to any device with just a click. No more hunting for IP addresses or remembering which credentials go where.
 
-## Installation
+## Why Use Archy?
+
+**Stop juggling spreadsheets and sticky notes.** Archy keeps your network documentation and access tools in one place.
+
+### Key Features
+
+- **Drag-and-Drop Diagramming** - Build your network map visually
+- **One-Click Connections** - Click to open RDP or SSH sessions instantly
+- **Built-in Credential Storage** - Save usernames and passwords with each device
+- **Save Your Work** - Load your diagrams anytime you need them
+- **Multi-Platform** - Works on Windows, Mac, and Linux
+
+## Quick Start
 
 ```bash
-# Install dependencies
-npm install
-
-# Build the application
-npm run build
-
-# Run the application
-npm start
+npm install      # Install dependencies
+npm run build    # Build the application
+npm start        # Launch Archy
 ```
 
-## Usage
+That's it! The application window will open and you're ready to start building your network diagram.
 
-### Creating Your Network Diagram
+## How to Use
 
-1. **Add Devices**: Click the toolbar buttons to add Windows, Linux, or Generic devices
-2. **Position Devices**: Drag devices around the canvas to arrange your architecture
-3. **Connect Devices**: Click and drag from one device's handle to another to create connections
-4. **Edit Device Properties**: Double-click any device to configure:
-   - Label/Name
-   - IP Address/Host
+### Building Your Network Map
+
+1. **Add devices** using the toolbar buttons (Windows, Linux, or Generic)
+2. **Drag devices** around the canvas to arrange them
+3. **Connect devices** by clicking and dragging from one device to another
+4. **Double-click a device** to edit its properties:
+   - Name/Label
+   - IP address or hostname
    - Port number
-   - Username
-   - Password
+   - Login credentials
 
 ### Connecting to Devices
 
-1. Double-click a device to open the edit modal
-2. Click **"Connect Now"** to immediately launch:
-   - **RDP connection** for Windows devices (via `mstsc`)
-   - **SSH connection** for Linux devices (opens in terminal)
+Double-click any device and hit **"Connect Now"**:
+- **Windows devices** → Opens RDP session automatically
+- **Linux devices** → Opens SSH in your terminal
 
-### Saving Your Work
+### Managing Your Diagrams
 
-- Click **Save** in the toolbar to save your diagram
-- Click **Load** to restore a previously saved diagram
-- Click **Clear** to start fresh
+- **Save** - Store your current diagram
+- **Load** - Open a previously saved diagram
+- **Clear** - Start over with a blank canvas
 
-## Architecture
+## Important Security Information
 
-- **Electron**: Cross-platform desktop application
-- **React**: UI framework
-- **React Flow**: Visual diagramming library
-- **Electron Store**: Secure local storage for diagrams
-- **SSH2**: SSH connection handling
-- **Windows RDP**: Native mstsc integration
+**Please read this before using Archy:**
 
-## Security Notes
+- Credentials are stored on your local machine in **plain text**
+- This is designed for convenience in **trusted, secure environments**
+- Not recommended for production or shared systems
+- Future versions will include encryption options
 
-- Credentials are stored locally using electron-store
-- For production use, consider implementing encryption for stored credentials
-- The current implementation stores passwords in plain text for convenience
-- Recommended for use in secure, trusted environments only
+**Use Archy responsibly** - only in environments where you control physical and network access.
 
-## Platform Support
+## Platform Notes
 
-### Windows
-- RDP connections use native `mstsc` command
-- Credentials are temporarily stored using `cmdkey`
+**Windows**
+- RDP connections use the built-in `mstsc` command
+- Works out of the box, no additional setup needed
 
-### Linux/Mac
-- SSH connections open in system terminal
-- May require `sshpass` utility for password authentication
+**Mac/Linux**
+- SSH connections open in your default terminal
+- May need to install `sshpass` for password authentication
 
-## Development
+## Built With
+
+- **Electron** - Cross-platform desktop framework
+- **React** - User interface
+- **React Flow** - Visual diagramming engine
+- **Electron Store** - Local data persistence
+
+## For Developers
 
 ```bash
-# Start development server
-npm run dev
-
-# Build main process
-npm run build:main
-
-# Build renderer process
-npm run build:renderer
-
-# Package application
-npm run package
+npm run dev              # Start development mode
+npm run build:main       # Compile main process
+npm run build:renderer   # Compile UI
+npm run package          # Create distributable
 ```
 
-## Project Structure
+## Roadmap
 
-```
-archy/
-├── src/
-│   ├── main/           # Electron main process
-│   │   ├── main.ts     # Main entry point
-│   │   └── preload.ts  # Preload script for IPC
-│   └── renderer/       # React application
-│       ├── components/ # React components
-│       ├── App.tsx     # Main app component
-│       └── index.tsx   # React entry point
-├── dist/              # Compiled output
-└── package.json
-```
+Here's what's coming next:
 
-## Future Enhancements
-
-- Credential encryption at rest
-- Multiple diagram workspaces
-- Export diagrams as images
-- Network scanning/discovery
-- SSH key authentication
-- VNC support
-- Connection history/favorites
-- Team collaboration features
+- [ ] Encrypted credential storage
+- [ ] Multiple diagram tabs
+- [ ] Export diagrams as PNG/SVG
+- [ ] Network device discovery
+- [ ] SSH key-based authentication
+- [ ] VNC protocol support
+- [ ] Connection history and favorites
 
 ## License
 

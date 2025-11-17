@@ -66,6 +66,8 @@ const App: React.FC = () => {
   const reactFlowWrapper = useRef<HTMLDivElement>(null);
   const [reactFlowInstance, setReactFlowInstance] = useState<ReactFlowInstance | null>(null);
   const [diagramName, setDiagramName] = useState('Untitled');
+  const [currentFilePath, setCurrentFilePath] = useState<string | null>(null);
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [isShapeLibraryOpen, setIsShapeLibraryOpen] = useState(true);
   const [isStylePanelOpen, setIsStylePanelOpen] = useState(true);
   const [contextMenu, setContextMenu] = useState<{
@@ -87,6 +89,7 @@ const App: React.FC = () => {
   const nodesRef = useRef(nodes);
   const edgesRef = useRef(edges);
   const diagramNameRef = useRef(diagramName);
+  const currentFilePathRef = useRef(currentFilePath);
 
   useEffect(() => {
     nodesRef.current = nodes;
@@ -99,6 +102,17 @@ const App: React.FC = () => {
   useEffect(() => {
     diagramNameRef.current = diagramName;
   }, [diagramName]);
+
+  useEffect(() => {
+    currentFilePathRef.current = currentFilePath;
+  }, [currentFilePath]);
+
+  // Track unsaved changes when nodes or edges change
+  useEffect(() => {
+    if (nodes.length > 0 || edges.length > 0) {
+      setHasUnsavedChanges(true);
+    }
+  }, [nodes, edges]);
 
   // History management functions
   const saveToHistory = useCallback(() => {
@@ -211,9 +225,19 @@ const App: React.FC = () => {
       };
 
       try {
-        const result = await window.electron.saveDiagram(diagramNameRef.current, diagramData);
+        // Use currentFilePath if available, otherwise show save dialog
+        const result = await window.electron.saveDiagram(
+          diagramNameRef.current,
+          diagramData,
+          currentFilePathRef.current || undefined
+        );
+
         if (result.success) {
+          setCurrentFilePath(result.path);
+          setHasUnsavedChanges(false);
           alert('Diagram saved successfully!');
+        } else if (!result.canceled) {
+          alert('Failed to save diagram');
         }
       } catch (error) {
         console.error('Save failed:', error);
@@ -228,6 +252,8 @@ const App: React.FC = () => {
           setNodes(result.data.nodes || []);
           setEdges(result.data.edges || []);
           setDiagramName(result.data.metadata?.name || result.filename || 'Untitled');
+          setCurrentFilePath(result.filePath);
+          setHasUnsavedChanges(false);
           alert('Diagram loaded successfully!');
         }
       } catch (error) {
@@ -283,6 +309,8 @@ const App: React.FC = () => {
         setNodes([]);
         setEdges([]);
         setDiagramName('Untitled');
+        setCurrentFilePath(null);
+        setHasUnsavedChanges(false);
       }
     };
 
@@ -1127,7 +1155,7 @@ const App: React.FC = () => {
           boxShadow: theme.shadow.md,
           border: `1px solid ${theme.border.default}`
         }}>
-          <strong style={{ color: theme.accent.blue }}>Tip:</strong> Double-click nodes to edit | Right-click to delete/connect | {diagramName}
+          <strong style={{ color: theme.accent.blue }}>Tip:</strong> Double-click nodes to edit | Right-click to delete/connect | {currentFilePath ? currentFilePath : diagramName}{hasUnsavedChanges ? ' *' : ''}
         </Panel>
       </ReactFlow>
 
@@ -1172,22 +1200,381 @@ const App: React.FC = () => {
       {/* Arrow markers for edges */}
       <svg style={{ position: 'absolute', width: 0, height: 0 }}>
         <defs>
-          <marker
-            id="arrow-start"
-            markerWidth="10"
-            markerHeight="10"
-            refX="5"
-            refY="5"
-            orient="auto"
-            markerUnits="strokeWidth"
-          >
-            <polyline
-              points="10,1 5,5 10,9"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="1"
-            />
-          </marker>
+          {/* Generate markers for each color used in edges */}
+          {Array.from(new Set(edges.map(e => (e.data as CustomEdgeData)?.color || theme.border.default))).map(color => {
+            const colorId = String(color).replace('#', '');
+            return (
+              <React.Fragment key={colorId}>
+                {/* Arrow (filled triangle) - End */}
+                <marker
+                  id={`arrow-end-${colorId}`}
+                  markerWidth="10"
+                  markerHeight="10"
+                  refX="9"
+                  refY="5"
+                  orient="auto"
+                  markerUnits="strokeWidth"
+                >
+                  <polygon
+                    points="0,0 10,5 0,10"
+                    fill={color}
+                  />
+                </marker>
+
+                {/* Arrow (filled triangle) - Start */}
+                <marker
+                  id={`arrow-start-${colorId}`}
+                  markerWidth="10"
+                  markerHeight="10"
+                  refX="1"
+                  refY="5"
+                  orient="auto"
+                  markerUnits="strokeWidth"
+                >
+                  <polygon
+                    points="10,0 0,5 10,10"
+                    fill={color}
+                  />
+                </marker>
+
+                {/* Arrow Open (hollow triangle) - End */}
+                <marker
+                  id={`arrow-open-end-${colorId}`}
+                  markerWidth="10"
+                  markerHeight="10"
+                  refX="9"
+                  refY="5"
+                  orient="auto"
+                  markerUnits="strokeWidth"
+                >
+                  <polygon
+                    points="0,0 10,5 0,10"
+                    fill="none"
+                    stroke={color}
+                    strokeWidth="1.5"
+                  />
+                </marker>
+
+                {/* Arrow Open (hollow triangle) - Start */}
+                <marker
+                  id={`arrow-open-start-${colorId}`}
+                  markerWidth="10"
+                  markerHeight="10"
+                  refX="1"
+                  refY="5"
+                  orient="auto"
+                  markerUnits="strokeWidth"
+                >
+                  <polygon
+                    points="10,0 0,5 10,10"
+                    fill="none"
+                    stroke={color}
+                    strokeWidth="1.5"
+                  />
+                </marker>
+
+                {/* Diamond (hollow) - End */}
+                <marker
+                  id={`diamond-end-${colorId}`}
+                  markerWidth="12"
+                  markerHeight="12"
+                  refX="11"
+                  refY="6"
+                  orient="auto"
+                  markerUnits="strokeWidth"
+                >
+                  <polygon
+                    points="0,6 6,0 12,6 6,12"
+                    fill="white"
+                    stroke={color}
+                    strokeWidth="1.5"
+                  />
+                </marker>
+
+                {/* Diamond (hollow) - Start */}
+                <marker
+                  id={`diamond-start-${colorId}`}
+                  markerWidth="12"
+                  markerHeight="12"
+                  refX="1"
+                  refY="6"
+                  orient="auto"
+                  markerUnits="strokeWidth"
+                >
+                  <polygon
+                    points="0,6 6,0 12,6 6,12"
+                    fill="white"
+                    stroke={color}
+                    strokeWidth="1.5"
+                  />
+                </marker>
+
+                {/* Diamond Filled - End */}
+                <marker
+                  id={`diamond-filled-end-${colorId}`}
+                  markerWidth="12"
+                  markerHeight="12"
+                  refX="11"
+                  refY="6"
+                  orient="auto"
+                  markerUnits="strokeWidth"
+                >
+                  <polygon
+                    points="0,6 6,0 12,6 6,12"
+                    fill={color}
+                  />
+                </marker>
+
+                {/* Diamond Filled - Start */}
+                <marker
+                  id={`diamond-filled-start-${colorId}`}
+                  markerWidth="12"
+                  markerHeight="12"
+                  refX="1"
+                  refY="6"
+                  orient="auto"
+                  markerUnits="strokeWidth"
+                >
+                  <polygon
+                    points="0,6 6,0 12,6 6,12"
+                    fill={color}
+                  />
+                </marker>
+
+                {/* Circle (hollow) - End */}
+                <marker
+                  id={`circle-end-${colorId}`}
+                  markerWidth="10"
+                  markerHeight="10"
+                  refX="9"
+                  refY="5"
+                  orient="auto"
+                  markerUnits="strokeWidth"
+                >
+                  <circle
+                    cx="5"
+                    cy="5"
+                    r="4"
+                    fill="white"
+                    stroke={color}
+                    strokeWidth="1.5"
+                  />
+                </marker>
+
+                {/* Circle (hollow) - Start */}
+                <marker
+                  id={`circle-start-${colorId}`}
+                  markerWidth="10"
+                  markerHeight="10"
+                  refX="1"
+                  refY="5"
+                  orient="auto"
+                  markerUnits="strokeWidth"
+                >
+                  <circle
+                    cx="5"
+                    cy="5"
+                    r="4"
+                    fill="white"
+                    stroke={color}
+                    strokeWidth="1.5"
+                  />
+                </marker>
+
+                {/* Circle Filled - End */}
+                <marker
+                  id={`circle-filled-end-${colorId}`}
+                  markerWidth="10"
+                  markerHeight="10"
+                  refX="9"
+                  refY="5"
+                  orient="auto"
+                  markerUnits="strokeWidth"
+                >
+                  <circle
+                    cx="5"
+                    cy="5"
+                    r="4"
+                    fill={color}
+                  />
+                </marker>
+
+                {/* Circle Filled - Start */}
+                <marker
+                  id={`circle-filled-start-${colorId}`}
+                  markerWidth="10"
+                  markerHeight="10"
+                  refX="1"
+                  refY="5"
+                  orient="auto"
+                  markerUnits="strokeWidth"
+                >
+                  <circle
+                    cx="5"
+                    cy="5"
+                    r="4"
+                    fill={color}
+                  />
+                </marker>
+
+                {/* Square (hollow) - End */}
+                <marker
+                  id={`square-end-${colorId}`}
+                  markerWidth="10"
+                  markerHeight="10"
+                  refX="9"
+                  refY="5"
+                  orient="auto"
+                  markerUnits="strokeWidth"
+                >
+                  <rect
+                    x="1"
+                    y="1"
+                    width="8"
+                    height="8"
+                    fill="white"
+                    stroke={color}
+                    strokeWidth="1.5"
+                  />
+                </marker>
+
+                {/* Square (hollow) - Start */}
+                <marker
+                  id={`square-start-${colorId}`}
+                  markerWidth="10"
+                  markerHeight="10"
+                  refX="1"
+                  refY="5"
+                  orient="auto"
+                  markerUnits="strokeWidth"
+                >
+                  <rect
+                    x="1"
+                    y="1"
+                    width="8"
+                    height="8"
+                    fill="white"
+                    stroke={color}
+                    strokeWidth="1.5"
+                  />
+                </marker>
+
+                {/* Square Filled - End */}
+                <marker
+                  id={`square-filled-end-${colorId}`}
+                  markerWidth="10"
+                  markerHeight="10"
+                  refX="9"
+                  refY="5"
+                  orient="auto"
+                  markerUnits="strokeWidth"
+                >
+                  <rect
+                    x="1"
+                    y="1"
+                    width="8"
+                    height="8"
+                    fill={color}
+                  />
+                </marker>
+
+                {/* Square Filled - Start */}
+                <marker
+                  id={`square-filled-start-${colorId}`}
+                  markerWidth="10"
+                  markerHeight="10"
+                  refX="1"
+                  refY="5"
+                  orient="auto"
+                  markerUnits="strokeWidth"
+                >
+                  <rect
+                    x="1"
+                    y="1"
+                    width="8"
+                    height="8"
+                    fill={color}
+                  />
+                </marker>
+
+                {/* Cross - End */}
+                <marker
+                  id={`cross-end-${colorId}`}
+                  markerWidth="10"
+                  markerHeight="10"
+                  refX="8"
+                  refY="5"
+                  orient="auto"
+                  markerUnits="strokeWidth"
+                >
+                  <path
+                    d="M 2,2 L 8,8 M 8,2 L 2,8"
+                    stroke={color}
+                    strokeWidth="1.5"
+                    fill="none"
+                  />
+                </marker>
+
+                {/* Cross - Start */}
+                <marker
+                  id={`cross-start-${colorId}`}
+                  markerWidth="10"
+                  markerHeight="10"
+                  refX="2"
+                  refY="5"
+                  orient="auto"
+                  markerUnits="strokeWidth"
+                >
+                  <path
+                    d="M 2,2 L 8,8 M 8,2 L 2,8"
+                    stroke={color}
+                    strokeWidth="1.5"
+                    fill="none"
+                  />
+                </marker>
+
+                {/* Bar (perpendicular line) - End */}
+                <marker
+                  id={`bar-end-${colorId}`}
+                  markerWidth="10"
+                  markerHeight="10"
+                  refX="8"
+                  refY="5"
+                  orient="auto"
+                  markerUnits="strokeWidth"
+                >
+                  <line
+                    x1="5"
+                    y1="0"
+                    x2="5"
+                    y2="10"
+                    stroke={color}
+                    strokeWidth="2"
+                  />
+                </marker>
+
+                {/* Bar (perpendicular line) - Start */}
+                <marker
+                  id={`bar-start-${colorId}`}
+                  markerWidth="10"
+                  markerHeight="10"
+                  refX="2"
+                  refY="5"
+                  orient="auto"
+                  markerUnits="strokeWidth"
+                >
+                  <line
+                    x1="5"
+                    y1="0"
+                    x2="5"
+                    y2="10"
+                    stroke={color}
+                    strokeWidth="2"
+                  />
+                </marker>
+              </React.Fragment>
+            );
+          })}
         </defs>
       </svg>
     </div>

@@ -10,8 +10,11 @@ contextBridge.exposeInMainWorld('electron', {
   executeCommand: (command: string) =>
     ipcRenderer.invoke('execute-command', { command }),
 
-  saveDiagram: (name: string, data: any) =>
-    ipcRenderer.invoke('save-diagram', { name, data }),
+  saveDiagram: (name: string, data: any, filePath?: string) =>
+    ipcRenderer.invoke('save-diagram', { name, data, filePath }),
+
+  saveDiagramAs: (name: string, data: any) =>
+    ipcRenderer.invoke('save-diagram-as', { name, data }),
 
   loadDiagram: () =>
     ipcRenderer.invoke('load-diagram'),

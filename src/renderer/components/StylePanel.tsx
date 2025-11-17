@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Node, Edge } from '@xyflow/react';
 import { EnhancedDeviceData, ConnectionConfig } from './EnhancedDeviceNode';
 import { GroupNodeData } from './GroupNode';
-import { CustomEdgeData } from './CustomEdge';
+import { CustomEdgeData, MarkerType } from './CustomEdge';
 import { TextNodeData } from './TextNode';
 import theme from '../../theme';
 
@@ -79,6 +79,8 @@ const StylePanel: React.FC<StylePanelProps> = ({
   const [edgeStyle, setEdgeStyle] = useState<'solid' | 'dashed' | 'dotted'>('solid');
   const [edgeRouting, setEdgeRouting] = useState<'bezier' | 'smoothstep' | 'straight'>('bezier');
   const [edgeAnimated, setEdgeAnimated] = useState(false);
+  const [edgeMarkerStart, setEdgeMarkerStart] = useState<MarkerType>('none');
+  const [edgeMarkerEnd, setEdgeMarkerEnd] = useState<MarkerType>('arrow');
 
   // Background opacity and transparency controls
   const [textBgOpacity, setTextBgOpacity] = useState(100);
@@ -245,6 +247,8 @@ const StylePanel: React.FC<StylePanelProps> = ({
       setEdgeStyle(data.style || 'solid');
       setEdgeRouting(data.routingType || 'bezier');
       setEdgeAnimated(data.animated || false);
+      setEdgeMarkerStart(data.markerStart || 'none');
+      setEdgeMarkerEnd(data.markerEnd || 'arrow');
     }
   }, [selectedEdge]);
 
@@ -290,7 +294,9 @@ const StylePanel: React.FC<StylePanelProps> = ({
         color: edgeColor,
         style: edgeStyle,
         routingType: edgeRouting,
-        animated: edgeAnimated
+        animated: edgeAnimated,
+        markerStart: edgeMarkerStart,
+        markerEnd: edgeMarkerEnd
       });
     }
   };
@@ -1790,7 +1796,17 @@ const StylePanel: React.FC<StylePanelProps> = ({
                   key={style}
                   onClick={() => {
                     setEdgeStyle(style);
-                    setTimeout(handleEdgeUpdate, 0);
+                    if (selectedEdge) {
+                      onUpdateEdge(selectedEdge.id, {
+                        label: edgeLabel,
+                        color: edgeColor,
+                        style: style,
+                        routingType: edgeRouting,
+                        animated: edgeAnimated,
+                        markerStart: edgeMarkerStart,
+                        markerEnd: edgeMarkerEnd
+                      });
+                    }
                   }}
                   style={{
                     flex: 1,
@@ -1827,7 +1843,17 @@ const StylePanel: React.FC<StylePanelProps> = ({
                   key={routing}
                   onClick={() => {
                     setEdgeRouting(routing);
-                    setTimeout(handleEdgeUpdate, 0);
+                    if (selectedEdge) {
+                      onUpdateEdge(selectedEdge.id, {
+                        label: edgeLabel,
+                        color: edgeColor,
+                        style: edgeStyle,
+                        routingType: routing,
+                        animated: edgeAnimated,
+                        markerStart: edgeMarkerStart,
+                        markerEnd: edgeMarkerEnd
+                      });
+                    }
                   }}
                   style={{
                     flex: 1,
@@ -1862,8 +1888,19 @@ const StylePanel: React.FC<StylePanelProps> = ({
                 type="checkbox"
                 checked={edgeAnimated}
                 onChange={(e) => {
-                  setEdgeAnimated(e.target.checked);
-                  setTimeout(handleEdgeUpdate, 0);
+                  const newAnimated = e.target.checked;
+                  setEdgeAnimated(newAnimated);
+                  if (selectedEdge) {
+                    onUpdateEdge(selectedEdge.id, {
+                      label: edgeLabel,
+                      color: edgeColor,
+                      style: edgeStyle,
+                      routingType: edgeRouting,
+                      animated: newAnimated,
+                      markerStart: edgeMarkerStart,
+                      markerEnd: edgeMarkerEnd
+                    });
+                  }
                 }}
                 style={{ width: '16px', height: '16px', cursor: 'pointer' }}
               />
@@ -1884,8 +1921,21 @@ const StylePanel: React.FC<StylePanelProps> = ({
             <input
               type="color"
               value={edgeColor}
-              onChange={(e) => setEdgeColor(e.target.value)}
-              onBlur={handleEdgeUpdate}
+              onChange={(e) => {
+                const newColor = e.target.value;
+                setEdgeColor(newColor);
+                if (selectedEdge) {
+                  onUpdateEdge(selectedEdge.id, {
+                    label: edgeLabel,
+                    color: newColor,
+                    style: edgeStyle,
+                    routingType: edgeRouting,
+                    animated: edgeAnimated,
+                    markerStart: edgeMarkerStart,
+                    markerEnd: edgeMarkerEnd
+                  });
+                }
+              }}
               style={{
                 width: '100%',
                 height: '32px',
@@ -1895,6 +1945,112 @@ const StylePanel: React.FC<StylePanelProps> = ({
                 background: theme.background.tertiary
               }}
             />
+          </div>
+
+          <div style={{ marginBottom: theme.spacing.lg }}>
+            <label style={{
+              display: 'block',
+              fontSize: theme.fontSize.sm,
+              marginBottom: theme.spacing.xs,
+              fontWeight: theme.fontWeight.medium,
+              color: theme.text.secondary
+            }}>
+              Start Marker
+            </label>
+            <select
+              value={edgeMarkerStart}
+              onChange={(e) => {
+                const newMarker = e.target.value as MarkerType;
+                setEdgeMarkerStart(newMarker);
+                if (selectedEdge) {
+                  onUpdateEdge(selectedEdge.id, {
+                    label: edgeLabel,
+                    color: edgeColor,
+                    style: edgeStyle,
+                    routingType: edgeRouting,
+                    animated: edgeAnimated,
+                    markerStart: newMarker,
+                    markerEnd: edgeMarkerEnd
+                  });
+                }
+              }}
+              style={{
+                width: '100%',
+                padding: `${theme.spacing.sm} ${theme.spacing.md}`,
+                border: `1px solid ${theme.border.default}`,
+                borderRadius: theme.radius.sm,
+                background: theme.background.tertiary,
+                color: theme.text.primary,
+                fontSize: theme.fontSize.sm,
+                cursor: 'pointer',
+                boxSizing: 'border-box'
+              }}
+            >
+              <option value="none">None</option>
+              <option value="arrow">Arrow (Filled)</option>
+              <option value="arrow-open">Arrow (Open)</option>
+              <option value="diamond">Diamond (Hollow)</option>
+              <option value="diamond-filled">Diamond (Filled)</option>
+              <option value="circle">Circle (Hollow)</option>
+              <option value="circle-filled">Circle (Filled)</option>
+              <option value="square">Square (Hollow)</option>
+              <option value="square-filled">Square (Filled)</option>
+              <option value="cross">Cross</option>
+              <option value="bar">Bar</option>
+            </select>
+          </div>
+
+          <div style={{ marginBottom: theme.spacing.lg }}>
+            <label style={{
+              display: 'block',
+              fontSize: theme.fontSize.sm,
+              marginBottom: theme.spacing.xs,
+              fontWeight: theme.fontWeight.medium,
+              color: theme.text.secondary
+            }}>
+              End Marker
+            </label>
+            <select
+              value={edgeMarkerEnd}
+              onChange={(e) => {
+                const newMarker = e.target.value as MarkerType;
+                setEdgeMarkerEnd(newMarker);
+                if (selectedEdge) {
+                  onUpdateEdge(selectedEdge.id, {
+                    label: edgeLabel,
+                    color: edgeColor,
+                    style: edgeStyle,
+                    routingType: edgeRouting,
+                    animated: edgeAnimated,
+                    markerStart: edgeMarkerStart,
+                    markerEnd: newMarker
+                  });
+                }
+              }}
+              style={{
+                width: '100%',
+                padding: `${theme.spacing.sm} ${theme.spacing.md}`,
+                border: `1px solid ${theme.border.default}`,
+                borderRadius: theme.radius.sm,
+                background: theme.background.tertiary,
+                color: theme.text.primary,
+                fontSize: theme.fontSize.sm,
+                cursor: 'pointer',
+                boxSizing: 'border-box'
+              }}
+            >
+              <option value="none">None</option>
+              <option value="arrow">Arrow (Filled)</option>
+              <option value="arrow-open">Arrow (Open)</option>
+              <option value="diamond">Diamond (Hollow)</option>
+              <option value="diamond-filled">Diamond (Filled)</option>
+              <option value="circle">Circle (Hollow)</option>
+              <option value="circle-filled">Circle (Filled)</option>
+              <option value="square">Square (Hollow)</option>
+              <option value="square-filled">Square (Filled)</option>
+              <option value="cross">Cross</option>
+              <option value="bar">Bar</option>
+            </select>
           </div>
 
         </div>

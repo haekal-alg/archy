@@ -9,6 +9,8 @@ import {
 } from '@xyflow/react';
 import theme from '../../theme';
 
+export type MarkerType = 'arrow' | 'arrow-open' | 'diamond' | 'diamond-filled' | 'circle' | 'circle-filled' | 'square' | 'square-filled' | 'cross' | 'bar' | 'none';
+
 export interface CustomEdgeData {
   label?: string;
   style?: 'solid' | 'dashed' | 'dotted';
@@ -16,6 +18,8 @@ export interface CustomEdgeData {
   animated?: boolean;
   bidirectional?: boolean;
   routingType?: 'bezier' | 'smoothstep' | 'straight';
+  markerStart?: MarkerType;
+  markerEnd?: MarkerType;
 }
 
 const CustomEdge: React.FC<EdgeProps> = ({
@@ -37,6 +41,19 @@ const CustomEdge: React.FC<EdgeProps> = ({
   const strokeStyle = edgeData?.style || 'solid';
   const animated = edgeData?.animated || false;
   const label = edgeData?.label;
+  const markerStartType = edgeData?.markerStart || 'none';
+  const markerEndType = edgeData?.markerEnd || 'arrow';
+
+  // Generate marker URL references
+  const getMarkerUrl = (markerType: MarkerType, position: 'start' | 'end') => {
+    if (markerType === 'none') return undefined;
+    // Encode color for URL (remove # and handle transparency)
+    const colorId = color.replace('#', '');
+    return `url(#${markerType}-${position}-${colorId})`;
+  };
+
+  const markerStartUrl = getMarkerUrl(markerStartType, 'start');
+  const markerEndUrl = getMarkerUrl(markerEndType, 'end');
 
   // Get the appropriate path based on routing type
   let path: string;
@@ -77,7 +94,8 @@ const CustomEdge: React.FC<EdgeProps> = ({
       <BaseEdge
         id={id}
         path={path}
-        markerEnd={markerEnd}
+        markerStart={markerStartUrl}
+        markerEnd={markerEndUrl}
         style={{
           stroke: color,
           strokeWidth: selected ? 3 : 2,
@@ -127,18 +145,6 @@ const CustomEdge: React.FC<EdgeProps> = ({
             }}
           />
         </>
-      )}
-
-      {/* Bidirectional arrow */}
-      {edgeData?.bidirectional && (
-        <path
-          d={path}
-          fill="none"
-          stroke={color}
-          strokeWidth={selected ? 3 : 2}
-          markerStart="url(#arrow-start)"
-          style={{ opacity: 0 }}
-        />
       )}
 
       {/* Edge Label */}
