@@ -125,13 +125,18 @@ const ShapeLibrary: React.FC<ShapeLibraryProps> = ({ onAddNode, onAddGroup, onAd
         {shapes[activeCategory].map((shape) => (
           <button
             key={shape.type}
+            draggable
+            onDragStart={(e) => {
+              e.dataTransfer.setData('application/reactflow', shape.type);
+              e.dataTransfer.effectAllowed = 'move';
+            }}
             onClick={() => onAddNode(shape.type)}
             style={{
               padding: `${theme.spacing.lg} ${theme.spacing.md}`,
               border: `1px solid ${theme.border.default}`,
               borderRadius: theme.radius.md,
               background: theme.background.tertiary,
-              cursor: 'pointer',
+              cursor: 'grab',
               transition: theme.transition.normal,
               display: 'flex',
               flexDirection: 'column',

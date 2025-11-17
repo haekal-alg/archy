@@ -876,6 +876,53 @@ const App: React.FC = () => {
         onNodeContextMenu={onNodeContextMenu}
         onEdgeContextMenu={onEdgeContextMenu}
         onInit={setReactFlowInstance}
+        onDrop={(event) => {
+          event.preventDefault();
+          const type = event.dataTransfer.getData('application/reactflow');
+          if (type && reactFlowInstance) {
+            const position = reactFlowInstance.screenToFlowPosition({
+              x: event.clientX,
+              y: event.clientY,
+            });
+
+            const typeMap: Record<string, string> = {
+              router: 'Router',
+              server: 'Server',
+              firewall: 'Firewall',
+              windows: 'Windows PC',
+              linux: 'Linux Server',
+              switch: 'Network Switch',
+              cloud: 'Cloud',
+              database: 'Database',
+              laptop: 'Laptop',
+              attacker: 'Attacker',
+              generic: 'Device'
+            };
+
+            const newNode: Node = {
+              id: `node-${Date.now()}`,
+              type: 'enhanced',
+              position: position,
+              data: {
+                label: typeMap[type] || 'Device',
+                type: type,
+                host: '',
+                port: 22,
+                username: '',
+                password: '',
+                ipAddress: '',
+                description: '',
+                connections: []
+              }
+            };
+
+            setNodes((nds) => nds.concat(newNode));
+          }
+        }}
+        onDragOver={(event) => {
+          event.preventDefault();
+          event.dataTransfer.dropEffect = 'move';
+        }}
         nodeTypes={nodeTypes}
         edgeTypes={edgeTypes}
         fitView

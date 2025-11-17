@@ -455,7 +455,7 @@ const StylePanel: React.FC<StylePanelProps> = ({
           fontWeight: theme.fontWeight.semibold,
           color: theme.text.primary
         }}>
-          Properties
+          Settings
         </h3>
       </div>
 
