@@ -885,8 +885,14 @@ const AppContent: React.FC = () => {
     <div style={{ width: '100vw', height: '100vh', display: 'flex', flexDirection: 'column' }}>
       <TabBar />
 
-      {activeTab === 'design' ? (
-        <div style={{ flex: 1, position: 'relative', overflow: 'hidden' }}>
+      {/* Design Tab */}
+      <div style={{
+        flex: 1,
+        position: 'relative',
+        overflow: 'hidden',
+        display: activeTab === 'design' ? 'flex' : 'none',
+        flexDirection: 'column'
+      }}>
           <ShapeLibrary
             onAddNode={addEnhancedNode}
             onAddGroup={addGroupNode}
@@ -1570,10 +1576,17 @@ const AppContent: React.FC = () => {
               })}
             </defs>
           </svg>
-        </div>
-      ) : (
+      </div>
+
+      {/* Connections Tab */}
+      <div style={{
+        flex: 1,
+        display: activeTab === 'connections' ? 'flex' : 'none',
+        flexDirection: 'column',
+        overflow: 'hidden'
+      }}>
         <ConnectionsTab />
-      )}
+      </div>
     </div>
   );
 };

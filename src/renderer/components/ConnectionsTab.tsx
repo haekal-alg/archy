@@ -6,6 +6,12 @@ const ConnectionsTab: React.FC = () => {
   const { connections, activeConnectionId, setActiveConnectionId, disconnectConnection } = useTabContext();
   const [sidePanelCollapsed, setSidePanelCollapsed] = useState(false);
 
+  const clearDisconnected = () => {
+    connections
+      .filter(c => c.status === 'disconnected' || c.status === 'error')
+      .forEach(c => disconnectConnection(c.id));
+  };
+
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'connected': return '#16825d';
@@ -58,34 +64,57 @@ const ConnectionsTab: React.FC = () => {
             padding: '12px 16px',
             borderBottom: '1px solid #333',
             display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
+            flexDirection: 'column',
+            gap: '8px',
           }}>
             <div style={{
-              fontSize: '13px',
-              fontWeight: '600',
-              color: '#cccccc',
-              textTransform: 'uppercase',
-              letterSpacing: '0.5px',
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
             }}>
-              Active Connections
+              <div style={{
+                fontSize: '13px',
+                fontWeight: '600',
+                color: '#cccccc',
+                textTransform: 'uppercase',
+                letterSpacing: '0.5px',
+              }}>
+                Active Connections
+              </div>
+              <button
+                onClick={() => setSidePanelCollapsed(true)}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  color: '#888',
+                  cursor: 'pointer',
+                  padding: '4px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  fontSize: '18px',
+                }}
+                title="Collapse sidebar"
+              >
+                ‹
+              </button>
             </div>
-            <button
-              onClick={() => setSidePanelCollapsed(true)}
-              style={{
-                background: 'none',
-                border: 'none',
-                color: '#888',
-                cursor: 'pointer',
-                padding: '4px',
-                display: 'flex',
-                alignItems: 'center',
-                fontSize: '18px',
-              }}
-              title="Collapse sidebar"
-            >
-              ‹
-            </button>
+            {connections.some(c => c.status === 'disconnected' || c.status === 'error') && (
+              <button
+                onClick={clearDisconnected}
+                style={{
+                  padding: '6px 12px',
+                  backgroundColor: '#dc2626',
+                  color: '#fff',
+                  border: 'none',
+                  borderRadius: '4px',
+                  fontSize: '11px',
+                  cursor: 'pointer',
+                  fontWeight: '500',
+                }}
+              >
+                Clear Disconnected
+              </button>
+            )}
           </div>
 
           {/* Connections List */}
@@ -106,6 +135,7 @@ const ConnectionsTab: React.FC = () => {
                   key={conn.id}
                   onClick={() => setActiveConnectionId(conn.id)}
                   style={{
+                    position: 'relative',
                     padding: '12px 16px',
                     borderBottom: '1px solid #2d2d2d',
                     cursor: 'pointer',
@@ -123,12 +153,13 @@ const ConnectionsTab: React.FC = () => {
                     }
                   }}
                 >
-                  {/* Node Name & Type */}
+                  {/* Node Name */}
                   <div style={{
                     display: 'flex',
                     alignItems: 'center',
                     gap: '8px',
                     marginBottom: '6px',
+                    paddingRight: conn.status === 'connected' ? '28px' : '0',
                   }}>
                     <span style={{
                       fontSize: '13px',
@@ -140,16 +171,6 @@ const ConnectionsTab: React.FC = () => {
                       flex: 1,
                     }}>
                       {conn.nodeName}
-                    </span>
-                    <span style={{
-                      fontSize: '10px',
-                      color: '#888',
-                      backgroundColor: '#1e1e1e',
-                      padding: '2px 6px',
-                      borderRadius: '3px',
-                      textTransform: 'uppercase',
-                    }}>
-                      {conn.nodeType}
                     </span>
                   </div>
 
@@ -210,7 +231,7 @@ const ConnectionsTab: React.FC = () => {
                     </div>
                   )}
 
-                  {/* Disconnect Button */}
+                  {/* Disconnect X Button */}
                   {conn.status === 'connected' && (
                     <button
                       onClick={(e) => {
@@ -218,19 +239,27 @@ const ConnectionsTab: React.FC = () => {
                         disconnectConnection(conn.id);
                       }}
                       style={{
-                        marginTop: '8px',
-                        width: '100%',
-                        padding: '6px',
-                        backgroundColor: '#dc2626',
+                        position: 'absolute',
+                        top: '8px',
+                        right: '8px',
+                        width: '20px',
+                        height: '20px',
+                        padding: '0',
+                        backgroundColor: 'rgba(220, 38, 38, 0.8)',
                         color: '#fff',
                         border: 'none',
                         borderRadius: '3px',
-                        fontSize: '11px',
+                        fontSize: '14px',
                         cursor: 'pointer',
-                        fontWeight: '500',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        fontWeight: '600',
+                        lineHeight: '1',
                       }}
+                      title="Disconnect"
                     >
-                      Disconnect
+                      ×
                     </button>
                   )}
                 </div>
@@ -310,11 +339,24 @@ const ConnectionsTab: React.FC = () => {
               </div>
             </div>
 
-            {/* Terminal */}
-            <div style={{ flex: 1, overflow: 'hidden', padding: '8px' }}>
-              {activeConnection.status === 'connected' ? (
-                <TerminalEmulator connectionId={activeConnection.id} />
-              ) : activeConnection.status === 'connecting' ? (
+            {/* Terminal Area - render all terminals but hide inactive ones */}
+            <div style={{ flex: 1, overflow: 'hidden', padding: '8px', position: 'relative' }}>
+              {/* Render all connected terminals */}
+              {connections.filter(c => c.status === 'connected').map(conn => (
+                <div
+                  key={conn.id}
+                  style={{
+                    display: conn.id === activeConnectionId ? 'block' : 'none',
+                    width: '100%',
+                    height: '100%',
+                  }}
+                >
+                  <TerminalEmulator connectionId={conn.id} isVisible={conn.id === activeConnectionId} />
+                </div>
+              ))}
+
+              {/* Status messages for active connection */}
+              {activeConnection && activeConnection.status === 'connecting' && (
                 <div style={{
                   display: 'flex',
                   alignItems: 'center',
@@ -325,7 +367,8 @@ const ConnectionsTab: React.FC = () => {
                 }}>
                   Connecting to {activeConnection.host}...
                 </div>
-              ) : activeConnection.status === 'error' ? (
+              )}
+              {activeConnection && activeConnection.status === 'error' && (
                 <div style={{
                   display: 'flex',
                   flexDirection: 'column',
@@ -341,7 +384,8 @@ const ConnectionsTab: React.FC = () => {
                     {activeConnection.error}
                   </div>
                 </div>
-              ) : (
+              )}
+              {activeConnection && activeConnection.status === 'disconnected' && (
                 <div style={{
                   display: 'flex',
                   alignItems: 'center',

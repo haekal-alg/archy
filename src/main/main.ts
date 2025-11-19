@@ -236,6 +236,13 @@ ipcMain.handle('create-ssh-session', async (event, { connectionId, host, port = 
           }
         });
 
+        // Send a newline to trigger the prompt
+        setTimeout(() => {
+          if (sshSessions.has(connectionId)) {
+            stream.write('\n');
+          }
+        }, 100);
+
         stream.on('close', () => {
           sshSessions.delete(connectionId);
           if (mainWindow && !mainWindow.isDestroyed()) {
