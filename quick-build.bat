@@ -1,0 +1,3 @@
+@echo off
+echo Quick building Archy...
+npm run build
