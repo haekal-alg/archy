@@ -28,6 +28,10 @@ import EditNodeModal from './components/EditNodeModal';
 import ShapeLibrary from './components/ShapeLibrary';
 import StylePanel from './components/StylePanel';
 import ContextMenu from './components/ContextMenu';
+import TabBar from './components/TabBar';
+import DesignTab from './components/DesignTab';
+import ConnectionsTab from './components/ConnectionsTab';
+import { TabProvider, useTabContext } from './contexts/TabContext';
 import './App.css';
 import { toPng, toJpeg } from 'html-to-image';
 import theme from '../theme';
@@ -57,7 +61,8 @@ interface HistoryState {
   edges: Edge[];
 }
 
-const App: React.FC = () => {
+const AppContent: React.FC = () => {
+  const { activeTab, createConnection } = useTabContext();
   const [nodes, setNodes, onNodesChange] = useNodesState<Node>([] as Node[]);
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([] as Edge[]);
   const [selectedNode, setSelectedNode] = useState<Node | null>(null);
@@ -426,9 +431,17 @@ const App: React.FC = () => {
         await window.electron.executeCommand(command);
         console.log('RDP connection initiated');
       } else if (type === 'ssh') {
-        // SSH connection: ssh username@host -p port
-        await window.electron.connectSSH(host, port || 22, username, password);
-        console.log('SSH connection initiated');
+        // SSH connection: Use new terminal emulator
+        const nodeData = node.data as unknown as EnhancedDeviceData;
+        await createConnection({
+          nodeName: nodeData.label || 'Unknown',
+          nodeType: nodeData.type || 'generic',
+          host,
+          port: port || 22,
+          username,
+          password,
+        });
+        console.log('SSH connection initiated in terminal emulator');
       } else if (type === 'browser') {
         // Browser connection: start URL (opens in default browser)
         // Wrap URL in quotes to handle special characters like &, ?, #
@@ -869,137 +882,112 @@ const App: React.FC = () => {
   };
 
   return (
-    <div style={{ width: '100vw', height: '100vh' }} ref={reactFlowWrapper}>
-      <ShapeLibrary
-        onAddNode={addEnhancedNode}
-        onAddGroup={addGroupNode}
-        onAddText={addTextNode}
-        isOpen={isShapeLibraryOpen}
-        onToggle={() => setIsShapeLibraryOpen(!isShapeLibraryOpen)}
-      />
+    <div style={{ width: '100vw', height: '100vh', display: 'flex', flexDirection: 'column' }}>
+      <TabBar />
 
-      <StylePanel
-        selectedNode={selectedNode}
-        selectedEdge={selectedEdge}
-        onUpdateNode={updateNodeData}
-        onUpdateEdge={updateEdgeData}
-        onMoveToFront={moveNodeToFront}
-        onMoveToBack={moveNodeToBack}
-        onDeleteNode={handleDeleteNode}
-        onDeleteEdge={handleDeleteEdge}
-        isOpen={isStylePanelOpen}
-        onToggle={() => setIsStylePanelOpen(!isStylePanelOpen)}
-      />
+      {activeTab === 'design' ? (
+        <div style={{ flex: 1, position: 'relative', overflow: 'hidden' }}>
+          <ShapeLibrary
+            onAddNode={addEnhancedNode}
+            onAddGroup={addGroupNode}
+            onAddText={addTextNode}
+            isOpen={isShapeLibraryOpen}
+            onToggle={() => setIsShapeLibraryOpen(!isShapeLibraryOpen)}
+          />
 
-      <ReactFlow
-        nodes={nodes}
-        edges={edges}
-        onNodesChange={onNodesChange}
-        onEdgesChange={onEdgesChange}
-        onConnect={onConnect}
-        onNodeClick={onNodeClick}
-        onEdgeClick={onEdgeClick}
-        onPaneClick={onPaneClick}
-        onNodeDoubleClick={onNodeDoubleClick}
-        onNodeContextMenu={onNodeContextMenu}
-        onEdgeContextMenu={onEdgeContextMenu}
-        onInit={setReactFlowInstance}
-        onDrop={(event) => {
-          event.preventDefault();
-          const type = event.dataTransfer.getData('application/reactflow');
-          if (type && reactFlowInstance) {
-            const position = reactFlowInstance.screenToFlowPosition({
-              x: event.clientX,
-              y: event.clientY,
-            });
+          <StylePanel
+            selectedNode={selectedNode}
+            selectedEdge={selectedEdge}
+            onUpdateNode={updateNodeData}
+            onUpdateEdge={updateEdgeData}
+            onMoveToFront={moveNodeToFront}
+            onMoveToBack={moveNodeToBack}
+            onDeleteNode={handleDeleteNode}
+            onDeleteEdge={handleDeleteEdge}
+            isOpen={isStylePanelOpen}
+            onToggle={() => setIsStylePanelOpen(!isStylePanelOpen)}
+          />
 
-            const typeMap: Record<string, string> = {
-              router: 'Router',
-              server: 'Server',
-              firewall: 'Firewall',
-              windows: 'Windows PC',
-              linux: 'Linux Server',
-              switch: 'Network Switch',
-              cloud: 'Cloud',
-              database: 'Database',
-              laptop: 'Laptop',
-              attacker: 'Attacker',
-              generic: 'Device'
-            };
+          <DesignTab
+            nodes={nodes}
+            edges={edges}
+            onNodesChange={onNodesChange}
+            onEdgesChange={onEdgesChange}
+            onConnect={onConnect}
+            onNodeClick={onNodeClick}
+            onEdgeClick={onEdgeClick}
+            onPaneClick={onPaneClick}
+            onNodeDoubleClick={onNodeDoubleClick}
+            onNodeContextMenu={onNodeContextMenu}
+            onEdgeContextMenu={onEdgeContextMenu}
+            onInit={setReactFlowInstance}
+            onDrop={(event) => {
+              event.preventDefault();
+              const type = event.dataTransfer.getData('application/reactflow');
+              if (type && reactFlowInstance) {
+                const position = reactFlowInstance.screenToFlowPosition({
+                  x: event.clientX,
+                  y: event.clientY,
+                });
 
-            const newNode: Node = {
-              id: `node-${Date.now()}`,
-              type: 'enhanced',
-              position: position,
-              data: {
-                label: typeMap[type] || 'Device',
-                type: type,
-                host: '',
-                port: 22,
-                username: '',
-                password: '',
-                ipAddress: '',
-                description: '',
-                connections: []
+                const typeMap: Record<string, string> = {
+                  router: 'Router',
+                  server: 'Server',
+                  firewall: 'Firewall',
+                  windows: 'Windows PC',
+                  linux: 'Linux Server',
+                  switch: 'Network Switch',
+                  cloud: 'Cloud',
+                  database: 'Database',
+                  laptop: 'Laptop',
+                  attacker: 'Attacker',
+                  generic: 'Device'
+                };
+
+                const newNode: Node = {
+                  id: `node-${Date.now()}`,
+                  type: 'enhanced',
+                  position: position,
+                  data: {
+                    label: typeMap[type] || 'Device',
+                    type: type,
+                    host: '',
+                    port: 22,
+                    username: '',
+                    password: '',
+                    ipAddress: '',
+                    description: '',
+                    connections: []
+                  }
+                };
+
+                setNodes((nds) => nds.concat(newNode));
               }
-            };
+            }}
+            onDragOver={(event) => {
+              event.preventDefault();
+              event.dataTransfer.dropEffect = 'move';
+            }}
+            nodeTypes={nodeTypes}
+            edgeTypes={edgeTypes}
+            reactFlowWrapper={reactFlowWrapper}
+          />
 
-            setNodes((nds) => nds.concat(newNode));
-          }
-        }}
-        onDragOver={(event) => {
-          event.preventDefault();
-          event.dataTransfer.dropEffect = 'move';
-        }}
-        nodeTypes={nodeTypes}
-        edgeTypes={edgeTypes}
-        fitView
-        snapToGrid
-        snapGrid={[15, 15]}
-        minZoom={0.01}
-        maxZoom={10}
-        defaultEdgeOptions={{
-          type: 'custom',
-        }}
-        style={{
-          background: theme.background.canvas,
-        }}
-      >
-        <Background
-          gap={20}
-          size={1}
-          color={theme.border.subtle}
-          style={{
-            backgroundColor: theme.background.canvas,
-          }}
-        />
-        <Controls />
-        <MiniMap
-          nodeStrokeWidth={3}
-          zoomable
-          pannable
-          nodeColor={theme.accent.blue}
-          maskColor={`${theme.background.canvas}CC`}
-          style={{
-            background: theme.background.secondary,
-            border: `2px solid ${theme.border.default}`,
-            borderRadius: theme.radius.lg
-          }}
-        />
-
-        {/* Top Panel with Undo/Redo and Export buttons */}
-        <Panel position="top-right" style={{
-          display: 'flex',
-          gap: theme.spacing.md,
-          alignItems: 'center',
-          background: theme.background.elevated,
-          padding: `${theme.spacing.md} ${theme.spacing.lg}`,
-          borderRadius: theme.radius.lg,
-          boxShadow: theme.shadow.lg,
-          marginTop: '10px',
-          marginRight: '10px',
-          border: `1px solid ${theme.border.default}`
-        }}>
+          {/* Top control panel */}
+          <div style={{
+            position: 'absolute',
+            top: '10px',
+            right: '10px',
+            zIndex: 10,
+            display: 'flex',
+            gap: theme.spacing.md,
+            alignItems: 'center',
+            background: theme.background.elevated,
+            padding: `${theme.spacing.md} ${theme.spacing.lg}`,
+            borderRadius: theme.radius.lg,
+            boxShadow: theme.shadow.lg,
+            border: `1px solid ${theme.border.default}`
+          }}>
           {/* Undo/Redo buttons */}
           <button
             onClick={handleUndo}
@@ -1144,9 +1132,15 @@ const App: React.FC = () => {
               </div>
             )}
           </div>
-        </Panel>
+        </div>
 
-        <Panel position="bottom-center" style={{
+        {/* Bottom tip panel */}
+        <div style={{
+          position: 'absolute',
+          bottom: '20px',
+          left: '50%',
+          transform: 'translateX(-50%)',
+          zIndex: 10,
           background: theme.background.elevated,
           color: theme.text.secondary,
           padding: `${theme.spacing.sm} ${theme.spacing.lg}`,
@@ -1156,8 +1150,7 @@ const App: React.FC = () => {
           border: `1px solid ${theme.border.default}`
         }}>
           <strong style={{ color: theme.accent.blue }}>Tip:</strong> Double-click nodes to edit | Right-click to delete/connect | {currentFilePath ? currentFilePath : diagramName}{hasUnsavedChanges ? ' *' : ''}
-        </Panel>
-      </ReactFlow>
+        </div>
 
       {contextMenu && (
         <ContextMenu
@@ -1197,14 +1190,14 @@ const App: React.FC = () => {
         />
       )}
 
-      {/* Arrow markers for edges */}
-      <svg style={{ position: 'absolute', width: 0, height: 0 }}>
-        <defs>
-          {/* Generate markers for each color used in edges */}
-          {Array.from(new Set(edges.map(e => (e.data as CustomEdgeData)?.color || theme.border.default))).map(color => {
-            const colorId = String(color).replace('#', '');
-            return (
-              <React.Fragment key={colorId}>
+          {/* Arrow markers for edges */}
+          <svg style={{ position: 'absolute', width: 0, height: 0 }}>
+            <defs>
+              {/* Generate markers for each color used in edges */}
+              {Array.from(new Set(edges.map(e => (e.data as CustomEdgeData)?.color || theme.border.default))).map(color => {
+                const colorId = String(color).replace('#', '');
+                return (
+                  <React.Fragment key={colorId}>
                 {/* Arrow (filled triangle) - End */}
                 <marker
                   id={`arrow-end-${colorId}`}
@@ -1572,12 +1565,25 @@ const App: React.FC = () => {
                     strokeWidth="2"
                   />
                 </marker>
-              </React.Fragment>
-            );
-          })}
-        </defs>
-      </svg>
+                  </React.Fragment>
+                );
+              })}
+            </defs>
+          </svg>
+        </div>
+      ) : (
+        <ConnectionsTab />
+      )}
     </div>
+  );
+};
+
+// Wrap AppContent with TabProvider
+const App: React.FC = () => {
+  return (
+    <TabProvider>
+      <AppContent />
+    </TabProvider>
   );
 };
 

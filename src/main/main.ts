@@ -2,12 +2,21 @@ import { app, BrowserWindow, ipcMain, Menu, dialog } from 'electron';
 import * as path from 'path';
 import * as fs from 'fs';
 import { exec } from 'child_process';
-import { Client } from 'ssh2';
+import { Client, ClientChannel } from 'ssh2';
 
 const Store = require('electron-store');
 const store = new Store.default();
 
 let mainWindow: BrowserWindow | null = null;
+
+// Store active SSH sessions
+interface SSHSession {
+  client: Client;
+  stream: ClientChannel;
+  connectionId: string;
+}
+
+const sshSessions = new Map<string, SSHSession>();
 
 function createMenu() {
   const template: any = [
@@ -151,7 +160,7 @@ authentication level:i:0`;
   });
 });
 
-// Handle SSH connections
+// Handle SSH connections (legacy - for backward compatibility)
 ipcMain.handle('connect-ssh', async (event, { host, port = 22, username, password }) => {
   return new Promise((resolve, reject) => {
     const conn = new Client();
@@ -195,6 +204,105 @@ ipcMain.handle('connect-ssh', async (event, { host, port = 22, username, passwor
       password,
     });
   });
+});
+
+// Create persistent SSH session with xterm.js
+ipcMain.handle('create-ssh-session', async (event, { connectionId, host, port = 22, username, password }) => {
+  return new Promise((resolve, reject) => {
+    const client = new Client();
+
+    client.on('ready', () => {
+      client.shell({
+        term: 'xterm-256color',
+        cols: 80,
+        rows: 24,
+      }, (err, stream) => {
+        if (err) {
+          client.end();
+          reject(err);
+          return;
+        }
+
+        // Store the session
+        sshSessions.set(connectionId, { client, stream, connectionId });
+
+        // Forward stream data to renderer
+        stream.on('data', (data: Buffer) => {
+          if (mainWindow && !mainWindow.isDestroyed()) {
+            mainWindow.webContents.send('ssh-data', {
+              connectionId,
+              data: data.toString('utf-8'),
+            });
+          }
+        });
+
+        stream.on('close', () => {
+          sshSessions.delete(connectionId);
+          if (mainWindow && !mainWindow.isDestroyed()) {
+            mainWindow.webContents.send('ssh-closed', { connectionId });
+          }
+          client.end();
+        });
+
+        stream.stderr.on('data', (data: Buffer) => {
+          if (mainWindow && !mainWindow.isDestroyed()) {
+            mainWindow.webContents.send('ssh-data', {
+              connectionId,
+              data: data.toString('utf-8'),
+            });
+          }
+        });
+
+        resolve({ success: true });
+      });
+    });
+
+    client.on('error', (err) => {
+      sshSessions.delete(connectionId);
+      reject(err);
+    });
+
+    client.connect({
+      host,
+      port,
+      username,
+      password,
+      keepaliveInterval: 10000,
+      keepaliveCountMax: 3,
+    });
+  });
+});
+
+// Send data to SSH session
+ipcMain.handle('send-ssh-data', async (event, { connectionId, data }) => {
+  const session = sshSessions.get(connectionId);
+  if (session && session.stream) {
+    session.stream.write(data);
+    return { success: true };
+  }
+  return { success: false, error: 'Session not found' };
+});
+
+// Resize SSH terminal
+ipcMain.handle('resize-ssh-terminal', async (event, { connectionId, cols, rows }) => {
+  const session = sshSessions.get(connectionId);
+  if (session && session.stream) {
+    session.stream.setWindow(rows, cols, 0, 0);
+    return { success: true };
+  }
+  return { success: false, error: 'Session not found' };
+});
+
+// Close SSH session
+ipcMain.handle('close-ssh-session', async (event, { connectionId }) => {
+  const session = sshSessions.get(connectionId);
+  if (session) {
+    session.stream.end();
+    session.client.end();
+    sshSessions.delete(connectionId);
+    return { success: true };
+  }
+  return { success: false, error: 'Session not found' };
 });
 
 // Handle generic command execution (for browser, custom commands, etc.)

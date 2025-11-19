@@ -7,6 +7,22 @@ export interface ElectronAPI {
   loadDiagram: () => Promise<any>;
   listDiagrams: () => Promise<string[]>;
   deleteDiagram: (name: string) => Promise<any>;
+
+  // SSH Session Management
+  createSSHSession: (config: {
+    connectionId: string;
+    host: string;
+    port: number;
+    username: string;
+    password: string;
+  }) => Promise<{ success: boolean; error?: string }>;
+  sendSSHData: (connectionId: string, data: string) => Promise<{ success: boolean; error?: string }>;
+  resizeSSHTerminal: (connectionId: string, cols: number, rows: number) => Promise<{ success: boolean; error?: string }>;
+  closeSSHSession: (connectionId: string) => Promise<{ success: boolean; error?: string }>;
+  onSSHData: (callback: (data: { connectionId: string; data: string }) => void) => () => void;
+  onSSHClosed: (callback: (data: { connectionId: string }) => void) => () => void;
+
+  // Menu event listeners
   onMenuSave: (callback: () => void) => void;
   onMenuLoad: (callback: () => void) => void;
   onMenuExport: (callback: () => void) => void;
