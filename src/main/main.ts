@@ -236,12 +236,13 @@ ipcMain.handle('create-ssh-session', async (event, { connectionId, host, port = 
           }
         });
 
-        // Send a newline to trigger the prompt
+        // Send a newline to trigger the prompt - delay increased to ensure terminal is ready
         setTimeout(() => {
           if (sshSessions.has(connectionId)) {
+            console.log(`[SSH ${connectionId}] Sending initial newline`);
             stream.write('\n');
           }
-        }, 100);
+        }, 300);
 
         stream.on('close', () => {
           sshSessions.delete(connectionId);
@@ -284,9 +285,12 @@ ipcMain.handle('create-ssh-session', async (event, { connectionId, host, port = 
 ipcMain.handle('send-ssh-data', async (event, { connectionId, data }) => {
   const session = sshSessions.get(connectionId);
   if (session && session.stream) {
+    const charCodes = data.split('').map((c: string) => c.charCodeAt(0));
+    console.log(`[SSH ${connectionId}] Sending data:`, data, 'charCodes:', charCodes);
     session.stream.write(data);
     return { success: true };
   }
+  console.log(`[SSH ${connectionId}] ERROR: Session not found`);
   return { success: false, error: 'Session not found' };
 });
 

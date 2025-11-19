@@ -16,13 +16,15 @@ const terminalInstances = new Map<string, {
   fitAddon: FitAddon;
   serializeAddon: SerializeAddon;
   dataListener: () => void;
+  onDataDisposable: { dispose: () => void };
 }>();
 
 // Export cleanup function
 export const cleanupTerminal = (connectionId: string) => {
   const instance = terminalInstances.get(connectionId);
   if (instance) {
-    instance.dataListener(); // Remove data listener
+    instance.dataListener(); // Remove SSH data listener
+    instance.onDataDisposable.dispose(); // Remove onData handler
     instance.terminal.dispose();
     terminalInstances.delete(connectionId);
   }
@@ -89,14 +91,22 @@ const TerminalEmulator: React.FC<TerminalEmulatorProps> = ({ connectionId, isVis
 
       // Open terminal in DOM
       terminal.open(terminalRef.current);
-      fitAddon.fit();
 
-      // Handle terminal input (user typing)
-      terminal.onData((data) => {
+      // Give terminal time to render before fitting
+      setTimeout(() => {
+        fitAddon.fit();
+        // Force focus immediately after fit
+        terminal.focus();
+        console.log(`[Terminal ${connectionId}] Initial focus applied`);
+      }, 10);
+
+      // Handle terminal input (user typing) - store disposable to prevent duplicates
+      const onDataDisposable = terminal.onData((data) => {
+        console.log(`[Terminal ${connectionId}] onData:`, data, 'charCodes:', Array.from(data).map(c => c.charCodeAt(0)));
         window.electron.sendSSHData(connectionId, data);
       });
 
-      // Listen for data from SSH session
+      // Listen for data from SSH session - only ONE listener per terminal
       const dataListener = window.electron.onSSHData((data: { connectionId: string; data: string }) => {
         if (data.connectionId === connectionId) {
           terminal.write(data.data);
@@ -106,15 +116,20 @@ const TerminalEmulator: React.FC<TerminalEmulatorProps> = ({ connectionId, isVis
       // Initial resize notification
       window.electron.resizeSSHTerminal(connectionId, terminal.cols, terminal.rows);
 
-      // Store instance
-      instance = { terminal, fitAddon, serializeAddon, dataListener };
+      // Store instance with all cleanup functions
+      instance = { terminal, fitAddon, serializeAddon, dataListener, onDataDisposable };
       terminalInstances.set(connectionId, instance);
     } else {
-      // Reattach existing terminal to DOM
+      // Reattach existing terminal to DOM if needed
       const element = terminalRef.current;
-      if (element && !element.contains(instance.terminal.element!)) {
+      if (element && instance && !element.contains(instance.terminal.element!)) {
         instance.terminal.open(element);
-        instance.fitAddon.fit();
+        const inst = instance; // Capture for closure
+        setTimeout(() => {
+          inst.fitAddon.fit();
+          inst.terminal.focus();
+          console.log(`[Terminal ${connectionId}] Reattached and focused`);
+        }, 10);
       }
     }
 
@@ -130,10 +145,17 @@ const TerminalEmulator: React.FC<TerminalEmulatorProps> = ({ connectionId, isVis
 
     // Fit terminal when it becomes visible
     if (isVisible && instance) {
+      // Use multiple attempts to ensure focus
       setTimeout(() => {
         instance.fitAddon.fit();
         instance.terminal.focus();
       }, 0);
+      setTimeout(() => {
+        instance.terminal.focus();
+      }, 50);
+      setTimeout(() => {
+        instance.terminal.focus();
+      }, 150);
     }
 
     // Cleanup on unmount (but keep terminal instance alive)
@@ -145,10 +167,18 @@ const TerminalEmulator: React.FC<TerminalEmulatorProps> = ({ connectionId, isVis
   return (
     <div
       ref={terminalRef}
+      onClick={() => {
+        // Ensure terminal gets focus when clicked
+        const instance = terminalInstances.get(connectionId);
+        if (instance) {
+          instance.terminal.focus();
+        }
+      }}
       style={{
         width: '100%',
         height: '100%',
         overflow: 'hidden',
+        cursor: 'text',
       }}
     />
   );
