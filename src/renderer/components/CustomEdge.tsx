@@ -7,6 +7,9 @@ import {
   getSmoothStepPath,
   getStraightPath
 } from '@xyflow/react';
+import theme from '../../theme';
+
+export type MarkerType = 'arrow' | 'arrow-open' | 'diamond' | 'diamond-filled' | 'circle' | 'circle-filled' | 'square' | 'square-filled' | 'cross' | 'bar' | 'none';
 
 export interface CustomEdgeData {
   label?: string;
@@ -15,6 +18,8 @@ export interface CustomEdgeData {
   animated?: boolean;
   bidirectional?: boolean;
   routingType?: 'bezier' | 'smoothstep' | 'straight';
+  markerStart?: MarkerType;
+  markerEnd?: MarkerType;
 }
 
 const CustomEdge: React.FC<EdgeProps> = ({
@@ -31,11 +36,24 @@ const CustomEdge: React.FC<EdgeProps> = ({
 }) => {
   const edgeData = data as CustomEdgeData;
 
-  const color = edgeData?.color || '#000000';
+  const color = edgeData?.color || theme.border.default;
   const routingType = edgeData?.routingType || 'bezier';
   const strokeStyle = edgeData?.style || 'solid';
   const animated = edgeData?.animated || false;
   const label = edgeData?.label;
+  const markerStartType = edgeData?.markerStart || 'none';
+  const markerEndType = edgeData?.markerEnd || 'arrow';
+
+  // Generate marker URL references
+  const getMarkerUrl = (markerType: MarkerType, position: 'start' | 'end') => {
+    if (markerType === 'none') return undefined;
+    // Encode color for URL (remove # and handle transparency)
+    const colorId = color.replace('#', '');
+    return `url(#${markerType}-${position}-${colorId})`;
+  };
+
+  const markerStartUrl = getMarkerUrl(markerStartType, 'start');
+  const markerEndUrl = getMarkerUrl(markerEndType, 'end');
 
   // Get the appropriate path based on routing type
   let path: string;
@@ -76,13 +94,14 @@ const CustomEdge: React.FC<EdgeProps> = ({
       <BaseEdge
         id={id}
         path={path}
-        markerEnd={markerEnd}
+        markerStart={markerStartUrl}
+        markerEnd={markerEndUrl}
         style={{
           stroke: color,
           strokeWidth: selected ? 3 : 2,
           strokeDasharray,
           opacity: selected ? 1 : 0.8,
-          filter: selected ? 'drop-shadow(0 0 4px rgba(0,0,0,0.3))' : 'none',
+          filter: selected ? `drop-shadow(0 0 4px ${theme.shadow.md})` : 'none',
         }}
       />
 
@@ -128,18 +147,6 @@ const CustomEdge: React.FC<EdgeProps> = ({
         </>
       )}
 
-      {/* Bidirectional arrow */}
-      {edgeData?.bidirectional && (
-        <path
-          d={path}
-          fill="none"
-          stroke={color}
-          strokeWidth={selected ? 3 : 2}
-          markerStart="url(#arrow-start)"
-          style={{ opacity: 0 }}
-        />
-      )}
-
       {/* Edge Label */}
       {label && (
         <EdgeLabelRenderer>
@@ -147,15 +154,15 @@ const CustomEdge: React.FC<EdgeProps> = ({
             style={{
               position: 'absolute',
               transform: `translate(-50%, -50%) translate(${labelX}px,${labelY}px)`,
-              background: 'white',
-              padding: '4px 8px',
-              borderRadius: '6px',
-              fontSize: '11px',
-              fontWeight: '600',
+              background: theme.background.elevated,
+              padding: `${theme.spacing.xs} ${theme.spacing.md}`,
+              borderRadius: theme.radius.md,
+              fontSize: theme.fontSize.sm,
+              fontWeight: theme.fontWeight.semibold,
               border: `2px solid ${color}`,
-              color: '#333',
+              color: theme.text.primary,
               pointerEvents: 'all',
-              boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
+              boxShadow: theme.shadow.sm,
               whiteSpace: 'nowrap'
             }}
             className="nodrag nopan"

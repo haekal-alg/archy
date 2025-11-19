@@ -2,6 +2,7 @@ import React from 'react';
 import { Handle, Position, NodeProps, NodeResizer } from '@xyflow/react';
 import CONFIG from '../../config';
 import { ConnectionConfig } from './EnhancedDeviceNode';
+import theme from '../../theme';
 
 export interface GroupNodeData {
   label: string;
@@ -20,8 +21,8 @@ export interface GroupNodeData {
 const GroupNode: React.FC<NodeProps> = ({ data, selected }) => {
   const groupData = data as unknown as GroupNodeData;
 
-  const backgroundColor = groupData.backgroundColor || '#ffb3ba40';
-  const borderColor = groupData.borderColor || '#ff6b6b';
+  const backgroundColor = groupData.backgroundColor || theme.accent.pink + '40';
+  const borderColor = groupData.borderColor || theme.accent.pink;
   const borderStyle = groupData.borderStyle || 'solid';
 
   return (
@@ -39,7 +40,7 @@ const GroupNode: React.FC<NodeProps> = ({ data, selected }) => {
           height: 10,
           borderRadius: 5,
           backgroundColor: borderColor,
-          border: '2px solid white'
+          border: `2px solid ${theme.text.primary}`
         }}
       />
 
@@ -139,10 +140,10 @@ const GroupNode: React.FC<NodeProps> = ({ data, selected }) => {
           height: '100%',
           background: backgroundColor,
           border: `3px ${borderStyle} ${borderColor}`,
-          borderRadius: '16px',
-          padding: '16px',
+          borderRadius: theme.radius.xl,
+          padding: theme.spacing.xl,
           position: 'relative',
-          boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
+          boxShadow: 'none',
         }}
       >
         {/* Title Bar - only show if label exists */}
@@ -153,12 +154,12 @@ const GroupNode: React.FC<NodeProps> = ({ data, selected }) => {
               top: '-12px',
               left: '20px',
               background: borderColor,
-              color: 'white',
-              padding: '6px 16px',
-              borderRadius: '8px',
-              fontWeight: 'bold',
-              fontSize: '14px',
-              boxShadow: '0 2px 8px rgba(0,0,0,0.2)',
+              color: theme.text.primary,
+              padding: `${theme.spacing.sm} ${theme.spacing.xl}`,
+              borderRadius: theme.radius.lg,
+              fontWeight: theme.fontWeight.bold,
+              fontSize: theme.fontSize.base,
+              boxShadow: theme.shadow.sm,
               letterSpacing: '0.5px'
             }}
           >
@@ -174,13 +175,13 @@ const GroupNode: React.FC<NodeProps> = ({ data, selected }) => {
               bottom: '12px',
               left: '20px',
               right: '20px',
-              fontSize: '11px',
-              color: '#666',
+              fontSize: theme.fontSize.sm,
+              color: theme.text.primary,
               fontStyle: 'italic',
-              background: 'rgba(255,255,255,0.8)',
-              padding: '6px 10px',
-              borderRadius: '6px',
-              border: `1px solid ${borderColor}40`
+              background: 'transparent',
+              padding: `${theme.spacing.sm} ${theme.spacing.lg}`,
+              borderRadius: theme.radius.md,
+              border: 'none'
             }}
           >
             {groupData.description}
@@ -194,15 +195,15 @@ const GroupNode: React.FC<NodeProps> = ({ data, selected }) => {
               position: 'absolute',
               top: '12px',
               right: '12px',
-              fontSize: '10px',
-              color: '#999',
-              background: 'rgba(255,255,255,0.9)',
-              padding: '4px 8px',
-              borderRadius: '4px',
+              fontSize: theme.fontSize.xs,
+              color: theme.text.primary,
+              background: 'transparent',
+              padding: `${theme.spacing.xs} ${theme.spacing.md}`,
+              borderRadius: theme.radius.sm,
               display: 'flex',
               alignItems: 'center',
-              gap: '4px',
-              border: '1px solid #ddd'
+              gap: theme.spacing.xs,
+              border: 'none'
             }}
           >
             <span style={{ fontSize: '12px' }}>⚠️</span>

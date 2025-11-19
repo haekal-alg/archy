@@ -1,3 +1,5 @@
+/* Modern Dark Theme Global Styles */
+
 *,
 *::before,
 *::after,
@@ -19,27 +21,102 @@ a,
   cursor: pointer !important;
 }
 
+/* Node Hover Effect - Enhanced for Dark Theme */
 .device-node:hover {
   transform: scale(1.05);
-  box-shadow: 0 6px 12px rgba(0, 0, 0, 0.2) !important;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.8), 0 0 20px rgba(77, 124, 254, 0.2) !important;
+  transition: all 0.2s ease;
 }
 
+/* Selected Node - Modern Glow Effect */
 .react-flow__node.selected .device-node {
-  box-shadow: 0 0 0 3px #1a192b !important;
+  box-shadow: 0 0 0 2px #4d7cfe, 0 0 20px rgba(77, 124, 254, 0.4) !important;
 }
 
+/* Button Interactions */
 button:hover {
   opacity: 0.9;
   transform: translateY(-1px);
+  transition: all 0.15s ease;
 }
 
 button:active {
   transform: translateY(0);
 }
 
+/* Input Focus - Modern Blue Glow */
 input:focus,
-select:focus {
+select:focus,
+textarea:focus {
   outline: none;
-  border-color: #007bff !important;
-  box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.1);
+  border-color: #4d7cfe !important;
+  box-shadow: 0 0 0 3px rgba(77, 124, 254, 0.25);
+  transition: all 0.2s ease;
+}
+
+/* Scrollbar Styling for Dark Theme */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #151923;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #3a4556;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #4a5568;
+}
+
+/* Selection Color */
+::selection {
+  background: rgba(77, 124, 254, 0.3);
+  color: #e8ecf4;
+}
+
+/* ReactFlow Controls - Dark Theme Override */
+.react-flow__controls {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.6) !important;
+}
+
+.react-flow__controls-button {
+  background: #1e2433 !important;
+  border-color: #3a4556 !important;
+  color: #e8ecf4 !important;
+}
+
+.react-flow__controls-button:hover {
+  background: #252d3f !important;
+}
+
+/* ReactFlow MiniMap - Dark Theme Override */
+.react-flow__minimap {
+  background: #1e2433 !important;
+  border: 1px solid #3a4556 !important;
+}
+
+/* Smooth Transitions - Exclude ReactFlow elements for better performance */
+*:not(.react-flow):not(.react-flow *) {
+  transition-property: background-color, border-color, color, fill, stroke, opacity, box-shadow;
+  transition-duration: 0.15s;
+  transition-timing-function: ease-in-out;
+}
+
+/* Disable transitions on dragging for smooth performance */
+.react-flow__node {
+  transition: none !important;
+}
+
+.react-flow__node:not(.dragging) {
+  transition: box-shadow 0.2s ease !important;
+}
+
+/* Group Node - Transparent Background */
+.react-flow__node-group {
+  background: transparent !important;
 }
