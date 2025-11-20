@@ -84,7 +84,7 @@ const DesignTab: React.FC<DesignTabProps> = ({
         }}
         deleteKeyCode="Delete"
       >
-        <Background color="#2a2a2a" gap={20} />
+        <Background color="#000000" gap={20} />
         <Controls />
         <MiniMap
           nodeStrokeWidth={3}

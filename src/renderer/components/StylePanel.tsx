@@ -427,11 +427,11 @@ const StylePanel: React.FC<StylePanelProps> = ({
         }
       }}
       style={{
-        position: 'fixed',
+        position: 'absolute',
         right: isOpen ? '0' : '-320px',
-        top: '49px',
+        top: 0,
         width: '320px',
-        height: 'calc(100vh - 49px)',
+        height: '100%',
         background: 'rgba(30, 33, 51, 0.65)',
         backdropFilter: 'blur(60px) saturate(200%) brightness(1.1)',
         WebkitBackdropFilter: 'blur(60px) saturate(200%) brightness(1.1)',
@@ -817,101 +817,101 @@ const StylePanel: React.FC<StylePanelProps> = ({
                       }}>
                         Configured Connections
                       </label>
-                          {connections.map((connection) => (
-                            <div
-                              key={connection.id}
-                              style={{
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: theme.spacing.md,
-                                padding: theme.spacing.md,
-                                marginBottom: theme.spacing.md,
-                                background: theme.background.tertiary,
-                                border: `1px solid ${theme.border.default}`,
-                                borderRadius: theme.radius.sm,
-                                fontSize: theme.fontSize.sm
-                              }}
-                            >
-                              {/* Connection Type Badge */}
-                              <span style={{
-                                padding: `2px ${theme.spacing.sm}`,
-                                borderRadius: theme.radius.xs,
-                                background: getConnectionTypeBadgeColor(connection.type),
-                                color: theme.text.inverted,
-                                fontSize: theme.fontSize.xs,
-                                fontWeight: theme.fontWeight.semibold,
-                                textTransform: 'uppercase',
-                                whiteSpace: 'nowrap'
-                              }}>
-                                {connection.type}
-                              </span>
+                      {connections.map((connection) => (
+                        <div
+                          key={connection.id}
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: theme.spacing.md,
+                            padding: theme.spacing.md,
+                            marginBottom: theme.spacing.md,
+                            background: theme.background.tertiary,
+                            border: `1px solid ${theme.border.default}`,
+                            borderRadius: theme.radius.sm,
+                            fontSize: theme.fontSize.sm
+                          }}
+                        >
+                          {/* Connection Type Badge */}
+                          <span style={{
+                            padding: `2px ${theme.spacing.sm}`,
+                            borderRadius: theme.radius.xs,
+                            background: getConnectionTypeBadgeColor(connection.type),
+                            color: theme.text.inverted,
+                            fontSize: theme.fontSize.xs,
+                            fontWeight: theme.fontWeight.semibold,
+                            textTransform: 'uppercase',
+                            whiteSpace: 'nowrap'
+                          }}>
+                            {connection.type}
+                          </span>
 
-                              {/* Connection Info */}
-                              <div style={{
-                                flex: 1,
-                                fontFamily: 'monospace',
-                                fontSize: theme.fontSize.xs,
-                                color: theme.text.primary,
-                                overflow: 'hidden',
-                                textOverflow: 'ellipsis',
-                                whiteSpace: 'nowrap'
-                              }}>
-                                {getConnectionDisplayText(connection)}
-                              </div>
+                          {/* Connection Info */}
+                          <div style={{
+                            flex: 1,
+                            fontFamily: 'monospace',
+                            fontSize: theme.fontSize.xs,
+                            color: theme.text.primary,
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                            whiteSpace: 'nowrap'
+                          }}>
+                            {getConnectionDisplayText(connection)}
+                          </div>
 
-                              {/* Edit Button */}
-                              <button
-                                onClick={() => handleEditConnection(connection)}
-                                style={{
-                                  padding: `${theme.spacing.xs} ${theme.spacing.md}`,
-                                  border: `1px solid ${theme.border.default}`,
-                                  borderRadius: theme.radius.xs,
-                                  background: theme.background.tertiary,
-                                  color: theme.text.primary,
-                                  cursor: 'pointer',
-                                  fontSize: theme.fontSize.xs,
-                                  fontWeight: theme.fontWeight.medium,
-                                  transition: theme.transition.normal
-                                }}
-                                onMouseEnter={(e) => {
-                                  e.currentTarget.style.background = theme.background.hover;
-                                }}
-                                onMouseLeave={(e) => {
-                                  e.currentTarget.style.background = theme.background.tertiary;
-                                }}
-                              >
-                                Edit
-                              </button>
+                          {/* Edit Button */}
+                          <button
+                            onClick={() => handleEditConnection(connection)}
+                            style={{
+                              padding: `${theme.spacing.xs} ${theme.spacing.md}`,
+                              border: `1px solid ${theme.border.default}`,
+                              borderRadius: theme.radius.xs,
+                              background: theme.background.tertiary,
+                              color: theme.text.primary,
+                              cursor: 'pointer',
+                              fontSize: theme.fontSize.xs,
+                              fontWeight: theme.fontWeight.medium,
+                              transition: theme.transition.normal
+                            }}
+                            onMouseEnter={(e) => {
+                              e.currentTarget.style.background = theme.background.hover;
+                            }}
+                            onMouseLeave={(e) => {
+                              e.currentTarget.style.background = theme.background.tertiary;
+                            }}
+                          >
+                            Edit
+                          </button>
 
-                              {/* Delete Button */}
-                              <button
-                                onClick={() => handleDeleteConnection(connection.id)}
-                                style={{
-                                  padding: `${theme.spacing.xs} ${theme.spacing.md}`,
-                                  border: `1px solid ${theme.accent.red}`,
-                                  borderRadius: theme.radius.xs,
-                                  background: theme.background.tertiary,
-                                  color: theme.accent.red,
-                                  cursor: 'pointer',
-                                  fontSize: theme.fontSize.xs,
-                                  fontWeight: theme.fontWeight.medium,
-                                  transition: theme.transition.normal
-                                }}
-                                onMouseEnter={(e) => {
-                                  e.currentTarget.style.background = theme.accent.red;
-                                  e.currentTarget.style.color = theme.text.inverted;
-                                }}
-                                onMouseLeave={(e) => {
-                                  e.currentTarget.style.background = theme.background.tertiary;
-                                  e.currentTarget.style.color = theme.accent.red;
-                                }}
-                              >
-                                Delete
-                              </button>
-                            </div>
-                          ))}
+                          {/* Delete Button */}
+                          <button
+                            onClick={() => handleDeleteConnection(connection.id)}
+                            style={{
+                              padding: `${theme.spacing.xs} ${theme.spacing.md}`,
+                              border: `1px solid ${theme.accent.red}`,
+                              borderRadius: theme.radius.xs,
+                              background: theme.background.tertiary,
+                              color: theme.accent.red,
+                              cursor: 'pointer',
+                              fontSize: theme.fontSize.xs,
+                              fontWeight: theme.fontWeight.medium,
+                              transition: theme.transition.normal
+                            }}
+                            onMouseEnter={(e) => {
+                              e.currentTarget.style.background = theme.accent.red;
+                              e.currentTarget.style.color = theme.text.inverted;
+                            }}
+                            onMouseLeave={(e) => {
+                              e.currentTarget.style.background = theme.background.tertiary;
+                              e.currentTarget.style.color = theme.accent.red;
+                            }}
+                          >
+                            Delete
+                          </button>
                         </div>
-                      )}
+                      ))}
+                    </div>
+                  )}
 
                   {/* No connections message */}
                   {connections.length === 0 && (
