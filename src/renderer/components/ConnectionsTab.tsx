@@ -1,31 +1,13 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useTabContext } from '../contexts/TabContext';
 import TerminalEmulator from './TerminalEmulator';
 
 const ConnectionsTab: React.FC = () => {
   const { connections, activeConnectionId, setActiveConnectionId, disconnectConnection } = useTabContext();
   const [sidePanelCollapsed, setSidePanelCollapsed] = useState(false);
+  const [, setForceUpdate] = useState(false);
 
-  const clearDisconnected = () => {
-    connections
-      .filter(c => c.status === 'disconnected' || c.status === 'error')
-      .forEach(c => disconnectConnection(c.id));
-  };
-
-  const handleZoomChange = (connectionId: string, delta: number) => {
-    const connection = connections.find(c => c.id === connectionId);
-    if (connection) {
-      const currentZoom = connection.zoom || 1.0;
-      const newZoom = Math.max(0.5, Math.min(2.0, currentZoom + delta));
-
-      // Update the zoom in the connection (we'll need to add a method for this in TabContext)
-      // For now, we'll use a workaround by storing it in localStorage
-      localStorage.setItem(`terminal-zoom-${connectionId}`, newZoom.toString());
-      // Force a re-render by updating the connection
-      window.dispatchEvent(new CustomEvent('terminal-zoom-change', { detail: { connectionId, zoom: newZoom } }));
-    }
-  };
-
+  // Helper functions defined first
   const getConnectionZoom = (connectionId: string): number => {
     const stored = localStorage.getItem(`terminal-zoom-${connectionId}`);
     return stored ? parseFloat(stored) : 1.0;
@@ -64,254 +46,269 @@ const ConnectionsTab: React.FC = () => {
     return new Date(date).toLocaleString();
   };
 
+  // Event handlers
+  const clearDisconnected = () => {
+    connections
+      .filter(c => c.status === 'disconnected' || c.status === 'error')
+      .forEach(c => disconnectConnection(c.id));
+  };
+
+  const handleZoomChange = (connectionId: string, delta: number) => {
+    const currentZoom = getConnectionZoom(connectionId);
+    // Allow zoom from 0.5 (50%) to 2.0 (200%)
+    const newZoom = Math.max(0.5, Math.min(2.0, currentZoom + delta));
+
+    localStorage.setItem(`terminal-zoom-${connectionId}`, newZoom.toString());
+    window.dispatchEvent(new CustomEvent('terminal-zoom-change', { detail: { connectionId, zoom: newZoom } }));
+  };
+
+  // Derived state
   const activeConnection = connections.find(c => c.id === activeConnectionId);
   const activeZoom = activeConnectionId ? getConnectionZoom(activeConnectionId) : 1.0;
 
-  // Listen for zoom changes
-  React.useEffect(() => {
-    const handleZoomChange = () => {
-      // Force re-render when zoom changes
-      setState(prev => !prev);
+  // Effects
+  useEffect(() => {
+    const handleZoomUpdate = () => {
+      setForceUpdate(prev => !prev);
     };
 
-    window.addEventListener('terminal-zoom-change', handleZoomChange as any);
-    return () => window.removeEventListener('terminal-zoom-change', handleZoomChange as any);
+    window.addEventListener('terminal-zoom-change', handleZoomUpdate);
+    return () => window.removeEventListener('terminal-zoom-change', handleZoomUpdate);
   }, []);
-
-  const [, setState] = useState(false);
 
   return (
     <div style={{ display: 'flex', height: '100%', overflow: 'hidden' }}>
-      {/* Side Panel - Styled to match Design Tab but without glossiness */}
-      {!sidePanelCollapsed && (
+      {/* Side Panel - Always rendered for animation */}
+      <div style={{
+        width: sidePanelCollapsed ? '0px' : '280px',
+        opacity: sidePanelCollapsed ? 0 : 1,
+        background: '#252526',
+        borderRight: sidePanelCollapsed ? 'none' : '1px solid #333',
+        display: 'flex',
+        flexDirection: 'column',
+        overflow: 'hidden',
+        transition: 'width 0.3s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.2s ease',
+        whiteSpace: 'nowrap',
+      }}>
+        {/* Side Panel Header */}
         <div style={{
-          width: '280px',
-          background: '#252526',
-          borderRight: '1px solid #333',
+          minWidth: '280px',
+          padding: '12px 16px',
+          borderBottom: '1px solid #333',
           display: 'flex',
           flexDirection: 'column',
-          overflow: 'hidden',
-          transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+          gap: '8px',
+          background: '#252526',
         }}>
-          {/* Side Panel Header */}
           <div style={{
-            padding: '12px 16px',
-            borderBottom: '1px solid #333',
             display: 'flex',
-            flexDirection: 'column',
-            gap: '8px',
-            background: '#252526',
+            justifyContent: 'space-between',
+            alignItems: 'center',
           }}>
             <div style={{
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
+              fontSize: '13px',
+              fontWeight: '600',
+              color: '#cccccc',
+              textTransform: 'uppercase',
+              letterSpacing: '0.5px',
             }}>
-              <div style={{
-                fontSize: '13px',
-                fontWeight: '600',
-                color: '#cccccc',
-                textTransform: 'uppercase',
-                letterSpacing: '0.5px',
-              }}>
-                Active Connections
-              </div>
-              <button
-                onClick={() => setSidePanelCollapsed(true)}
+              Active Connections
+            </div>
+            <button
+              onClick={() => setSidePanelCollapsed(true)}
+              style={{
+                background: 'none',
+                border: 'none',
+                color: '#888',
+                cursor: 'pointer',
+                padding: '4px',
+                display: 'flex',
+                alignItems: 'center',
+                fontSize: '18px',
+                transition: 'color 0.2s ease',
+              }}
+              title="Collapse sidebar"
+              onMouseEnter={(e) => e.currentTarget.style.color = '#fff'}
+              onMouseLeave={(e) => e.currentTarget.style.color = '#888'}
+            >
+              ‹
+            </button>
+          </div>
+          {connections.some(c => c.status === 'disconnected' || c.status === 'error') && (
+            <button
+              onClick={clearDisconnected}
+              style={{
+                padding: '6px 12px',
+                backgroundColor: '#dc2626',
+                color: '#fff',
+                border: 'none',
+                borderRadius: '4px',
+                fontSize: '11px',
+                cursor: 'pointer',
+                fontWeight: '500',
+                transition: 'all 0.2s ease',
+              }}
+              onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#b91c1c'}
+              onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#dc2626'}
+            >
+              Clear Disconnected
+            </button>
+          )}
+        </div>
+
+        {/* Connections List */}
+        <div style={{ flex: 1, overflow: 'auto', minWidth: '280px' }}>
+          {connections.length === 0 ? (
+            <div style={{
+              padding: '20px',
+              textAlign: 'center',
+              color: '#888',
+              fontSize: '13px',
+            }}>
+              No active connections.<br />
+              Connect to a device from the Design tab.
+            </div>
+          ) : (
+            connections.map(conn => (
+              <div
+                key={conn.id}
+                onClick={() => setActiveConnectionId(conn.id)}
                 style={{
-                  background: 'none',
-                  border: 'none',
-                  color: '#888',
+                  position: 'relative',
+                  padding: '12px 16px',
+                  borderBottom: '1px solid #2d2d2d',
                   cursor: 'pointer',
-                  padding: '4px',
+                  backgroundColor: activeConnectionId === conn.id ? '#37373d' : 'transparent',
+                  transition: 'background-color 0.15s ease',
+                }}
+                onMouseEnter={(e) => {
+                  if (activeConnectionId !== conn.id) {
+                    e.currentTarget.style.backgroundColor = '#2a2a2a';
+                  }
+                }}
+                onMouseLeave={(e) => {
+                  if (activeConnectionId !== conn.id) {
+                    e.currentTarget.style.backgroundColor = 'transparent';
+                  }
+                }}
+              >
+                {/* Node Name */}
+                <div style={{
                   display: 'flex',
                   alignItems: 'center',
-                  fontSize: '18px',
-                  transition: 'color 0.2s ease',
-                }}
-                title="Collapse sidebar"
-                onMouseEnter={(e) => e.currentTarget.style.color = '#fff'}
-                onMouseLeave={(e) => e.currentTarget.style.color = '#888'}
-              >
-                ‹
-              </button>
-            </div>
-            {connections.some(c => c.status === 'disconnected' || c.status === 'error') && (
-              <button
-                onClick={clearDisconnected}
-                style={{
-                  padding: '6px 12px',
-                  backgroundColor: '#dc2626',
-                  color: '#fff',
-                  border: 'none',
-                  borderRadius: '4px',
-                  fontSize: '11px',
-                  cursor: 'pointer',
-                  fontWeight: '500',
-                  transition: 'all 0.2s ease',
-                }}
-                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#b91c1c'}
-                onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#dc2626'}
-              >
-                Clear Disconnected
-              </button>
-            )}
-          </div>
+                  gap: '8px',
+                  marginBottom: '6px',
+                  paddingRight: conn.status === 'connected' ? '28px' : '0',
+                }}>
+                  <span style={{
+                    fontSize: '13px',
+                    fontWeight: '600',
+                    color: '#e0e0e0',
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    whiteSpace: 'nowrap',
+                    flex: 1,
+                  }}>
+                    {conn.nodeName}
+                  </span>
+                </div>
 
-          {/* Connections List */}
-          <div style={{ flex: 1, overflow: 'auto' }}>
-            {connections.length === 0 ? (
-              <div style={{
-                padding: '20px',
-                textAlign: 'center',
-                color: '#888',
-                fontSize: '13px',
-              }}>
-                No active connections.<br />
-                Connect to a device from the Design tab.
-              </div>
-            ) : (
-              connections.map(conn => (
-                <div
-                  key={conn.id}
-                  onClick={() => setActiveConnectionId(conn.id)}
-                  style={{
-                    position: 'relative',
-                    padding: '12px 16px',
-                    borderBottom: '1px solid #2d2d2d',
-                    cursor: 'pointer',
-                    backgroundColor: activeConnectionId === conn.id ? '#37373d' : 'transparent',
-                    transition: 'background-color 0.15s ease',
-                  }}
-                  onMouseEnter={(e) => {
-                    if (activeConnectionId !== conn.id) {
-                      e.currentTarget.style.backgroundColor = '#2a2a2a';
-                    }
-                  }}
-                  onMouseLeave={(e) => {
-                    if (activeConnectionId !== conn.id) {
-                      e.currentTarget.style.backgroundColor = 'transparent';
-                    }
-                  }}
-                >
-                  {/* Node Name */}
+                {/* Connection Details */}
+                <div style={{
+                  fontSize: '12px',
+                  color: '#999',
+                  marginBottom: '6px',
+                  fontFamily: 'Consolas, monospace',
+                }}>
+                  {conn.username}@{conn.host}:{conn.port}
+                </div>
+
+                {/* Status & Last Activity */}
+                <div style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                }}>
                   <div style={{
                     display: 'flex',
                     alignItems: 'center',
-                    gap: '8px',
-                    marginBottom: '6px',
-                    paddingRight: conn.status === 'connected' ? '28px' : '0',
+                    gap: '6px',
                   }}>
                     <span style={{
-                      fontSize: '13px',
-                      fontWeight: '600',
-                      color: '#e0e0e0',
-                      overflow: 'hidden',
-                      textOverflow: 'ellipsis',
-                      whiteSpace: 'nowrap',
-                      flex: 1,
+                      width: '8px',
+                      height: '8px',
+                      borderRadius: '50%',
+                      backgroundColor: getStatusColor(conn.status),
+                      display: 'inline-block',
+                    }} />
+                    <span style={{
+                      fontSize: '11px',
+                      color: '#aaa',
                     }}>
-                      {conn.nodeName}
+                      {getStatusText(conn.status)}
                     </span>
                   </div>
-
-                  {/* Connection Details */}
-                  <div style={{
-                    fontSize: '12px',
-                    color: '#999',
-                    marginBottom: '6px',
-                    fontFamily: 'Consolas, monospace',
+                  <span style={{
+                    fontSize: '10px',
+                    color: '#777',
                   }}>
-                    {conn.username}@{conn.host}:{conn.port}
+                    {formatLastActivity(conn.lastActivity)}
+                  </span>
+                </div>
+
+                {/* Error Message */}
+                {conn.error && (
+                  <div style={{
+                    marginTop: '6px',
+                    fontSize: '11px',
+                    color: '#dc2626',
+                    backgroundColor: 'rgba(220, 38, 38, 0.1)',
+                    padding: '4px 6px',
+                    borderRadius: '3px',
+                  }}>
+                    {conn.error}
                   </div>
+                )}
 
-                  {/* Status & Last Activity */}
-                  <div style={{
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'center',
-                  }}>
-                    <div style={{
+                {/* Disconnect X Button */}
+                {conn.status === 'connected' && (
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      disconnectConnection(conn.id);
+                    }}
+                    style={{
+                      position: 'absolute',
+                      top: '8px',
+                      right: '8px',
+                      width: '20px',
+                      height: '20px',
+                      padding: '0',
+                      backgroundColor: 'rgba(220, 38, 38, 0.8)',
+                      color: '#fff',
+                      border: 'none',
+                      borderRadius: '3px',
+                      fontSize: '14px',
+                      cursor: 'pointer',
                       display: 'flex',
                       alignItems: 'center',
-                      gap: '6px',
-                    }}>
-                      <span style={{
-                        width: '8px',
-                        height: '8px',
-                        borderRadius: '50%',
-                        backgroundColor: getStatusColor(conn.status),
-                        display: 'inline-block',
-                      }} />
-                      <span style={{
-                        fontSize: '11px',
-                        color: '#aaa',
-                      }}>
-                        {getStatusText(conn.status)}
-                      </span>
-                    </div>
-                    <span style={{
-                      fontSize: '10px',
-                      color: '#777',
-                    }}>
-                      {formatLastActivity(conn.lastActivity)}
-                    </span>
-                  </div>
-
-                  {/* Error Message */}
-                  {conn.error && (
-                    <div style={{
-                      marginTop: '6px',
-                      fontSize: '11px',
-                      color: '#dc2626',
-                      backgroundColor: 'rgba(220, 38, 38, 0.1)',
-                      padding: '4px 6px',
-                      borderRadius: '3px',
-                    }}>
-                      {conn.error}
-                    </div>
-                  )}
-
-                  {/* Disconnect X Button */}
-                  {conn.status === 'connected' && (
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        disconnectConnection(conn.id);
-                      }}
-                      style={{
-                        position: 'absolute',
-                        top: '8px',
-                        right: '8px',
-                        width: '20px',
-                        height: '20px',
-                        padding: '0',
-                        backgroundColor: 'rgba(220, 38, 38, 0.8)',
-                        color: '#fff',
-                        border: 'none',
-                        borderRadius: '3px',
-                        fontSize: '14px',
-                        cursor: 'pointer',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        fontWeight: '600',
-                        lineHeight: '1',
-                        transition: 'background-color 0.2s ease',
-                      }}
-                      title="Disconnect"
-                      onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgba(220, 38, 38, 1)'}
-                      onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'rgba(220, 38, 38, 0.8)'}
-                    >
-                      ×
-                    </button>
-                  )}
-                </div>
-              ))
-            )}
-          </div>
+                      justifyContent: 'center',
+                      fontWeight: '600',
+                      lineHeight: '1',
+                      transition: 'background-color 0.2s ease',
+                    }}
+                    title="Disconnect"
+                    onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgba(220, 38, 38, 1)'}
+                    onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'rgba(220, 38, 38, 0.8)'}
+                  >
+                    ×
+                  </button>
+                )}
+              </div>
+            ))
+          )}
         </div>
-      )}
+      </div>
 
       {/* Collapse Button (when collapsed) */}
       {sidePanelCollapsed && (
