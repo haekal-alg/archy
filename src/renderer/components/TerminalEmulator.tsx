@@ -8,6 +8,8 @@ import '@xterm/xterm/css/xterm.css';
 interface TerminalEmulatorProps {
   connectionId: string;
   isVisible: boolean;
+  zoom?: number;
+  isActive?: boolean;
 }
 
 // Store terminal instances globally to persist across re-renders
@@ -39,7 +41,7 @@ export const getTerminalContent = (connectionId: string): string | null => {
   return null;
 };
 
-const TerminalEmulator: React.FC<TerminalEmulatorProps> = ({ connectionId, isVisible }) => {
+const TerminalEmulator: React.FC<TerminalEmulatorProps> = ({ connectionId, isVisible, zoom = 1.0, isActive = false }) => {
   const terminalRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -51,10 +53,10 @@ const TerminalEmulator: React.FC<TerminalEmulatorProps> = ({ connectionId, isVis
       // Create terminal instance
       const terminal = new Terminal({
         cursorBlink: true,
-        fontSize: 14,
+        fontSize: Math.round(14 * zoom),
         fontFamily: 'Consolas, "Courier New", monospace',
         theme: {
-          background: '#1e1e1e',
+          background: '#000000',
           foreground: '#d4d4d4',
           cursor: '#ffffff',
           cursorAccent: '#000000',
@@ -159,7 +161,24 @@ const TerminalEmulator: React.FC<TerminalEmulatorProps> = ({ connectionId, isVis
     return () => {
       window.removeEventListener('resize', handleResize);
     };
-  }, [connectionId, isVisible]);
+  }, [connectionId, isVisible, zoom]);
+
+  // Handle zoom changes
+  useEffect(() => {
+    const instance = terminalInstances.get(connectionId);
+    if (instance && zoom) {
+      const newFontSize = Math.round(14 * zoom);
+      instance.terminal.options.fontSize = newFontSize;
+
+      // We need to wait a brief moment for the DOM to update with the new font size
+      // before fitting, otherwise the calculations might be off
+      setTimeout(() => {
+        instance.fitAddon.fit();
+        // CRITICAL: Notify the backend PTY of the new size so text reflows correctly
+        window.electron.resizeSSHTerminal(connectionId, instance.terminal.cols, instance.terminal.rows);
+      }, 10);
+    }
+  }, [connectionId, zoom]);
 
   return (
     <div
@@ -176,6 +195,10 @@ const TerminalEmulator: React.FC<TerminalEmulatorProps> = ({ connectionId, isVis
         height: '100%',
         overflow: 'hidden',
         cursor: 'text',
+        border: isActive ? '2px solid rgba(59, 142, 234, 0.5)' : '2px solid transparent',
+        borderRadius: '4px',
+        transition: 'border-color 0.2s ease',
+        boxShadow: isActive ? '0 0 12px rgba(59, 142, 234, 0.3)' : 'none',
       }}
     />
   );

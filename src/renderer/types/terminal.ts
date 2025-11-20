@@ -10,6 +10,7 @@ export interface SSHConnection {
   status: 'connecting' | 'connected' | 'disconnected' | 'error';
   lastActivity: Date;
   error?: string;
+  zoom?: number; // Terminal zoom level (default 1.0)
 }
 
 export interface TerminalSession {

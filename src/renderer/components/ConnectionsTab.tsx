@@ -12,6 +12,25 @@ const ConnectionsTab: React.FC = () => {
       .forEach(c => disconnectConnection(c.id));
   };
 
+  const handleZoomChange = (connectionId: string, delta: number) => {
+    const connection = connections.find(c => c.id === connectionId);
+    if (connection) {
+      const currentZoom = connection.zoom || 1.0;
+      const newZoom = Math.max(0.5, Math.min(2.0, currentZoom + delta));
+
+      // Update the zoom in the connection (we'll need to add a method for this in TabContext)
+      // For now, we'll use a workaround by storing it in localStorage
+      localStorage.setItem(`terminal-zoom-${connectionId}`, newZoom.toString());
+      // Force a re-render by updating the connection
+      window.dispatchEvent(new CustomEvent('terminal-zoom-change', { detail: { connectionId, zoom: newZoom } }));
+    }
+  };
+
+  const getConnectionZoom = (connectionId: string): number => {
+    const stored = localStorage.getItem(`terminal-zoom-${connectionId}`);
+    return stored ? parseFloat(stored) : 1.0;
+  };
+
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'connected': return '#16825d';
@@ -46,18 +65,33 @@ const ConnectionsTab: React.FC = () => {
   };
 
   const activeConnection = connections.find(c => c.id === activeConnectionId);
+  const activeZoom = activeConnectionId ? getConnectionZoom(activeConnectionId) : 1.0;
+
+  // Listen for zoom changes
+  React.useEffect(() => {
+    const handleZoomChange = () => {
+      // Force re-render when zoom changes
+      setState(prev => !prev);
+    };
+
+    window.addEventListener('terminal-zoom-change', handleZoomChange as any);
+    return () => window.removeEventListener('terminal-zoom-change', handleZoomChange as any);
+  }, []);
+
+  const [, setState] = useState(false);
 
   return (
     <div style={{ display: 'flex', height: '100%', overflow: 'hidden' }}>
-      {/* Side Panel */}
+      {/* Side Panel - Styled to match Design Tab but without glossiness */}
       {!sidePanelCollapsed && (
         <div style={{
           width: '280px',
-          backgroundColor: '#252526',
+          background: '#252526',
           borderRight: '1px solid #333',
           display: 'flex',
           flexDirection: 'column',
           overflow: 'hidden',
+          transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
         }}>
           {/* Side Panel Header */}
           <div style={{
@@ -66,6 +100,7 @@ const ConnectionsTab: React.FC = () => {
             display: 'flex',
             flexDirection: 'column',
             gap: '8px',
+            background: '#252526',
           }}>
             <div style={{
               display: 'flex',
@@ -92,8 +127,11 @@ const ConnectionsTab: React.FC = () => {
                   display: 'flex',
                   alignItems: 'center',
                   fontSize: '18px',
+                  transition: 'color 0.2s ease',
                 }}
                 title="Collapse sidebar"
+                onMouseEnter={(e) => e.currentTarget.style.color = '#fff'}
+                onMouseLeave={(e) => e.currentTarget.style.color = '#888'}
               >
                 ‹
               </button>
@@ -110,7 +148,10 @@ const ConnectionsTab: React.FC = () => {
                   fontSize: '11px',
                   cursor: 'pointer',
                   fontWeight: '500',
+                  transition: 'all 0.2s ease',
                 }}
+                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#b91c1c'}
+                onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#dc2626'}
               >
                 Clear Disconnected
               </button>
@@ -139,7 +180,7 @@ const ConnectionsTab: React.FC = () => {
                     padding: '12px 16px',
                     borderBottom: '1px solid #2d2d2d',
                     cursor: 'pointer',
-                    backgroundColor: activeConnectionId === conn.id ? '#2d2d2d' : 'transparent',
+                    backgroundColor: activeConnectionId === conn.id ? '#37373d' : 'transparent',
                     transition: 'background-color 0.15s ease',
                   }}
                   onMouseEnter={(e) => {
@@ -256,8 +297,11 @@ const ConnectionsTab: React.FC = () => {
                         justifyContent: 'center',
                         fontWeight: '600',
                         lineHeight: '1',
+                        transition: 'background-color 0.2s ease',
                       }}
                       title="Disconnect"
+                      onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgba(220, 38, 38, 1)'}
+                      onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'rgba(220, 38, 38, 0.8)'}
                     >
                       ×
                     </button>
@@ -275,7 +319,7 @@ const ConnectionsTab: React.FC = () => {
           onClick={() => setSidePanelCollapsed(false)}
           style={{
             width: '32px',
-            backgroundColor: '#252526',
+            background: '#252526',
             borderRight: '1px solid #333',
             border: 'none',
             color: '#888',
@@ -286,8 +330,17 @@ const ConnectionsTab: React.FC = () => {
             fontSize: '18px',
             writingMode: 'vertical-rl',
             padding: '12px 0',
+            transition: 'all 0.2s ease',
           }}
           title="Expand sidebar"
+          onMouseEnter={(e) => {
+            e.currentTarget.style.color = '#fff';
+            e.currentTarget.style.background = '#333';
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.color = '#888';
+            e.currentTarget.style.background = '#252526';
+          }}
         >
           ›
         </button>
@@ -296,18 +349,18 @@ const ConnectionsTab: React.FC = () => {
       {/* Main Terminal Canvas */}
       <div style={{
         flex: 1,
-        backgroundColor: '#1e1e1e',
+        backgroundColor: '#000000',
         display: 'flex',
         flexDirection: 'column',
         overflow: 'hidden',
       }}>
         {activeConnection ? (
           <>
-            {/* Terminal Header */}
+            {/* Terminal Header with Zoom Controls */}
             <div style={{
               padding: '8px 16px',
               borderBottom: '1px solid #333',
-              backgroundColor: '#2d2d2d',
+              backgroundColor: '#1a1a1a',
               display: 'flex',
               justifyContent: 'space-between',
               alignItems: 'center',
@@ -322,20 +375,81 @@ const ConnectionsTab: React.FC = () => {
               <div style={{
                 display: 'flex',
                 alignItems: 'center',
-                gap: '6px',
+                gap: '12px',
               }}>
-                <span style={{
-                  width: '8px',
-                  height: '8px',
-                  borderRadius: '50%',
-                  backgroundColor: getStatusColor(activeConnection.status),
-                }} />
-                <span style={{
-                  fontSize: '12px',
-                  color: '#aaa',
+                {/* Zoom Controls */}
+                <div style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
                 }}>
-                  {getStatusText(activeConnection.status)}
-                </span>
+                  <button
+                    onClick={() => handleZoomChange(activeConnection.id, -0.1)}
+                    style={{
+                      padding: '4px 8px',
+                      backgroundColor: '#333',
+                      color: '#fff',
+                      border: 'none',
+                      borderRadius: '3px',
+                      fontSize: '16px',
+                      cursor: 'pointer',
+                      lineHeight: '1',
+                      transition: 'background-color 0.2s ease',
+                    }}
+                    title="Zoom out"
+                    onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#444'}
+                    onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#333'}
+                  >
+                    −
+                  </button>
+                  <span style={{
+                    fontSize: '12px',
+                    color: '#aaa',
+                    minWidth: '45px',
+                    textAlign: 'center',
+                  }}>
+                    {Math.round(activeZoom * 100)}%
+                  </span>
+                  <button
+                    onClick={() => handleZoomChange(activeConnection.id, 0.1)}
+                    style={{
+                      padding: '4px 8px',
+                      backgroundColor: '#333',
+                      color: '#fff',
+                      border: 'none',
+                      borderRadius: '3px',
+                      fontSize: '16px',
+                      cursor: 'pointer',
+                      lineHeight: '1',
+                      transition: 'background-color 0.2s ease',
+                    }}
+                    title="Zoom in"
+                    onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#444'}
+                    onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#333'}
+                  >
+                    +
+                  </button>
+                </div>
+
+                {/* Status Indicator */}
+                <div style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                }}>
+                  <span style={{
+                    width: '8px',
+                    height: '8px',
+                    borderRadius: '50%',
+                    backgroundColor: getStatusColor(activeConnection.status),
+                  }} />
+                  <span style={{
+                    fontSize: '12px',
+                    color: '#aaa',
+                  }}>
+                    {getStatusText(activeConnection.status)}
+                  </span>
+                </div>
               </div>
             </div>
 
@@ -351,7 +465,12 @@ const ConnectionsTab: React.FC = () => {
                     height: '100%',
                   }}
                 >
-                  <TerminalEmulator connectionId={conn.id} isVisible={conn.id === activeConnectionId} />
+                  <TerminalEmulator
+                    connectionId={conn.id}
+                    isVisible={conn.id === activeConnectionId}
+                    zoom={getConnectionZoom(conn.id)}
+                    isActive={conn.id === activeConnectionId}
+                  />
                 </div>
               ))}
 
