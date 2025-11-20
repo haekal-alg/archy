@@ -29,14 +29,17 @@ contextBridge.exposeInMainWorld('electron', {
   createSSHSession: (config: { connectionId: string; host: string; port: number; username: string; password: string }) =>
     ipcRenderer.invoke('create-ssh-session', config),
 
-  sendSSHData: (connectionId: string, data: string) =>
-    ipcRenderer.invoke('send-ssh-data', { connectionId, data }),
+  sendSSHData: (connectionId: string, data: string) => {
+    ipcRenderer.send('send-ssh-data', { connectionId, data });
+  },
 
-  resizeSSHTerminal: (connectionId: string, cols: number, rows: number) =>
-    ipcRenderer.invoke('resize-ssh-terminal', { connectionId, cols, rows }),
+  resizeSSHTerminal: (connectionId: string, cols: number, rows: number) => {
+    ipcRenderer.send('resize-ssh-terminal', { connectionId, cols, rows });
+  },
 
-  closeSSHSession: (connectionId: string) =>
-    ipcRenderer.invoke('close-ssh-session', { connectionId }),
+  closeSSHSession: (connectionId: string) => {
+    ipcRenderer.send('close-ssh-session', { connectionId });
+  },
 
   onSSHData: (callback: (data: { connectionId: string; data: string }) => void) => {
     const subscription = (_event: any, data: { connectionId: string; data: string }) => callback(data);

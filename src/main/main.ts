@@ -239,7 +239,6 @@ ipcMain.handle('create-ssh-session', async (event, { connectionId, host, port = 
         // Send a newline to trigger the prompt - delay increased to ensure terminal is ready
         setTimeout(() => {
           if (sshSessions.has(connectionId)) {
-            console.log(`[SSH ${connectionId}] Sending initial newline`);
             stream.write('\n');
           }
         }, 300);
@@ -281,39 +280,30 @@ ipcMain.handle('create-ssh-session', async (event, { connectionId, host, port = 
   });
 });
 
-// Send data to SSH session
-ipcMain.handle('send-ssh-data', async (event, { connectionId, data }) => {
+// Send data to SSH session (fire-and-forget for low latency)
+ipcMain.on('send-ssh-data', (event, { connectionId, data }) => {
   const session = sshSessions.get(connectionId);
   if (session && session.stream) {
-    const charCodes = data.split('').map((c: string) => c.charCodeAt(0));
-    console.log(`[SSH ${connectionId}] Sending data:`, data, 'charCodes:', charCodes);
     session.stream.write(data);
-    return { success: true };
   }
-  console.log(`[SSH ${connectionId}] ERROR: Session not found`);
-  return { success: false, error: 'Session not found' };
 });
 
-// Resize SSH terminal
-ipcMain.handle('resize-ssh-terminal', async (event, { connectionId, cols, rows }) => {
+// Resize SSH terminal (fire-and-forget)
+ipcMain.on('resize-ssh-terminal', (event, { connectionId, cols, rows }) => {
   const session = sshSessions.get(connectionId);
   if (session && session.stream) {
     session.stream.setWindow(rows, cols, 0, 0);
-    return { success: true };
   }
-  return { success: false, error: 'Session not found' };
 });
 
-// Close SSH session
-ipcMain.handle('close-ssh-session', async (event, { connectionId }) => {
+// Close SSH session (fire-and-forget)
+ipcMain.on('close-ssh-session', (event, { connectionId }) => {
   const session = sshSessions.get(connectionId);
   if (session) {
     session.stream.end();
     session.client.end();
     sshSessions.delete(connectionId);
-    return { success: true };
   }
-  return { success: false, error: 'Session not found' };
 });
 
 // Handle generic command execution (for browser, custom commands, etc.)

@@ -16,9 +16,9 @@ export interface ElectronAPI {
     username: string;
     password: string;
   }) => Promise<{ success: boolean; error?: string }>;
-  sendSSHData: (connectionId: string, data: string) => Promise<{ success: boolean; error?: string }>;
-  resizeSSHTerminal: (connectionId: string, cols: number, rows: number) => Promise<{ success: boolean; error?: string }>;
-  closeSSHSession: (connectionId: string) => Promise<{ success: boolean; error?: string }>;
+  sendSSHData: (connectionId: string, data: string) => void;
+  resizeSSHTerminal: (connectionId: string, cols: number, rows: number) => void;
+  closeSSHSession: (connectionId: string) => void;
   onSSHData: (callback: (data: { connectionId: string; data: string }) => void) => () => void;
   onSSHClosed: (callback: (data: { connectionId: string }) => void) => () => void;
 

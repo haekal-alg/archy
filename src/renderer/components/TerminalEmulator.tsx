@@ -97,12 +97,10 @@ const TerminalEmulator: React.FC<TerminalEmulatorProps> = ({ connectionId, isVis
         fitAddon.fit();
         // Force focus immediately after fit
         terminal.focus();
-        console.log(`[Terminal ${connectionId}] Initial focus applied`);
       }, 10);
 
       // Handle terminal input (user typing) - store disposable to prevent duplicates
       const onDataDisposable = terminal.onData((data) => {
-        console.log(`[Terminal ${connectionId}] onData:`, data, 'charCodes:', Array.from(data).map(c => c.charCodeAt(0)));
         window.electron.sendSSHData(connectionId, data);
       });
 
@@ -128,7 +126,6 @@ const TerminalEmulator: React.FC<TerminalEmulatorProps> = ({ connectionId, isVis
         setTimeout(() => {
           inst.fitAddon.fit();
           inst.terminal.focus();
-          console.log(`[Terminal ${connectionId}] Reattached and focused`);
         }, 10);
       }
     }
