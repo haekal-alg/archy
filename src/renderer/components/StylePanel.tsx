@@ -426,6 +426,18 @@ const StylePanel: React.FC<StylePanelProps> = ({
           e.stopPropagation();
         }
       }}
+      onClick={(e) => {
+        // Stop propagation to ReactFlow only when panel is open
+        if (isOpen) {
+          e.stopPropagation();
+        }
+      }}
+      onMouseUp={(e) => {
+        // Stop propagation to ReactFlow only when panel is open
+        if (isOpen) {
+          e.stopPropagation();
+        }
+      }}
       style={{
         position: 'absolute',
         right: isOpen ? '0' : '-320px',
@@ -437,7 +449,7 @@ const StylePanel: React.FC<StylePanelProps> = ({
         WebkitBackdropFilter: 'blur(60px) saturate(200%) brightness(1.1)',
         boxShadow: '0 8px 32px rgba(0, 0, 0, 0.5), 0 2px 8px rgba(0, 0, 0, 0.3), inset -1px 0 0 rgba(255, 255, 255, 0.1)',
         transition: theme.transition.slow,
-        zIndex: theme.zIndex.dropdown,
+        zIndex: theme.zIndex.modal,
         display: 'flex',
         flexDirection: 'column',
         color: theme.text.primary,
@@ -1046,14 +1058,10 @@ const StylePanel: React.FC<StylePanelProps> = ({
                                 type="text"
                                 value={nodeHost}
                                 onChange={(e) => setNodeHost(e.target.value)}
-                                onMouseDown={(e) => {
-                                  e.stopPropagation();
-                                  e.currentTarget.focus();
-                                }}
+                                onMouseDown={(e) => e.stopPropagation()}
                                 onFocus={(e) => e.stopPropagation()}
                                 placeholder="192.168.1.1"
                                 autoComplete="off"
-                                tabIndex={0}
                                 style={{
                                   ...connectionInputStyle,
                                   fontFamily: 'monospace'
@@ -1074,14 +1082,10 @@ const StylePanel: React.FC<StylePanelProps> = ({
                                 type="text"
                                 value={nodeUsername}
                                 onChange={(e) => setNodeUsername(e.target.value)}
-                                onMouseDown={(e) => {
-                                  e.stopPropagation();
-                                  e.currentTarget.focus();
-                                }}
+                                onMouseDown={(e) => e.stopPropagation()}
                                 onFocus={(e) => e.stopPropagation()}
                                 placeholder="administrator"
                                 autoComplete="off"
-                                tabIndex={0}
                                 style={connectionInputStyle}
                               />
                             </div>
@@ -1130,14 +1134,10 @@ const StylePanel: React.FC<StylePanelProps> = ({
                                 type="text"
                                 value={nodeHost}
                                 onChange={(e) => setNodeHost(e.target.value)}
-                                onMouseDown={(e) => {
-                                  e.stopPropagation();
-                                  e.currentTarget.focus();
-                                }}
+                                onMouseDown={(e) => e.stopPropagation()}
                                 onFocus={(e) => e.stopPropagation()}
                                 placeholder="192.168.1.1"
                                 autoComplete="off"
-                                tabIndex={0}
                                 style={{
                                   ...connectionInputStyle,
                                   fontFamily: 'monospace'
@@ -1158,14 +1158,10 @@ const StylePanel: React.FC<StylePanelProps> = ({
                                 type="number"
                                 value={nodePort}
                                 onChange={(e) => setNodePort(parseInt(e.target.value) || 22)}
-                                onMouseDown={(e) => {
-                                  e.stopPropagation();
-                                  e.currentTarget.focus();
-                                }}
+                                onMouseDown={(e) => e.stopPropagation()}
                                 onFocus={(e) => e.stopPropagation()}
                                 placeholder="22"
                                 autoComplete="off"
-                                tabIndex={0}
                                 style={{
                                   ...connectionInputStyle,
                                   fontFamily: 'monospace'
@@ -1186,14 +1182,10 @@ const StylePanel: React.FC<StylePanelProps> = ({
                                 type="text"
                                 value={nodeUsername}
                                 onChange={(e) => setNodeUsername(e.target.value)}
-                                onMouseDown={(e) => {
-                                  e.stopPropagation();
-                                  e.currentTarget.focus();
-                                }}
+                                onMouseDown={(e) => e.stopPropagation()}
                                 onFocus={(e) => e.stopPropagation()}
                                 placeholder="root"
                                 autoComplete="off"
-                                tabIndex={0}
                                 style={connectionInputStyle}
                               />
                             </div>
@@ -1211,14 +1203,10 @@ const StylePanel: React.FC<StylePanelProps> = ({
                                 type="password"
                                 value={nodePassword}
                                 onChange={(e) => setNodePassword(e.target.value)}
-                                onMouseDown={(e) => {
-                                  e.stopPropagation();
-                                  e.currentTarget.focus();
-                                }}
+                                onMouseDown={(e) => e.stopPropagation()}
                                 onFocus={(e) => e.stopPropagation()}
                                 placeholder="••••••••"
                                 autoComplete="off"
-                                tabIndex={0}
                                 style={connectionInputStyle}
                               />
                             </div>
@@ -1241,14 +1229,10 @@ const StylePanel: React.FC<StylePanelProps> = ({
                               type="text"
                               value={nodeHost}
                               onChange={(e) => setNodeHost(e.target.value)}
-                              onMouseDown={(e) => {
-                                e.stopPropagation();
-                                e.currentTarget.focus();
-                              }}
+                              onMouseDown={(e) => e.stopPropagation()}
                               onFocus={(e) => e.stopPropagation()}
                               placeholder="https://example.com"
                               autoComplete="off"
-                              tabIndex={0}
                               style={{
                                 ...connectionInputStyle,
                                 fontFamily: 'monospace'
@@ -1273,15 +1257,11 @@ const StylePanel: React.FC<StylePanelProps> = ({
                               type="text"
                               value={nodeCustomCommand}
                               onChange={(e) => setNodeCustomCommand(e.target.value)}
-                              onMouseDown={(e) => {
-                                e.stopPropagation();
-                                e.currentTarget.focus();
-                              }}
+                              onMouseDown={(e) => e.stopPropagation()}
                               onFocus={(e) => e.stopPropagation()}
                               placeholder="ping 8.8.8.8"
                               title="Enter command to execute in CMD (e.g., ping 8.8.8.8)"
                               autoComplete="off"
-                              tabIndex={0}
                               style={{
                                 ...connectionInputStyle,
                                 fontFamily: 'monospace'

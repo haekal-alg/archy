@@ -9,6 +9,11 @@ if exist release rmdir /s /q release
 mkdir release
 
 echo.
+echo Clearing electron-builder cache...
+if exist %USERPROFILE%\AppData\Local\electron-builder\Cache rmdir /s /q "%USERPROFILE%\AppData\Local\electron-builder\Cache"
+echo Cache cleared.
+
+echo.
 echo Building application...
 call npm run build
 if %errorlevel% neq 0 (

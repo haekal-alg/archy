@@ -893,107 +893,107 @@ const AppContent: React.FC = () => {
         display: activeTab === 'design' ? 'flex' : 'none',
         flexDirection: 'column'
       }}>
-          <ShapeLibrary
-            onAddNode={addEnhancedNode}
-            onAddGroup={addGroupNode}
-            onAddText={addTextNode}
-            isOpen={isShapeLibraryOpen}
-            onToggle={() => setIsShapeLibraryOpen(!isShapeLibraryOpen)}
-          />
+        <ShapeLibrary
+          onAddNode={addEnhancedNode}
+          onAddGroup={addGroupNode}
+          onAddText={addTextNode}
+          isOpen={isShapeLibraryOpen}
+          onToggle={() => setIsShapeLibraryOpen(!isShapeLibraryOpen)}
+        />
 
-          <StylePanel
-            selectedNode={selectedNode}
-            selectedEdge={selectedEdge}
-            onUpdateNode={updateNodeData}
-            onUpdateEdge={updateEdgeData}
-            onMoveToFront={moveNodeToFront}
-            onMoveToBack={moveNodeToBack}
-            onDeleteNode={handleDeleteNode}
-            onDeleteEdge={handleDeleteEdge}
-            isOpen={isStylePanelOpen}
-            onToggle={() => setIsStylePanelOpen(!isStylePanelOpen)}
-          />
+        <DesignTab
+          nodes={nodes}
+          edges={edges}
+          onNodesChange={onNodesChange}
+          onEdgesChange={onEdgesChange}
+          onConnect={onConnect}
+          onNodeClick={onNodeClick}
+          onEdgeClick={onEdgeClick}
+          onPaneClick={onPaneClick}
+          onNodeDoubleClick={onNodeDoubleClick}
+          onNodeContextMenu={onNodeContextMenu}
+          onEdgeContextMenu={onEdgeContextMenu}
+          onInit={setReactFlowInstance}
+          onDrop={(event) => {
+            event.preventDefault();
+            const type = event.dataTransfer.getData('application/reactflow');
+            if (type && reactFlowInstance) {
+              const position = reactFlowInstance.screenToFlowPosition({
+                x: event.clientX,
+                y: event.clientY,
+              });
 
-          <DesignTab
-            nodes={nodes}
-            edges={edges}
-            onNodesChange={onNodesChange}
-            onEdgesChange={onEdgesChange}
-            onConnect={onConnect}
-            onNodeClick={onNodeClick}
-            onEdgeClick={onEdgeClick}
-            onPaneClick={onPaneClick}
-            onNodeDoubleClick={onNodeDoubleClick}
-            onNodeContextMenu={onNodeContextMenu}
-            onEdgeContextMenu={onEdgeContextMenu}
-            onInit={setReactFlowInstance}
-            onDrop={(event) => {
-              event.preventDefault();
-              const type = event.dataTransfer.getData('application/reactflow');
-              if (type && reactFlowInstance) {
-                const position = reactFlowInstance.screenToFlowPosition({
-                  x: event.clientX,
-                  y: event.clientY,
-                });
+              const typeMap: Record<string, string> = {
+                router: 'Router',
+                server: 'Server',
+                firewall: 'Firewall',
+                windows: 'Windows PC',
+                linux: 'Linux Server',
+                switch: 'Network Switch',
+                cloud: 'Cloud',
+                database: 'Database',
+                laptop: 'Laptop',
+                attacker: 'Attacker',
+                generic: 'Device'
+              };
 
-                const typeMap: Record<string, string> = {
-                  router: 'Router',
-                  server: 'Server',
-                  firewall: 'Firewall',
-                  windows: 'Windows PC',
-                  linux: 'Linux Server',
-                  switch: 'Network Switch',
-                  cloud: 'Cloud',
-                  database: 'Database',
-                  laptop: 'Laptop',
-                  attacker: 'Attacker',
-                  generic: 'Device'
-                };
+              const newNode: Node = {
+                id: `node-${Date.now()}`,
+                type: 'enhanced',
+                position: position,
+                data: {
+                  label: typeMap[type] || 'Device',
+                  type: type,
+                  host: '',
+                  port: 22,
+                  username: '',
+                  password: '',
+                  ipAddress: '',
+                  description: '',
+                  connections: []
+                }
+              };
 
-                const newNode: Node = {
-                  id: `node-${Date.now()}`,
-                  type: 'enhanced',
-                  position: position,
-                  data: {
-                    label: typeMap[type] || 'Device',
-                    type: type,
-                    host: '',
-                    port: 22,
-                    username: '',
-                    password: '',
-                    ipAddress: '',
-                    description: '',
-                    connections: []
-                  }
-                };
+              setNodes((nds) => nds.concat(newNode));
+            }
+          }}
+          onDragOver={(event) => {
+            event.preventDefault();
+            event.dataTransfer.dropEffect = 'move';
+          }}
+          nodeTypes={nodeTypes}
+          edgeTypes={edgeTypes}
+          reactFlowWrapper={reactFlowWrapper}
+        />
 
-                setNodes((nds) => nds.concat(newNode));
-              }
-            }}
-            onDragOver={(event) => {
-              event.preventDefault();
-              event.dataTransfer.dropEffect = 'move';
-            }}
-            nodeTypes={nodeTypes}
-            edgeTypes={edgeTypes}
-            reactFlowWrapper={reactFlowWrapper}
-          />
+        <StylePanel
+          selectedNode={selectedNode}
+          selectedEdge={selectedEdge}
+          onUpdateNode={updateNodeData}
+          onUpdateEdge={updateEdgeData}
+          onMoveToFront={moveNodeToFront}
+          onMoveToBack={moveNodeToBack}
+          onDeleteNode={handleDeleteNode}
+          onDeleteEdge={handleDeleteEdge}
+          isOpen={isStylePanelOpen}
+          onToggle={() => setIsStylePanelOpen(!isStylePanelOpen)}
+        />
 
-          {/* Top control panel */}
-          <div style={{
-            position: 'absolute',
-            top: '10px',
-            right: '10px',
-            zIndex: 10,
-            display: 'flex',
-            gap: theme.spacing.md,
-            alignItems: 'center',
-            background: theme.background.elevated,
-            padding: `${theme.spacing.md} ${theme.spacing.lg}`,
-            borderRadius: theme.radius.lg,
-            boxShadow: theme.shadow.lg,
-            border: `1px solid ${theme.border.default}`
-          }}>
+        {/* Top control panel */}
+        <div style={{
+          position: 'absolute',
+          top: '10px',
+          right: '10px',
+          zIndex: 10,
+          display: 'flex',
+          gap: theme.spacing.md,
+          alignItems: 'center',
+          background: theme.background.elevated,
+          padding: `${theme.spacing.md} ${theme.spacing.lg}`,
+          borderRadius: theme.radius.lg,
+          boxShadow: theme.shadow.lg,
+          border: `1px solid ${theme.border.default}`
+        }}>
           {/* Undo/Redo buttons */}
           <button
             onClick={handleUndo}
@@ -1158,424 +1158,424 @@ const AppContent: React.FC = () => {
           <strong style={{ color: theme.accent.blue }}>Tip:</strong> Double-click nodes to edit | Right-click to delete/connect | {currentFilePath ? currentFilePath : diagramName}{hasUnsavedChanges ? ' *' : ''}
         </div>
 
-      {contextMenu && (
-        <ContextMenu
-          x={contextMenu.x}
-          y={contextMenu.y}
-          showConnect={!!contextMenu.node && (contextMenu.node.type === 'group' || contextMenu.node.type !== 'group')}
-          connections={contextMenu.node ? (contextMenu.node.data as any).connections || [] : []}
-          onConnect={contextMenu.node ? (connection) => handleConnectToDevice(contextMenu.node!, connection) : undefined}
-          onDuplicate={contextMenu.node ? () => handleDuplicateNode(contextMenu.node!) : undefined}
-          onDelete={() => {
-            if (contextMenu.node) {
-              handleDeleteNode(contextMenu.node.id);
-            } else if (contextMenu.edge) {
-              handleDeleteEdge(contextMenu.edge.id);
-            }
-          }}
-          onClose={() => setContextMenu(null)}
-        />
-      )}
+        {contextMenu && (
+          <ContextMenu
+            x={contextMenu.x}
+            y={contextMenu.y}
+            showConnect={!!contextMenu.node && (contextMenu.node.type === 'group' || contextMenu.node.type !== 'group')}
+            connections={contextMenu.node ? (contextMenu.node.data as any).connections || [] : []}
+            onConnect={contextMenu.node ? (connection) => handleConnectToDevice(contextMenu.node!, connection) : undefined}
+            onDuplicate={contextMenu.node ? () => handleDuplicateNode(contextMenu.node!) : undefined}
+            onDelete={() => {
+              if (contextMenu.node) {
+                handleDeleteNode(contextMenu.node.id);
+              } else if (contextMenu.edge) {
+                handleDeleteEdge(contextMenu.edge.id);
+              }
+            }}
+            onClose={() => setContextMenu(null)}
+          />
+        )}
 
-      {isModalOpen && selectedNode && selectedNode.type !== 'group' && (
-        <EditNodeModal
-          node={selectedNode}
-          onSave={handleSaveNode}
-          onClose={() => {
-            setIsModalOpen(false);
-            setSelectedNode(null);
-          }}
-          onConnect={() => {
-            const connections = (selectedNode.data as any).connections || [];
-            if (connections.length > 0) {
-              handleConnectToDevice(selectedNode, connections[0]);
-            } else {
-              alert('No connections configured for this node');
-            }
-          }}
-        />
-      )}
+        {isModalOpen && selectedNode && selectedNode.type !== 'group' && (
+          <EditNodeModal
+            node={selectedNode}
+            onSave={handleSaveNode}
+            onClose={() => {
+              setIsModalOpen(false);
+              setSelectedNode(null);
+            }}
+            onConnect={() => {
+              const connections = (selectedNode.data as any).connections || [];
+              if (connections.length > 0) {
+                handleConnectToDevice(selectedNode, connections[0]);
+              } else {
+                alert('No connections configured for this node');
+              }
+            }}
+          />
+        )}
 
-          {/* Arrow markers for edges */}
-          <svg style={{ position: 'absolute', width: 0, height: 0 }}>
-            <defs>
-              {/* Generate markers for each color used in edges */}
-              {Array.from(new Set(edges.map(e => (e.data as CustomEdgeData)?.color || theme.border.default))).map(color => {
-                const colorId = String(color).replace('#', '');
-                return (
-                  <React.Fragment key={colorId}>
-                {/* Arrow (filled triangle) - End */}
-                <marker
-                  id={`arrow-end-${colorId}`}
-                  markerWidth="10"
-                  markerHeight="10"
-                  refX="9"
-                  refY="5"
-                  orient="auto"
-                  markerUnits="strokeWidth"
-                >
-                  <polygon
-                    points="0,0 10,5 0,10"
-                    fill={color}
-                  />
-                </marker>
+        {/* Arrow markers for edges */}
+        <svg style={{ position: 'absolute', width: 0, height: 0 }}>
+          <defs>
+            {/* Generate markers for each color used in edges */}
+            {Array.from(new Set(edges.map(e => (e.data as CustomEdgeData)?.color || theme.border.default))).map(color => {
+              const colorId = String(color).replace('#', '');
+              return (
+                <React.Fragment key={colorId}>
+                  {/* Arrow (filled triangle) - End */}
+                  <marker
+                    id={`arrow-end-${colorId}`}
+                    markerWidth="10"
+                    markerHeight="10"
+                    refX="9"
+                    refY="5"
+                    orient="auto"
+                    markerUnits="strokeWidth"
+                  >
+                    <polygon
+                      points="0,0 10,5 0,10"
+                      fill={color}
+                    />
+                  </marker>
 
-                {/* Arrow (filled triangle) - Start */}
-                <marker
-                  id={`arrow-start-${colorId}`}
-                  markerWidth="10"
-                  markerHeight="10"
-                  refX="1"
-                  refY="5"
-                  orient="auto"
-                  markerUnits="strokeWidth"
-                >
-                  <polygon
-                    points="10,0 0,5 10,10"
-                    fill={color}
-                  />
-                </marker>
+                  {/* Arrow (filled triangle) - Start */}
+                  <marker
+                    id={`arrow-start-${colorId}`}
+                    markerWidth="10"
+                    markerHeight="10"
+                    refX="1"
+                    refY="5"
+                    orient="auto"
+                    markerUnits="strokeWidth"
+                  >
+                    <polygon
+                      points="10,0 0,5 10,10"
+                      fill={color}
+                    />
+                  </marker>
 
-                {/* Arrow Open (hollow triangle) - End */}
-                <marker
-                  id={`arrow-open-end-${colorId}`}
-                  markerWidth="10"
-                  markerHeight="10"
-                  refX="9"
-                  refY="5"
-                  orient="auto"
-                  markerUnits="strokeWidth"
-                >
-                  <polygon
-                    points="0,0 10,5 0,10"
-                    fill="none"
-                    stroke={color}
-                    strokeWidth="1.5"
-                  />
-                </marker>
+                  {/* Arrow Open (hollow triangle) - End */}
+                  <marker
+                    id={`arrow-open-end-${colorId}`}
+                    markerWidth="10"
+                    markerHeight="10"
+                    refX="9"
+                    refY="5"
+                    orient="auto"
+                    markerUnits="strokeWidth"
+                  >
+                    <polygon
+                      points="0,0 10,5 0,10"
+                      fill="none"
+                      stroke={color}
+                      strokeWidth="1.5"
+                    />
+                  </marker>
 
-                {/* Arrow Open (hollow triangle) - Start */}
-                <marker
-                  id={`arrow-open-start-${colorId}`}
-                  markerWidth="10"
-                  markerHeight="10"
-                  refX="1"
-                  refY="5"
-                  orient="auto"
-                  markerUnits="strokeWidth"
-                >
-                  <polygon
-                    points="10,0 0,5 10,10"
-                    fill="none"
-                    stroke={color}
-                    strokeWidth="1.5"
-                  />
-                </marker>
+                  {/* Arrow Open (hollow triangle) - Start */}
+                  <marker
+                    id={`arrow-open-start-${colorId}`}
+                    markerWidth="10"
+                    markerHeight="10"
+                    refX="1"
+                    refY="5"
+                    orient="auto"
+                    markerUnits="strokeWidth"
+                  >
+                    <polygon
+                      points="10,0 0,5 10,10"
+                      fill="none"
+                      stroke={color}
+                      strokeWidth="1.5"
+                    />
+                  </marker>
 
-                {/* Diamond (hollow) - End */}
-                <marker
-                  id={`diamond-end-${colorId}`}
-                  markerWidth="12"
-                  markerHeight="12"
-                  refX="11"
-                  refY="6"
-                  orient="auto"
-                  markerUnits="strokeWidth"
-                >
-                  <polygon
-                    points="0,6 6,0 12,6 6,12"
-                    fill="white"
-                    stroke={color}
-                    strokeWidth="1.5"
-                  />
-                </marker>
+                  {/* Diamond (hollow) - End */}
+                  <marker
+                    id={`diamond-end-${colorId}`}
+                    markerWidth="12"
+                    markerHeight="12"
+                    refX="11"
+                    refY="6"
+                    orient="auto"
+                    markerUnits="strokeWidth"
+                  >
+                    <polygon
+                      points="0,6 6,0 12,6 6,12"
+                      fill="white"
+                      stroke={color}
+                      strokeWidth="1.5"
+                    />
+                  </marker>
 
-                {/* Diamond (hollow) - Start */}
-                <marker
-                  id={`diamond-start-${colorId}`}
-                  markerWidth="12"
-                  markerHeight="12"
-                  refX="1"
-                  refY="6"
-                  orient="auto"
-                  markerUnits="strokeWidth"
-                >
-                  <polygon
-                    points="0,6 6,0 12,6 6,12"
-                    fill="white"
-                    stroke={color}
-                    strokeWidth="1.5"
-                  />
-                </marker>
+                  {/* Diamond (hollow) - Start */}
+                  <marker
+                    id={`diamond-start-${colorId}`}
+                    markerWidth="12"
+                    markerHeight="12"
+                    refX="1"
+                    refY="6"
+                    orient="auto"
+                    markerUnits="strokeWidth"
+                  >
+                    <polygon
+                      points="0,6 6,0 12,6 6,12"
+                      fill="white"
+                      stroke={color}
+                      strokeWidth="1.5"
+                    />
+                  </marker>
 
-                {/* Diamond Filled - End */}
-                <marker
-                  id={`diamond-filled-end-${colorId}`}
-                  markerWidth="12"
-                  markerHeight="12"
-                  refX="11"
-                  refY="6"
-                  orient="auto"
-                  markerUnits="strokeWidth"
-                >
-                  <polygon
-                    points="0,6 6,0 12,6 6,12"
-                    fill={color}
-                  />
-                </marker>
+                  {/* Diamond Filled - End */}
+                  <marker
+                    id={`diamond-filled-end-${colorId}`}
+                    markerWidth="12"
+                    markerHeight="12"
+                    refX="11"
+                    refY="6"
+                    orient="auto"
+                    markerUnits="strokeWidth"
+                  >
+                    <polygon
+                      points="0,6 6,0 12,6 6,12"
+                      fill={color}
+                    />
+                  </marker>
 
-                {/* Diamond Filled - Start */}
-                <marker
-                  id={`diamond-filled-start-${colorId}`}
-                  markerWidth="12"
-                  markerHeight="12"
-                  refX="1"
-                  refY="6"
-                  orient="auto"
-                  markerUnits="strokeWidth"
-                >
-                  <polygon
-                    points="0,6 6,0 12,6 6,12"
-                    fill={color}
-                  />
-                </marker>
+                  {/* Diamond Filled - Start */}
+                  <marker
+                    id={`diamond-filled-start-${colorId}`}
+                    markerWidth="12"
+                    markerHeight="12"
+                    refX="1"
+                    refY="6"
+                    orient="auto"
+                    markerUnits="strokeWidth"
+                  >
+                    <polygon
+                      points="0,6 6,0 12,6 6,12"
+                      fill={color}
+                    />
+                  </marker>
 
-                {/* Circle (hollow) - End */}
-                <marker
-                  id={`circle-end-${colorId}`}
-                  markerWidth="10"
-                  markerHeight="10"
-                  refX="9"
-                  refY="5"
-                  orient="auto"
-                  markerUnits="strokeWidth"
-                >
-                  <circle
-                    cx="5"
-                    cy="5"
-                    r="4"
-                    fill="white"
-                    stroke={color}
-                    strokeWidth="1.5"
-                  />
-                </marker>
+                  {/* Circle (hollow) - End */}
+                  <marker
+                    id={`circle-end-${colorId}`}
+                    markerWidth="10"
+                    markerHeight="10"
+                    refX="9"
+                    refY="5"
+                    orient="auto"
+                    markerUnits="strokeWidth"
+                  >
+                    <circle
+                      cx="5"
+                      cy="5"
+                      r="4"
+                      fill="white"
+                      stroke={color}
+                      strokeWidth="1.5"
+                    />
+                  </marker>
 
-                {/* Circle (hollow) - Start */}
-                <marker
-                  id={`circle-start-${colorId}`}
-                  markerWidth="10"
-                  markerHeight="10"
-                  refX="1"
-                  refY="5"
-                  orient="auto"
-                  markerUnits="strokeWidth"
-                >
-                  <circle
-                    cx="5"
-                    cy="5"
-                    r="4"
-                    fill="white"
-                    stroke={color}
-                    strokeWidth="1.5"
-                  />
-                </marker>
+                  {/* Circle (hollow) - Start */}
+                  <marker
+                    id={`circle-start-${colorId}`}
+                    markerWidth="10"
+                    markerHeight="10"
+                    refX="1"
+                    refY="5"
+                    orient="auto"
+                    markerUnits="strokeWidth"
+                  >
+                    <circle
+                      cx="5"
+                      cy="5"
+                      r="4"
+                      fill="white"
+                      stroke={color}
+                      strokeWidth="1.5"
+                    />
+                  </marker>
 
-                {/* Circle Filled - End */}
-                <marker
-                  id={`circle-filled-end-${colorId}`}
-                  markerWidth="10"
-                  markerHeight="10"
-                  refX="9"
-                  refY="5"
-                  orient="auto"
-                  markerUnits="strokeWidth"
-                >
-                  <circle
-                    cx="5"
-                    cy="5"
-                    r="4"
-                    fill={color}
-                  />
-                </marker>
+                  {/* Circle Filled - End */}
+                  <marker
+                    id={`circle-filled-end-${colorId}`}
+                    markerWidth="10"
+                    markerHeight="10"
+                    refX="9"
+                    refY="5"
+                    orient="auto"
+                    markerUnits="strokeWidth"
+                  >
+                    <circle
+                      cx="5"
+                      cy="5"
+                      r="4"
+                      fill={color}
+                    />
+                  </marker>
 
-                {/* Circle Filled - Start */}
-                <marker
-                  id={`circle-filled-start-${colorId}`}
-                  markerWidth="10"
-                  markerHeight="10"
-                  refX="1"
-                  refY="5"
-                  orient="auto"
-                  markerUnits="strokeWidth"
-                >
-                  <circle
-                    cx="5"
-                    cy="5"
-                    r="4"
-                    fill={color}
-                  />
-                </marker>
+                  {/* Circle Filled - Start */}
+                  <marker
+                    id={`circle-filled-start-${colorId}`}
+                    markerWidth="10"
+                    markerHeight="10"
+                    refX="1"
+                    refY="5"
+                    orient="auto"
+                    markerUnits="strokeWidth"
+                  >
+                    <circle
+                      cx="5"
+                      cy="5"
+                      r="4"
+                      fill={color}
+                    />
+                  </marker>
 
-                {/* Square (hollow) - End */}
-                <marker
-                  id={`square-end-${colorId}`}
-                  markerWidth="10"
-                  markerHeight="10"
-                  refX="9"
-                  refY="5"
-                  orient="auto"
-                  markerUnits="strokeWidth"
-                >
-                  <rect
-                    x="1"
-                    y="1"
-                    width="8"
-                    height="8"
-                    fill="white"
-                    stroke={color}
-                    strokeWidth="1.5"
-                  />
-                </marker>
+                  {/* Square (hollow) - End */}
+                  <marker
+                    id={`square-end-${colorId}`}
+                    markerWidth="10"
+                    markerHeight="10"
+                    refX="9"
+                    refY="5"
+                    orient="auto"
+                    markerUnits="strokeWidth"
+                  >
+                    <rect
+                      x="1"
+                      y="1"
+                      width="8"
+                      height="8"
+                      fill="white"
+                      stroke={color}
+                      strokeWidth="1.5"
+                    />
+                  </marker>
 
-                {/* Square (hollow) - Start */}
-                <marker
-                  id={`square-start-${colorId}`}
-                  markerWidth="10"
-                  markerHeight="10"
-                  refX="1"
-                  refY="5"
-                  orient="auto"
-                  markerUnits="strokeWidth"
-                >
-                  <rect
-                    x="1"
-                    y="1"
-                    width="8"
-                    height="8"
-                    fill="white"
-                    stroke={color}
-                    strokeWidth="1.5"
-                  />
-                </marker>
+                  {/* Square (hollow) - Start */}
+                  <marker
+                    id={`square-start-${colorId}`}
+                    markerWidth="10"
+                    markerHeight="10"
+                    refX="1"
+                    refY="5"
+                    orient="auto"
+                    markerUnits="strokeWidth"
+                  >
+                    <rect
+                      x="1"
+                      y="1"
+                      width="8"
+                      height="8"
+                      fill="white"
+                      stroke={color}
+                      strokeWidth="1.5"
+                    />
+                  </marker>
 
-                {/* Square Filled - End */}
-                <marker
-                  id={`square-filled-end-${colorId}`}
-                  markerWidth="10"
-                  markerHeight="10"
-                  refX="9"
-                  refY="5"
-                  orient="auto"
-                  markerUnits="strokeWidth"
-                >
-                  <rect
-                    x="1"
-                    y="1"
-                    width="8"
-                    height="8"
-                    fill={color}
-                  />
-                </marker>
+                  {/* Square Filled - End */}
+                  <marker
+                    id={`square-filled-end-${colorId}`}
+                    markerWidth="10"
+                    markerHeight="10"
+                    refX="9"
+                    refY="5"
+                    orient="auto"
+                    markerUnits="strokeWidth"
+                  >
+                    <rect
+                      x="1"
+                      y="1"
+                      width="8"
+                      height="8"
+                      fill={color}
+                    />
+                  </marker>
 
-                {/* Square Filled - Start */}
-                <marker
-                  id={`square-filled-start-${colorId}`}
-                  markerWidth="10"
-                  markerHeight="10"
-                  refX="1"
-                  refY="5"
-                  orient="auto"
-                  markerUnits="strokeWidth"
-                >
-                  <rect
-                    x="1"
-                    y="1"
-                    width="8"
-                    height="8"
-                    fill={color}
-                  />
-                </marker>
+                  {/* Square Filled - Start */}
+                  <marker
+                    id={`square-filled-start-${colorId}`}
+                    markerWidth="10"
+                    markerHeight="10"
+                    refX="1"
+                    refY="5"
+                    orient="auto"
+                    markerUnits="strokeWidth"
+                  >
+                    <rect
+                      x="1"
+                      y="1"
+                      width="8"
+                      height="8"
+                      fill={color}
+                    />
+                  </marker>
 
-                {/* Cross - End */}
-                <marker
-                  id={`cross-end-${colorId}`}
-                  markerWidth="10"
-                  markerHeight="10"
-                  refX="8"
-                  refY="5"
-                  orient="auto"
-                  markerUnits="strokeWidth"
-                >
-                  <path
-                    d="M 2,2 L 8,8 M 8,2 L 2,8"
-                    stroke={color}
-                    strokeWidth="1.5"
-                    fill="none"
-                  />
-                </marker>
+                  {/* Cross - End */}
+                  <marker
+                    id={`cross-end-${colorId}`}
+                    markerWidth="10"
+                    markerHeight="10"
+                    refX="8"
+                    refY="5"
+                    orient="auto"
+                    markerUnits="strokeWidth"
+                  >
+                    <path
+                      d="M 2,2 L 8,8 M 8,2 L 2,8"
+                      stroke={color}
+                      strokeWidth="1.5"
+                      fill="none"
+                    />
+                  </marker>
 
-                {/* Cross - Start */}
-                <marker
-                  id={`cross-start-${colorId}`}
-                  markerWidth="10"
-                  markerHeight="10"
-                  refX="2"
-                  refY="5"
-                  orient="auto"
-                  markerUnits="strokeWidth"
-                >
-                  <path
-                    d="M 2,2 L 8,8 M 8,2 L 2,8"
-                    stroke={color}
-                    strokeWidth="1.5"
-                    fill="none"
-                  />
-                </marker>
+                  {/* Cross - Start */}
+                  <marker
+                    id={`cross-start-${colorId}`}
+                    markerWidth="10"
+                    markerHeight="10"
+                    refX="2"
+                    refY="5"
+                    orient="auto"
+                    markerUnits="strokeWidth"
+                  >
+                    <path
+                      d="M 2,2 L 8,8 M 8,2 L 2,8"
+                      stroke={color}
+                      strokeWidth="1.5"
+                      fill="none"
+                    />
+                  </marker>
 
-                {/* Bar (perpendicular line) - End */}
-                <marker
-                  id={`bar-end-${colorId}`}
-                  markerWidth="10"
-                  markerHeight="10"
-                  refX="8"
-                  refY="5"
-                  orient="auto"
-                  markerUnits="strokeWidth"
-                >
-                  <line
-                    x1="5"
-                    y1="0"
-                    x2="5"
-                    y2="10"
-                    stroke={color}
-                    strokeWidth="2"
-                  />
-                </marker>
+                  {/* Bar (perpendicular line) - End */}
+                  <marker
+                    id={`bar-end-${colorId}`}
+                    markerWidth="10"
+                    markerHeight="10"
+                    refX="8"
+                    refY="5"
+                    orient="auto"
+                    markerUnits="strokeWidth"
+                  >
+                    <line
+                      x1="5"
+                      y1="0"
+                      x2="5"
+                      y2="10"
+                      stroke={color}
+                      strokeWidth="2"
+                    />
+                  </marker>
 
-                {/* Bar (perpendicular line) - Start */}
-                <marker
-                  id={`bar-start-${colorId}`}
-                  markerWidth="10"
-                  markerHeight="10"
-                  refX="2"
-                  refY="5"
-                  orient="auto"
-                  markerUnits="strokeWidth"
-                >
-                  <line
-                    x1="5"
-                    y1="0"
-                    x2="5"
-                    y2="10"
-                    stroke={color}
-                    strokeWidth="2"
-                  />
-                </marker>
-                  </React.Fragment>
-                );
-              })}
-            </defs>
-          </svg>
+                  {/* Bar (perpendicular line) - Start */}
+                  <marker
+                    id={`bar-start-${colorId}`}
+                    markerWidth="10"
+                    markerHeight="10"
+                    refX="2"
+                    refY="5"
+                    orient="auto"
+                    markerUnits="strokeWidth"
+                  >
+                    <line
+                      x1="5"
+                      y1="0"
+                      x2="5"
+                      y2="10"
+                      stroke={color}
+                      strokeWidth="2"
+                    />
+                  </marker>
+                </React.Fragment>
+              );
+            })}
+          </defs>
+        </svg>
       </div>
 
       {/* Connections Tab */}
