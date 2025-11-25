@@ -119,6 +119,27 @@ const AppContent: React.FC = () => {
     }
   }, [nodes, edges]);
 
+  // Auto-load last session on mount
+  useEffect(() => {
+    const loadLastSession = async () => {
+      try {
+        const result = await window.electron.getLastSession();
+        if (result.success && result.data) {
+          setNodes(result.data.nodes || []);
+          setEdges(result.data.edges || []);
+          setDiagramName(result.data.metadata?.name || result.filename || 'Untitled');
+          setCurrentFilePath(result.filePath);
+          setHasUnsavedChanges(false);
+          console.log('Loaded last session:', result.filePath);
+        }
+      } catch (error) {
+        console.log('No previous session to load');
+      }
+    };
+
+    loadLastSession();
+  }, []); // Run only once on mount
+
   // History management functions
   const saveToHistory = useCallback(() => {
     const newState: HistoryState = {

@@ -5,6 +5,7 @@ export interface ElectronAPI {
   saveDiagram: (name: string, data: any, filePath?: string) => Promise<any>;
   saveDiagramAs: (name: string, data: any) => Promise<any>;
   loadDiagram: () => Promise<any>;
+  getLastSession: () => Promise<any>;
   listDiagrams: () => Promise<string[]>;
   deleteDiagram: (name: string) => Promise<any>;
 

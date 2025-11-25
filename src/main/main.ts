@@ -351,6 +351,9 @@ ipcMain.handle('save-diagram', async (event, { name, data, filePath }) => {
     // Also save to electron-store for quick access
     store.set(`diagram.${name}`, data);
 
+    // Save as last opened file for session persistence
+    store.set('lastOpenedFile', targetPath);
+
     return { success: true, path: targetPath };
   } catch (error: any) {
     return { success: false, error: error.message };
@@ -375,6 +378,9 @@ ipcMain.handle('save-diagram-as', async (event, { name, data }) => {
 
       // Also save to electron-store for quick access
       store.set(`diagram.${name}`, data);
+
+      // Save as last opened file for session persistence
+      store.set('lastOpenedFile', result.filePath);
 
       return { success: true, path: result.filePath };
     }
@@ -402,6 +408,9 @@ ipcMain.handle('load-diagram', async () => {
       const fileContent = fs.readFileSync(filePath, 'utf-8');
       const data = JSON.parse(fileContent);
 
+      // Save as last opened file for session persistence
+      store.set('lastOpenedFile', filePath);
+
       return {
         success: true,
         data,
@@ -411,6 +420,29 @@ ipcMain.handle('load-diagram', async () => {
     }
 
     return { success: false, canceled: true };
+  } catch (error: any) {
+    return { success: false, error: error.message };
+  }
+});
+
+// Get last session - load the last opened file automatically
+ipcMain.handle('get-last-session', async () => {
+  try {
+    const lastFilePath = store.get('lastOpenedFile') as string | undefined;
+
+    if (!lastFilePath || !fs.existsSync(lastFilePath)) {
+      return { success: false, noSession: true };
+    }
+
+    const fileContent = fs.readFileSync(lastFilePath, 'utf-8');
+    const data = JSON.parse(fileContent);
+
+    return {
+      success: true,
+      data,
+      filename: path.basename(lastFilePath, '.json'),
+      filePath: lastFilePath
+    };
   } catch (error: any) {
     return { success: false, error: error.message };
   }

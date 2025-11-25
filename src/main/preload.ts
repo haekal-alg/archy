@@ -19,6 +19,9 @@ contextBridge.exposeInMainWorld('electron', {
   loadDiagram: () =>
     ipcRenderer.invoke('load-diagram'),
 
+  getLastSession: () =>
+    ipcRenderer.invoke('get-last-session'),
+
   listDiagrams: () =>
     ipcRenderer.invoke('list-diagrams'),
 

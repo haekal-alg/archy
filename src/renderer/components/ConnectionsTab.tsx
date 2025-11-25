@@ -81,13 +81,12 @@ const ConnectionsTab: React.FC = () => {
       {/* Side Panel - Always rendered for animation */}
       <div style={{
         width: sidePanelCollapsed ? '0px' : '320px',
-        opacity: sidePanelCollapsed ? 0 : 1,
         background: '#151923',
         borderRight: sidePanelCollapsed ? 'none' : '1px solid #3a4556',
         display: 'flex',
         flexDirection: 'column',
         overflow: 'hidden',
-        transition: 'all 0.3s ease',
+        transition: 'width 0.3s ease, border 0.3s ease',
         whiteSpace: 'nowrap',
         position: 'relative',
       }}>
@@ -326,12 +325,12 @@ const ConnectionsTab: React.FC = () => {
                       position: 'absolute',
                       top: '12px',
                       right: '12px',
-                      width: '20px',
-                      height: '20px',
+                      width: '18px',
+                      height: '18px',
                       padding: '0',
-                      background: '#ff5c5c',
-                      color: '#0a0e1a',
-                      border: '1px solid #e84545',
+                      background: '#303948',
+                      color: '#8892a6',
+                      border: '1px solid #3a4556',
                       borderRadius: '4px',
                       fontSize: '14px',
                       cursor: 'pointer',
@@ -344,10 +343,14 @@ const ConnectionsTab: React.FC = () => {
                     }}
                     title="Disconnect"
                     onMouseEnter={(e) => {
-                      e.currentTarget.style.background = '#e84545';
+                      e.currentTarget.style.background = '#ff5c5c';
+                      e.currentTarget.style.color = '#0a0e1a';
+                      e.currentTarget.style.border = '1px solid #e84545';
                     }}
                     onMouseLeave={(e) => {
-                      e.currentTarget.style.background = '#ff5c5c';
+                      e.currentTarget.style.background = '#303948';
+                      e.currentTarget.style.color = '#8892a6';
+                      e.currentTarget.style.border = '1px solid #3a4556';
                     }}
                   >
                     ×
@@ -483,26 +486,6 @@ const ConnectionsTab: React.FC = () => {
                     +
                   </button>
                 </div>
-
-                {/* Status Indicator */}
-                <div style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '6px',
-                }}>
-                  <span style={{
-                    width: '8px',
-                    height: '8px',
-                    borderRadius: '50%',
-                    backgroundColor: getStatusColor(activeConnection.status),
-                  }} />
-                  <span style={{
-                    fontSize: '12px',
-                    color: '#aaa',
-                  }}>
-                    {getStatusText(activeConnection.status)}
-                  </span>
-                </div>
               </div>
             </div>
 
@@ -531,13 +514,24 @@ const ConnectionsTab: React.FC = () => {
               {activeConnection && activeConnection.status === 'connecting' && (
                 <div style={{
                   display: 'flex',
+                  flexDirection: 'column',
                   alignItems: 'center',
                   justifyContent: 'center',
                   height: '100%',
-                  color: '#888',
+                  color: '#b4bcc9',
                   fontSize: '14px',
+                  gap: '16px',
                 }}>
-                  Connecting to {activeConnection.host}...
+                  {/* Loading Spinner */}
+                  <div style={{
+                    width: '40px',
+                    height: '40px',
+                    border: '4px solid #252d3f',
+                    borderTop: '4px solid #4d7cfe',
+                    borderRadius: '50%',
+                    animation: 'spin 1s linear infinite',
+                  }} />
+                  <div>Connecting to {activeConnection.host}...</div>
                 </div>
               )}
               {activeConnection && activeConnection.status === 'error' && (
@@ -592,6 +586,14 @@ const ConnectionsTab: React.FC = () => {
           </div>
         )}
       </div>
+
+      {/* CSS Animations */}
+      <style>{`
+        @keyframes spin {
+          0% { transform: rotate(0deg); }
+          100% { transform: rotate(360deg); }
+        }
+      `}</style>
     </div>
   );
 };
