@@ -76,22 +76,11 @@ export const TabProvider: React.FC<TabProviderProps> = ({ children }) => {
   const disconnectConnection = useCallback((id: string) => {
     window.electron.closeSSHSession(id);
 
-    // Find the connection to check its status
-    const conn = connections.find(c => c.id === id);
+    // Always remove completely and cleanup terminal
+    cleanupTerminal(id);
+    setConnections(prev => prev.filter(c => c.id !== id));
 
-    // If disconnected or error, remove completely and cleanup terminal
-    if (conn && (conn.status === 'disconnected' || conn.status === 'error')) {
-      cleanupTerminal(id);
-      setConnections(prev => prev.filter(c => c.id !== id));
-    } else {
-      // Otherwise just mark as disconnected
-      setConnections(prev =>
-        prev.map(conn =>
-          conn.id === id ? { ...conn, status: 'disconnected', lastActivity: new Date() } : conn
-        )
-      );
-    }
-
+    // If this was the active connection, switch to another connected one
     if (activeConnectionId === id) {
       const remainingConnections = connections.filter(c => c.id !== id && c.status === 'connected');
       setActiveConnectionId(remainingConnections.length > 0 ? remainingConnections[0].id : null);

@@ -80,84 +80,67 @@ const ConnectionsTab: React.FC = () => {
     <div style={{ display: 'flex', height: '100%', overflow: 'hidden' }}>
       {/* Side Panel - Always rendered for animation */}
       <div style={{
-        width: sidePanelCollapsed ? '0px' : '300px',
+        width: sidePanelCollapsed ? '0px' : '320px',
         opacity: sidePanelCollapsed ? 0 : 1,
-        background: 'linear-gradient(180deg, #1e1e1e 0%, #181818 100%)',
-        borderRight: sidePanelCollapsed ? 'none' : '1px solid rgba(255, 255, 255, 0.08)',
+        background: '#151923',
+        borderRight: sidePanelCollapsed ? 'none' : '1px solid #3a4556',
         display: 'flex',
         flexDirection: 'column',
         overflow: 'hidden',
-        transition: 'width 0.35s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.25s ease',
+        transition: 'all 0.3s ease',
         whiteSpace: 'nowrap',
         position: 'relative',
       }}>
-        {/* Subtle gradient overlay */}
-        <div style={{
-          position: 'absolute',
-          top: 0,
-          left: 0,
-          right: 0,
-          height: '200px',
-          background: 'radial-gradient(ellipse at top, rgba(99, 102, 241, 0.08) 0%, transparent 70%)',
-          pointerEvents: 'none',
-          zIndex: 0,
-        }} />
 
         {/* Side Panel Header */}
         <div style={{
-          minWidth: '300px',
+          minWidth: '320px',
           padding: '16px 20px',
-          borderBottom: '1px solid rgba(255, 255, 255, 0.06)',
+          borderBottom: '1px solid #3a4556',
           display: 'flex',
           flexDirection: 'column',
           gap: '12px',
-          background: 'rgba(30, 30, 30, 0.6)',
-          backdropFilter: 'blur(10px)',
-          position: 'relative',
-          zIndex: 1,
+          background: '#151923',
+          position: 'sticky',
+          top: 0,
+          zIndex: 10,
         }}>
           <div style={{
             display: 'flex',
             justifyContent: 'space-between',
             alignItems: 'center',
           }}>
-            <div style={{
-              fontSize: '11px',
-              fontWeight: '700',
-              color: '#a8a8a8',
-              textTransform: 'uppercase',
-              letterSpacing: '1.2px',
-              background: 'linear-gradient(135deg, #e0e0e0 0%, #a0a0a0 100%)',
-              WebkitBackgroundClip: 'text',
-              WebkitTextFillColor: 'transparent',
+            <h3 style={{
+              margin: 0,
+              fontSize: '14px',
+              fontWeight: 600,
+              color: '#e8ecf4',
             }}>
               Active Connections
-            </div>
+            </h3>
             <button
               onClick={() => setSidePanelCollapsed(true)}
               style={{
-                background: 'rgba(255, 255, 255, 0.05)',
-                border: '1px solid rgba(255, 255, 255, 0.08)',
-                borderRadius: '6px',
-                color: '#888',
+                background: '#252d3f',
+                border: '1px solid #3a4556',
+                borderRadius: '4px',
+                color: '#b4bcc9',
                 cursor: 'pointer',
                 padding: '6px 8px',
                 display: 'flex',
                 alignItems: 'center',
                 fontSize: '16px',
-                transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+                transition: 'all 0.2s ease',
                 lineHeight: '1',
               }}
               title="Collapse sidebar"
               onMouseEnter={(e) => {
-                e.currentTarget.style.color = '#fff';
-                e.currentTarget.style.background = 'rgba(255, 255, 255, 0.1)';
-                e.currentTarget.style.transform = 'scale(1.05)';
+                e.currentTarget.style.color = '#e8ecf4';
+                e.currentTarget.style.background = '#303948';
               }}
               onMouseLeave={(e) => {
-                e.currentTarget.style.color = '#888';
-                e.currentTarget.style.background = 'rgba(255, 255, 255, 0.05)';
-                e.currentTarget.style.transform = 'scale(1)';
+                e.currentTarget.style.color = '#b4bcc9';
+                e.currentTarget.style.background = '#252d3f';
               }}
             >
               ‹
@@ -167,25 +150,23 @@ const ConnectionsTab: React.FC = () => {
             <button
               onClick={clearDisconnected}
               style={{
-                padding: '8px 14px',
-                background: 'linear-gradient(135deg, #dc2626 0%, #b91c1c 100%)',
-                color: '#fff',
-                border: 'none',
-                borderRadius: '6px',
+                padding: '8px 12px',
+                background: '#ff5c5c',
+                color: '#0a0e1a',
+                border: '1px solid #e84545',
+                borderRadius: '4px',
                 fontSize: '11px',
                 cursor: 'pointer',
-                fontWeight: '600',
-                letterSpacing: '0.3px',
-                transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
-                boxShadow: '0 2px 8px rgba(220, 38, 38, 0.3)',
+                fontWeight: 600,
+                letterSpacing: '0.5px',
+                transition: 'all 0.2s ease',
+                textTransform: 'uppercase',
               }}
               onMouseEnter={(e) => {
-                e.currentTarget.style.transform = 'translateY(-1px)';
-                e.currentTarget.style.boxShadow = '0 4px 12px rgba(220, 38, 38, 0.4)';
+                e.currentTarget.style.background = '#e84545';
               }}
               onMouseLeave={(e) => {
-                e.currentTarget.style.transform = 'translateY(0)';
-                e.currentTarget.style.boxShadow = '0 2px 8px rgba(220, 38, 38, 0.3)';
+                e.currentTarget.style.background = '#ff5c5c';
               }}
             >
               Clear Disconnected
@@ -197,21 +178,24 @@ const ConnectionsTab: React.FC = () => {
         <div style={{
           flex: 1,
           overflow: 'auto',
-          minWidth: '300px',
-          position: 'relative',
-          zIndex: 1,
+          minWidth: '320px',
+          padding: '16px',
         }}>
           {connections.length === 0 ? (
             <div style={{
-              padding: '40px 24px',
+              padding: '48px 20px',
               textAlign: 'center',
-              color: '#888',
-              fontSize: '13px',
-              lineHeight: '1.6',
+              background: '#252d3f',
+              border: '1px solid #3a4556',
+              borderRadius: '4px',
             }}>
-              <div style={{ fontSize: '32px', marginBottom: '12px', opacity: 0.5 }}>⚡</div>
-              <div style={{ marginBottom: '4px', color: '#aaa' }}>No active connections</div>
-              <div style={{ fontSize: '11px', color: '#666' }}>Connect to a device from the Design tab</div>
+              <div style={{ fontSize: '36px', marginBottom: '12px' }}>🔌</div>
+              <div style={{ fontSize: '11px', color: '#b4bcc9', marginBottom: '4px' }}>
+                No active connections
+              </div>
+              <div style={{ fontSize: '10px', color: '#8892a6' }}>
+                Connect to a device from the Design tab
+              </div>
             </div>
           ) : (
             connections.map(conn => (
@@ -220,34 +204,22 @@ const ConnectionsTab: React.FC = () => {
                 onClick={() => setActiveConnectionId(conn.id)}
                 style={{
                   position: 'relative',
-                  margin: '8px 12px',
-                  padding: '14px 16px',
-                  borderRadius: '10px',
+                  marginBottom: '8px',
+                  padding: '12px 16px',
+                  borderRadius: '4px',
                   cursor: 'pointer',
-                  background: activeConnectionId === conn.id
-                    ? 'linear-gradient(135deg, rgba(99, 102, 241, 0.15) 0%, rgba(139, 92, 246, 0.1) 100%)'
-                    : 'rgba(255, 255, 255, 0.03)',
-                  border: activeConnectionId === conn.id
-                    ? '1px solid rgba(99, 102, 241, 0.3)'
-                    : '1px solid rgba(255, 255, 255, 0.06)',
-                  backdropFilter: 'blur(8px)',
-                  transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
-                  boxShadow: activeConnectionId === conn.id
-                    ? '0 4px 16px rgba(99, 102, 241, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.1)'
-                    : '0 2px 8px rgba(0, 0, 0, 0.1)',
+                  background: activeConnectionId === conn.id ? '#1e2433' : '#252d3f',
+                  border: activeConnectionId === conn.id ? '1px solid #4d7cfe' : '1px solid #3a4556',
+                  transition: 'all 0.2s ease',
                 }}
                 onMouseEnter={(e) => {
                   if (activeConnectionId !== conn.id) {
-                    e.currentTarget.style.background = 'rgba(255, 255, 255, 0.06)';
-                    e.currentTarget.style.transform = 'translateY(-2px)';
-                    e.currentTarget.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.2)';
+                    e.currentTarget.style.background = '#303948';
                   }
                 }}
                 onMouseLeave={(e) => {
                   if (activeConnectionId !== conn.id) {
-                    e.currentTarget.style.background = 'rgba(255, 255, 255, 0.03)';
-                    e.currentTarget.style.transform = 'translateY(0)';
-                    e.currentTarget.style.boxShadow = '0 2px 8px rgba(0, 0, 0, 0.1)';
+                    e.currentTarget.style.background = '#252d3f';
                   }
                 }}
               >
@@ -255,19 +227,18 @@ const ConnectionsTab: React.FC = () => {
                 <div style={{
                   display: 'flex',
                   alignItems: 'center',
-                  gap: '10px',
+                  gap: '8px',
                   marginBottom: '8px',
                   paddingRight: conn.status === 'connected' ? '32px' : '0',
                 }}>
                   <span style={{
-                    fontSize: '14px',
-                    fontWeight: '600',
-                    color: '#f0f0f0',
+                    fontSize: '11px',
+                    fontWeight: 600,
+                    color: '#e8ecf4',
                     overflow: 'hidden',
                     textOverflow: 'ellipsis',
                     whiteSpace: 'nowrap',
                     flex: 1,
-                    letterSpacing: '0.2px',
                   }}>
                     {conn.nodeName}
                   </span>
@@ -275,14 +246,14 @@ const ConnectionsTab: React.FC = () => {
 
                 {/* Connection Details */}
                 <div style={{
-                  fontSize: '11px',
-                  color: '#999',
-                  marginBottom: '10px',
+                  fontSize: '10px',
+                  color: '#8892a6',
+                  marginBottom: '8px',
                   fontFamily: 'Consolas, "Courier New", monospace',
-                  background: 'rgba(0, 0, 0, 0.2)',
+                  background: '#2a3347',
                   padding: '6px 8px',
                   borderRadius: '4px',
-                  border: '1px solid rgba(255, 255, 255, 0.05)',
+                  border: '1px solid #3a4556',
                 }}>
                   {conn.username}@{conn.host}:{conn.port}
                 </div>
@@ -296,41 +267,33 @@ const ConnectionsTab: React.FC = () => {
                   <div style={{
                     display: 'flex',
                     alignItems: 'center',
-                    gap: '8px',
+                    gap: '6px',
                   }}>
                     <span style={{
-                      position: 'relative',
-                      width: '10px',
-                      height: '10px',
+                      width: '8px',
+                      height: '8px',
                       borderRadius: '50%',
                       background: conn.status === 'connected'
-                        ? 'linear-gradient(135deg, #10b981 0%, #059669 100%)'
+                        ? '#3dd68c'
                         : conn.status === 'connecting'
-                          ? 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)'
+                          ? '#ffab40'
                           : conn.status === 'error'
-                            ? 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)'
+                            ? '#ff5c5c'
                             : '#6b7280',
                       display: 'inline-block',
-                      boxShadow: conn.status === 'connected'
-                        ? '0 0 12px rgba(16, 185, 129, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.3)'
-                        : conn.status === 'connecting'
-                          ? '0 0 12px rgba(245, 158, 11, 0.6)'
-                          : '0 0 8px rgba(107, 114, 128, 0.4)',
-                      animation: conn.status === 'connected' ? 'pulse 2s ease-in-out infinite' : 'none',
                     }} />
                     <span style={{
-                      fontSize: '11px',
-                      fontWeight: '500',
-                      color: conn.status === 'connected' ? '#10b981' : '#aaa',
-                      letterSpacing: '0.3px',
+                      fontSize: '10px',
+                      fontWeight: 500,
+                      color: conn.status === 'connected' ? '#3dd68c' : '#b4bcc9',
                     }}>
                       {getStatusText(conn.status)}
                     </span>
                   </div>
                   <span style={{
                     fontSize: '10px',
-                    color: '#666',
-                    fontWeight: '500',
+                    color: '#8892a6',
+                    fontWeight: 500,
                   }}>
                     {formatLastActivity(conn.lastActivity)}
                   </span>
@@ -339,13 +302,13 @@ const ConnectionsTab: React.FC = () => {
                 {/* Error Message */}
                 {conn.error && (
                   <div style={{
-                    marginTop: '10px',
+                    marginTop: '8px',
                     fontSize: '10px',
-                    color: '#fca5a5',
-                    background: 'rgba(220, 38, 38, 0.15)',
+                    color: '#ff7878',
+                    background: '#2a3347',
                     padding: '6px 8px',
-                    borderRadius: '6px',
-                    border: '1px solid rgba(220, 38, 38, 0.3)',
+                    borderRadius: '4px',
+                    border: '1px solid #ff5c5c',
                     lineHeight: '1.4',
                   }}>
                     {conn.error}
@@ -363,33 +326,28 @@ const ConnectionsTab: React.FC = () => {
                       position: 'absolute',
                       top: '12px',
                       right: '12px',
-                      width: '24px',
-                      height: '24px',
+                      width: '20px',
+                      height: '20px',
                       padding: '0',
-                      background: 'linear-gradient(135deg, rgba(239, 68, 68, 0.9) 0%, rgba(220, 38, 38, 0.9) 100%)',
-                      color: '#fff',
-                      border: 'none',
-                      borderRadius: '6px',
-                      fontSize: '16px',
+                      background: '#ff5c5c',
+                      color: '#0a0e1a',
+                      border: '1px solid #e84545',
+                      borderRadius: '4px',
+                      fontSize: '14px',
                       cursor: 'pointer',
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
-                      fontWeight: '600',
+                      fontWeight: 600,
                       lineHeight: '1',
-                      transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
-                      boxShadow: '0 2px 8px rgba(220, 38, 38, 0.3)',
+                      transition: 'all 0.2s ease',
                     }}
                     title="Disconnect"
                     onMouseEnter={(e) => {
-                      e.currentTarget.style.background = 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)';
-                      e.currentTarget.style.transform = 'scale(1.1) rotate(90deg)';
-                      e.currentTarget.style.boxShadow = '0 4px 12px rgba(220, 38, 38, 0.5)';
+                      e.currentTarget.style.background = '#e84545';
                     }}
                     onMouseLeave={(e) => {
-                      e.currentTarget.style.background = 'linear-gradient(135deg, rgba(239, 68, 68, 0.9) 0%, rgba(220, 38, 38, 0.9) 100%)';
-                      e.currentTarget.style.transform = 'scale(1) rotate(0deg)';
-                      e.currentTarget.style.boxShadow = '0 2px 8px rgba(220, 38, 38, 0.3)';
+                      e.currentTarget.style.background = '#ff5c5c';
                     }}
                   >
                     ×
@@ -400,19 +358,6 @@ const ConnectionsTab: React.FC = () => {
           )}
         </div>
 
-        {/* Add keyframe animation style */}
-        <style>{`
-          @keyframes pulse {
-            0%, 100% {
-              opacity: 1;
-              transform: scale(1);
-            }
-            50% {
-              opacity: 0.7;
-              transform: scale(1.1);
-            }
-          }
-        `}</style>
       </div>
 
       {/* Collapse Button (when collapsed) */}
@@ -420,28 +365,34 @@ const ConnectionsTab: React.FC = () => {
         <button
           onClick={() => setSidePanelCollapsed(false)}
           style={{
-            width: '32px',
-            background: '#252526',
-            borderRight: '1px solid #333',
-            border: 'none',
-            color: '#888',
+            width: '30px',
+            height: '60px',
+            background: '#252d3f',
+            border: '1px solid #3a4556',
+            borderRight: 'none',
+            borderTopLeftRadius: '4px',
+            borderBottomLeftRadius: '4px',
+            color: '#b4bcc9',
             cursor: 'pointer',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
             fontSize: '18px',
-            writingMode: 'vertical-rl',
-            padding: '12px 0',
             transition: 'all 0.2s ease',
+            position: 'fixed',
+            top: '50%',
+            transform: 'translateY(-50%)',
+            left: '0',
+            zIndex: 1000,
           }}
           title="Expand sidebar"
           onMouseEnter={(e) => {
-            e.currentTarget.style.color = '#fff';
-            e.currentTarget.style.background = '#333';
+            e.currentTarget.style.color = '#e8ecf4';
+            e.currentTarget.style.background = '#303948';
           }}
           onMouseLeave={(e) => {
-            e.currentTarget.style.color = '#888';
-            e.currentTarget.style.background = '#252526';
+            e.currentTarget.style.color = '#b4bcc9';
+            e.currentTarget.style.background = '#252d3f';
           }}
         >
           ›
