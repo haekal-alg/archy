@@ -95,18 +95,6 @@ npm run build:renderer   # Compile UI
 npm run package          # Create distributable
 ```
 
-## Roadmap
-
-Here's what's coming next:
-
-- [ ] Encrypted credential storage
-- [ ] Multiple diagram tabs
-- [ ] Export diagrams as PNG/SVG
-- [ ] Network device discovery
-- [ ] SSH key-based authentication
-- [ ] VNC protocol support
-- [ ] Connection history and favorites
-
 ## License
 
 ISC
