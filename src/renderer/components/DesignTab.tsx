@@ -78,6 +78,8 @@ const DesignTab: React.FC<DesignTabProps> = ({
         fitView
         snapToGrid={true}
         snapGrid={[15, 15]}
+        minZoom={0.01}
+        maxZoom={20}
         defaultEdgeOptions={{
           type: 'custom',
           animated: false,

@@ -2,6 +2,7 @@ export interface ElectronAPI {
   connectRDP: (host: string, username: string, password: string) => Promise<any>;
   connectSSH: (host: string, port: number, username: string, password: string) => Promise<any>;
   executeCommand: (command: string) => Promise<any>;
+  showOpenDialog: (options: any) => Promise<any>;
   saveDiagram: (name: string, data: any, filePath?: string) => Promise<any>;
   saveDiagramAs: (name: string, data: any) => Promise<any>;
   loadDiagram: () => Promise<any>;
@@ -16,6 +17,7 @@ export interface ElectronAPI {
     port: number;
     username: string;
     password: string;
+    privateKeyPath?: string;
   }) => Promise<{ success: boolean; error?: string }>;
   sendSSHData: (connectionId: string, data: string) => void;
   resizeSSHTerminal: (connectionId: string, cols: number, rows: number) => void;

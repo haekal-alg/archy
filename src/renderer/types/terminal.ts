@@ -31,6 +31,7 @@ export interface TabContextType {
     port: number;
     username: string;
     password: string;
+    privateKeyPath?: string;
   }) => Promise<void>;
   disconnectConnection: (id: string) => void;
 }
