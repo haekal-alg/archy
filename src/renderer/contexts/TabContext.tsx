@@ -28,6 +28,7 @@ export const TabProvider: React.FC<TabProviderProps> = ({ children }) => {
     port: number;
     username: string;
     password: string;
+    privateKeyPath?: string;
   }) => {
     const connectionId = `conn-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
 
@@ -53,6 +54,7 @@ export const TabProvider: React.FC<TabProviderProps> = ({ children }) => {
         port: config.port,
         username: config.username,
         password: config.password,
+        privateKeyPath: config.privateKeyPath,
       });
 
       setConnections(prev =>

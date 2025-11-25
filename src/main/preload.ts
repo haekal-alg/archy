@@ -10,6 +10,9 @@ contextBridge.exposeInMainWorld('electron', {
   executeCommand: (command: string) =>
     ipcRenderer.invoke('execute-command', { command }),
 
+  showOpenDialog: (options: any) =>
+    ipcRenderer.invoke('show-open-dialog', options),
+
   saveDiagram: (name: string, data: any, filePath?: string) =>
     ipcRenderer.invoke('save-diagram', { name, data, filePath }),
 
@@ -29,7 +32,7 @@ contextBridge.exposeInMainWorld('electron', {
     ipcRenderer.invoke('delete-diagram', name),
 
   // SSH Session Management
-  createSSHSession: (config: { connectionId: string; host: string; port: number; username: string; password: string }) =>
+  createSSHSession: (config: { connectionId: string; host: string; port: number; username: string; password: string; privateKeyPath?: string }) =>
     ipcRenderer.invoke('create-ssh-session', config),
 
   sendSSHData: (connectionId: string, data: string) => {

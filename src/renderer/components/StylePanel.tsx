@@ -93,6 +93,9 @@ const StylePanel: React.FC<StylePanelProps> = ({
   const [editingConnectionId, setEditingConnectionId] = useState<string | null>(null);
   const [showConnectionForm, setShowConnectionForm] = useState(false);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+  const [connectionLabel, setConnectionLabel] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [privateKeyPath, setPrivateKeyPath] = useState('');
 
   useEffect(() => {
     if (selectedNode) {
@@ -183,12 +186,15 @@ const StylePanel: React.FC<StylePanelProps> = ({
         // Reset connection form state
         setShowConnectionForm(false);
         setEditingConnectionId(null);
+        setConnectionLabel('');
         setNodeType('ssh');
         setNodeHost('');
         setNodePort(22);
         setNodeUsername('');
         setNodePassword('');
         setNodeCustomCommand('');
+        setPrivateKeyPath('');
+        setShowPassword(false);
         setHasUnsavedChanges(false);
       } else {
         // Enhanced device node
@@ -208,12 +214,15 @@ const StylePanel: React.FC<StylePanelProps> = ({
         // Reset connection form state
         setShowConnectionForm(false);
         setEditingConnectionId(null);
+        setConnectionLabel('');
         setNodeType('ssh');
         setNodeHost('');
         setNodePort(22);
         setNodeUsername('');
         setNodePassword('');
         setNodeCustomCommand('');
+        setPrivateKeyPath('');
+        setShowPassword(false);
         setHasUnsavedChanges(false);
       }
     }
@@ -230,12 +239,14 @@ const StylePanel: React.FC<StylePanelProps> = ({
 
     return {
       id: `conn-${Date.now()}`,
+      label: '',
       type: connectionType || 'ssh',
       host: host,
       port: data.port || 22,
       username: data.username || '',
       password: data.password || '',
-      customCommand: data.customCommand || ''
+      customCommand: data.customCommand || '',
+      privateKeyPath: ''
     };
   };
 
@@ -305,34 +316,42 @@ const StylePanel: React.FC<StylePanelProps> = ({
   const handleAddConnection = () => {
     setShowConnectionForm(true);
     setEditingConnectionId(null);
+    setConnectionLabel('');
     setNodeType('ssh');
     setNodeHost('');
     setNodePort(22);
     setNodeUsername('');
     setNodePassword('');
     setNodeCustomCommand('');
+    setPrivateKeyPath('');
+    setShowPassword(false);
   };
 
   const handleEditConnection = (connection: ConnectionConfig) => {
     setEditingConnectionId(connection.id);
     setShowConnectionForm(true);
+    setConnectionLabel(connection.label || '');
     setNodeType(connection.type);
     setNodeHost(connection.host || '');
     setNodePort(connection.port || 22);
     setNodeUsername(connection.username || '');
     setNodePassword(connection.password || '');
     setNodeCustomCommand(connection.customCommand || '');
+    setPrivateKeyPath(connection.privateKeyPath || '');
+    setShowPassword(false);
   };
 
   const handleSaveConnection = () => {
     const newConnection: ConnectionConfig = {
       id: editingConnectionId || `conn-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+      label: connectionLabel,
       type: nodeType,
       host: nodeHost,
       port: nodePort,
       username: nodeUsername,
       password: nodePassword,
-      customCommand: nodeCustomCommand
+      customCommand: nodeCustomCommand,
+      privateKeyPath: privateKeyPath
     };
 
     if (editingConnectionId) {
@@ -369,12 +388,15 @@ const StylePanel: React.FC<StylePanelProps> = ({
   const handleCancelConnectionForm = () => {
     setShowConnectionForm(false);
     setEditingConnectionId(null);
+    setConnectionLabel('');
     setNodeType('ssh');
     setNodeHost('');
     setNodePort(22);
     setNodeUsername('');
     setNodePassword('');
     setNodeCustomCommand('');
+    setPrivateKeyPath('');
+    setShowPassword(false);
   };
 
   const handleSaveAllChanges = () => {
@@ -383,6 +405,10 @@ const StylePanel: React.FC<StylePanelProps> = ({
   };
 
   const getConnectionDisplayText = (connection: ConnectionConfig): string => {
+    if (connection.label) {
+      return connection.label;
+    }
+
     switch (connection.type) {
       case 'rdp':
         return connection.host || 'No host';
@@ -1008,6 +1034,28 @@ const StylePanel: React.FC<StylePanelProps> = ({
                             fontWeight: theme.fontWeight.medium,
                             color: theme.text.secondary
                           }}>
+                            Connection Label
+                          </label>
+                          <input
+                            type="text"
+                            value={connectionLabel}
+                            onChange={(e) => setConnectionLabel(e.target.value)}
+                            onMouseDown={(e) => e.stopPropagation()}
+                            onFocus={(e) => e.stopPropagation()}
+                            placeholder="e.g., Connect via SSH, Open Web Panel, etc."
+                            autoComplete="off"
+                            style={connectionInputStyle}
+                          />
+                        </div>
+
+                        <div style={{ marginBottom: theme.spacing.lg }}>
+                          <label style={{
+                            display: 'block',
+                            fontSize: theme.fontSize.sm,
+                            marginBottom: theme.spacing.xs,
+                            fontWeight: theme.fontWeight.medium,
+                            color: theme.text.secondary
+                          }}>
                             Connection Type
                           </label>
                           <select
@@ -1099,20 +1147,59 @@ const StylePanel: React.FC<StylePanelProps> = ({
                               }}>
                                 Password (Optional)
                               </label>
-                              <input
-                                type="password"
-                                value={nodePassword}
-                                onChange={(e) => setNodePassword(e.target.value)}
-                                onMouseDown={(e) => {
-                                  e.stopPropagation();
-                                  e.currentTarget.focus();
-                                }}
-                                onFocus={(e) => e.stopPropagation()}
-                                placeholder="••••••••"
-                                autoComplete="off"
-                                tabIndex={0}
-                                style={connectionInputStyle}
-                              />
+                              <div style={{ position: 'relative' }}>
+                                <input
+                                  type={showPassword ? 'text' : 'password'}
+                                  value={nodePassword}
+                                  onChange={(e) => setNodePassword(e.target.value)}
+                                  onMouseDown={(e) => {
+                                    e.stopPropagation();
+                                    e.currentTarget.focus();
+                                  }}
+                                  onFocus={(e) => e.stopPropagation()}
+                                  placeholder="••••••••"
+                                  autoComplete="off"
+                                  tabIndex={0}
+                                  style={{
+                                    ...connectionInputStyle,
+                                    paddingRight: '40px'
+                                  }}
+                                />
+                                <button
+                                  type="button"
+                                  onClick={() => setShowPassword(!showPassword)}
+                                  onMouseDown={(e) => e.stopPropagation()}
+                                  style={{
+                                    position: 'absolute',
+                                    right: '8px',
+                                    top: '50%',
+                                    transform: 'translateY(-50%)',
+                                    background: 'transparent',
+                                    border: 'none',
+                                    cursor: 'pointer',
+                                    color: theme.text.secondary,
+                                    fontSize: theme.fontSize.base,
+                                    padding: '4px',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    pointerEvents: 'auto'
+                                  }}
+                                  title={showPassword ? 'Hide password' : 'Show password'}
+                                >
+                                  {showPassword ? (
+                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                      <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/>
+                                      <line x1="1" y1="1" x2="23" y2="23"/>
+                                    </svg>
+                                  ) : (
+                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                      <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                                      <circle cx="12" cy="12" r="3"/>
+                                    </svg>
+                                  )}
+                                </button>
+                              </div>
                             </div>
                           </>
                         )}
@@ -1199,16 +1286,124 @@ const StylePanel: React.FC<StylePanelProps> = ({
                               }}>
                                 Password
                               </label>
-                              <input
-                                type="password"
-                                value={nodePassword}
-                                onChange={(e) => setNodePassword(e.target.value)}
-                                onMouseDown={(e) => e.stopPropagation()}
-                                onFocus={(e) => e.stopPropagation()}
-                                placeholder="••••••••"
-                                autoComplete="off"
-                                style={connectionInputStyle}
-                              />
+                              <div style={{ position: 'relative' }}>
+                                <input
+                                  type={showPassword ? 'text' : 'password'}
+                                  value={nodePassword}
+                                  onChange={(e) => setNodePassword(e.target.value)}
+                                  onMouseDown={(e) => e.stopPropagation()}
+                                  onFocus={(e) => e.stopPropagation()}
+                                  placeholder="••••••••"
+                                  autoComplete="off"
+                                  style={{
+                                    ...connectionInputStyle,
+                                    paddingRight: '40px'
+                                  }}
+                                />
+                                <button
+                                  type="button"
+                                  onClick={() => setShowPassword(!showPassword)}
+                                  onMouseDown={(e) => e.stopPropagation()}
+                                  style={{
+                                    position: 'absolute',
+                                    right: '8px',
+                                    top: '50%',
+                                    transform: 'translateY(-50%)',
+                                    background: 'transparent',
+                                    border: 'none',
+                                    cursor: 'pointer',
+                                    color: theme.text.secondary,
+                                    fontSize: theme.fontSize.base,
+                                    padding: '4px',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    pointerEvents: 'auto'
+                                  }}
+                                  title={showPassword ? 'Hide password' : 'Show password'}
+                                >
+                                  {showPassword ? (
+                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                      <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/>
+                                      <line x1="1" y1="1" x2="23" y2="23"/>
+                                    </svg>
+                                  ) : (
+                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                      <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                                      <circle cx="12" cy="12" r="3"/>
+                                    </svg>
+                                  )}
+                                </button>
+                              </div>
+                            </div>
+                            <div style={{ marginBottom: theme.spacing.lg }}>
+                              <label style={{
+                                display: 'block',
+                                fontSize: theme.fontSize.sm,
+                                marginBottom: theme.spacing.xs,
+                                fontWeight: theme.fontWeight.medium,
+                                color: theme.text.secondary
+                              }}>
+                                Private Key (Optional)
+                              </label>
+                              <div style={{ display: 'flex', gap: theme.spacing.sm }}>
+                                <input
+                                  type="text"
+                                  value={privateKeyPath}
+                                  onChange={(e) => setPrivateKeyPath(e.target.value)}
+                                  onMouseDown={(e) => e.stopPropagation()}
+                                  onFocus={(e) => e.stopPropagation()}
+                                  placeholder="Path to private key file"
+                                  autoComplete="off"
+                                  style={{
+                                    ...connectionInputStyle,
+                                    flex: 1,
+                                    fontFamily: 'monospace'
+                                  }}
+                                />
+                                <button
+                                  type="button"
+                                  onClick={async () => {
+                                    try {
+                                      const result = await (window as any).electron.showOpenDialog({
+                                        properties: ['openFile'],
+                                        filters: [
+                                          { name: 'Key Files', extensions: ['pem', 'key', 'pub'] },
+                                          { name: 'All Files', extensions: ['*'] }
+                                        ]
+                                      });
+                                      if (result && !result.canceled && result.filePaths.length > 0) {
+                                        setPrivateKeyPath(result.filePaths[0]);
+                                      }
+                                    } catch (error) {
+                                      console.error('Error selecting private key:', error);
+                                    }
+                                  }}
+                                  onMouseDown={(e) => e.stopPropagation()}
+                                  style={{
+                                    padding: `${theme.spacing.sm} ${theme.spacing.md}`,
+                                    border: `1px solid ${theme.accent.blue}`,
+                                    borderRadius: theme.radius.sm,
+                                    background: theme.accent.blue,
+                                    color: theme.text.inverted,
+                                    cursor: 'pointer',
+                                    fontSize: theme.fontSize.sm,
+                                    fontWeight: theme.fontWeight.semibold,
+                                    transition: theme.transition.normal,
+                                    whiteSpace: 'nowrap',
+                                    pointerEvents: 'auto'
+                                  }}
+                                  onMouseEnter={(e) => {
+                                    e.currentTarget.style.background = theme.accent.blueDark;
+                                  }}
+                                  onMouseLeave={(e) => {
+                                    e.currentTarget.style.background = theme.accent.blue;
+                                  }}
+                                  title="Import private key file"
+                                >
+                                  + Import
+                                </button>
+                              </div>
                             </div>
                           </>
                         )}

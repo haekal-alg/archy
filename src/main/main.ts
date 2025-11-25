@@ -207,7 +207,7 @@ ipcMain.handle('connect-ssh', async (event, { host, port = 22, username, passwor
 });
 
 // Create persistent SSH session with xterm.js
-ipcMain.handle('create-ssh-session', async (event, { connectionId, host, port = 22, username, password }) => {
+ipcMain.handle('create-ssh-session', async (event, { connectionId, host, port = 22, username, password, privateKeyPath }) => {
   return new Promise((resolve, reject) => {
     const client = new Client();
 
@@ -269,14 +269,34 @@ ipcMain.handle('create-ssh-session', async (event, { connectionId, host, port = 
       reject(err);
     });
 
-    client.connect({
+    // Prepare connection config
+    const connectConfig: any = {
       host,
       port,
       username,
-      password,
       keepaliveInterval: 10000,
       keepaliveCountMax: 3,
-    });
+    };
+
+    // Use private key if provided, otherwise use password
+    if (privateKeyPath && privateKeyPath.trim() !== '') {
+      try {
+        const privateKey = fs.readFileSync(privateKeyPath, 'utf8');
+        connectConfig.privateKey = privateKey;
+
+        // If password is also provided, use it as passphrase for encrypted keys
+        if (password && password.trim() !== '') {
+          connectConfig.passphrase = password;
+        }
+      } catch (error) {
+        reject(new Error(`Failed to read private key file: ${error}`));
+        return;
+      }
+    } else if (password) {
+      connectConfig.password = password;
+    }
+
+    client.connect(connectConfig);
   });
 });
 
@@ -319,6 +339,17 @@ ipcMain.handle('execute-command', async (event, { command }) => {
       }
     });
   });
+});
+
+// Show open dialog for file selection
+ipcMain.handle('show-open-dialog', async (event, options) => {
+  try {
+    const result = await dialog.showOpenDialog(mainWindow!, options);
+    return result;
+  } catch (error) {
+    console.error('Error showing open dialog:', error);
+    throw error;
+  }
 });
 
 // Save diagram - if filePath provided, save directly; otherwise show save dialog
