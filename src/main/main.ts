@@ -2,12 +2,21 @@ import { app, BrowserWindow, ipcMain, Menu, dialog } from 'electron';
 import * as path from 'path';
 import * as fs from 'fs';
 import { exec } from 'child_process';
-import { Client } from 'ssh2';
+import { Client, ClientChannel } from 'ssh2';
 
 const Store = require('electron-store');
 const store = new Store.default();
 
 let mainWindow: BrowserWindow | null = null;
+
+// Store active SSH sessions
+interface SSHSession {
+  client: Client;
+  stream: ClientChannel;
+  connectionId: string;
+}
+
+const sshSessions = new Map<string, SSHSession>();
 
 function createMenu() {
   const template: any = [
@@ -151,7 +160,7 @@ authentication level:i:0`;
   });
 });
 
-// Handle SSH connections
+// Handle SSH connections (legacy - for backward compatibility)
 ipcMain.handle('connect-ssh', async (event, { host, port = 22, username, password }) => {
   return new Promise((resolve, reject) => {
     const conn = new Client();
@@ -195,6 +204,106 @@ ipcMain.handle('connect-ssh', async (event, { host, port = 22, username, passwor
       password,
     });
   });
+});
+
+// Create persistent SSH session with xterm.js
+ipcMain.handle('create-ssh-session', async (event, { connectionId, host, port = 22, username, password }) => {
+  return new Promise((resolve, reject) => {
+    const client = new Client();
+
+    client.on('ready', () => {
+      client.shell({
+        term: 'xterm-256color',
+        cols: 80,
+        rows: 24,
+      }, (err, stream) => {
+        if (err) {
+          client.end();
+          reject(err);
+          return;
+        }
+
+        // Store the session
+        sshSessions.set(connectionId, { client, stream, connectionId });
+
+        // Forward stream data to renderer
+        stream.on('data', (data: Buffer) => {
+          if (mainWindow && !mainWindow.isDestroyed()) {
+            mainWindow.webContents.send('ssh-data', {
+              connectionId,
+              data: data.toString('utf-8'),
+            });
+          }
+        });
+
+        // Send a newline to trigger the prompt - delay increased to ensure terminal is ready
+        setTimeout(() => {
+          if (sshSessions.has(connectionId)) {
+            stream.write('\n');
+          }
+        }, 300);
+
+        stream.on('close', () => {
+          sshSessions.delete(connectionId);
+          if (mainWindow && !mainWindow.isDestroyed()) {
+            mainWindow.webContents.send('ssh-closed', { connectionId });
+          }
+          client.end();
+        });
+
+        stream.stderr.on('data', (data: Buffer) => {
+          if (mainWindow && !mainWindow.isDestroyed()) {
+            mainWindow.webContents.send('ssh-data', {
+              connectionId,
+              data: data.toString('utf-8'),
+            });
+          }
+        });
+
+        resolve({ success: true });
+      });
+    });
+
+    client.on('error', (err) => {
+      sshSessions.delete(connectionId);
+      reject(err);
+    });
+
+    client.connect({
+      host,
+      port,
+      username,
+      password,
+      keepaliveInterval: 10000,
+      keepaliveCountMax: 3,
+    });
+  });
+});
+
+// Send data to SSH session (fire-and-forget for low latency)
+ipcMain.on('send-ssh-data', (event, { connectionId, data }) => {
+  const session = sshSessions.get(connectionId);
+  if (session && session.stream) {
+    session.stream.write(data);
+  }
+});
+
+// Resize SSH terminal (fire-and-forget)
+ipcMain.on('resize-ssh-terminal', (event, { connectionId, cols, rows }) => {
+  const session = sshSessions.get(connectionId);
+  if (session && session.stream) {
+    session.stream.setWindow(rows, cols, 0, 0);
+  }
+});
+
+// Close SSH session (fire-and-forget)
+ipcMain.on('close-ssh-session', (event, { connectionId }) => {
+  const session = sshSessions.get(connectionId);
+  if (session) {
+    session.stream.end();
+    session.client.end();
+    sshSessions.delete(connectionId);
+  }
 });
 
 // Handle generic command execution (for browser, custom commands, etc.)
@@ -242,6 +351,9 @@ ipcMain.handle('save-diagram', async (event, { name, data, filePath }) => {
     // Also save to electron-store for quick access
     store.set(`diagram.${name}`, data);
 
+    // Save as last opened file for session persistence
+    store.set('lastOpenedFile', targetPath);
+
     return { success: true, path: targetPath };
   } catch (error: any) {
     return { success: false, error: error.message };
@@ -266,6 +378,9 @@ ipcMain.handle('save-diagram-as', async (event, { name, data }) => {
 
       // Also save to electron-store for quick access
       store.set(`diagram.${name}`, data);
+
+      // Save as last opened file for session persistence
+      store.set('lastOpenedFile', result.filePath);
 
       return { success: true, path: result.filePath };
     }
@@ -293,6 +408,9 @@ ipcMain.handle('load-diagram', async () => {
       const fileContent = fs.readFileSync(filePath, 'utf-8');
       const data = JSON.parse(fileContent);
 
+      // Save as last opened file for session persistence
+      store.set('lastOpenedFile', filePath);
+
       return {
         success: true,
         data,
@@ -302,6 +420,29 @@ ipcMain.handle('load-diagram', async () => {
     }
 
     return { success: false, canceled: true };
+  } catch (error: any) {
+    return { success: false, error: error.message };
+  }
+});
+
+// Get last session - load the last opened file automatically
+ipcMain.handle('get-last-session', async () => {
+  try {
+    const lastFilePath = store.get('lastOpenedFile') as string | undefined;
+
+    if (!lastFilePath || !fs.existsSync(lastFilePath)) {
+      return { success: false, noSession: true };
+    }
+
+    const fileContent = fs.readFileSync(lastFilePath, 'utf-8');
+    const data = JSON.parse(fileContent);
+
+    return {
+      success: true,
+      data,
+      filename: path.basename(lastFilePath, '.json'),
+      filePath: lastFilePath
+    };
   } catch (error: any) {
     return { success: false, error: error.message };
   }

@@ -13,6 +13,10 @@
   cursor: default !important;
 }
 
+.react-flow {
+  background-color: #2a2a2a !important;
+}
+
 button,
 a,
 [role="button"],

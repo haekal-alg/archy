@@ -51,17 +51,17 @@ const ShapeLibrary: React.FC<ShapeLibraryProps> = ({ onAddNode, onAddGroup, onAd
   return (
     <div
       style={{
-        position: 'fixed',
+        position: 'absolute',
         left: isOpen ? '0' : '-240px',
-        top: '0',
+        top: 0,
         width: '240px',
-        height: '100vh',
+        height: '100%',
         background: 'rgba(30, 33, 51, 0.65)',
         backdropFilter: 'blur(60px) saturate(200%) brightness(1.1)',
         WebkitBackdropFilter: 'blur(60px) saturate(200%) brightness(1.1)',
         boxShadow: '0 8px 32px rgba(0, 0, 0, 0.5), 0 2px 8px rgba(0, 0, 0, 0.3), inset 1px 0 0 rgba(255, 255, 255, 0.1)',
         transition: theme.transition.slow,
-        zIndex: theme.zIndex.sticky,
+        zIndex: theme.zIndex.dropdown,
         display: 'flex',
         flexDirection: 'column',
         color: theme.text.primary,
