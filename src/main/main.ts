@@ -110,9 +110,13 @@ function createWindow() {
       : path.join(__dirname, '../build/icon.png');
   }
 
+  // Set window title based on environment
+  const windowTitle = app.isPackaged ? 'Archy' : '[DEV] Archy';
+
   mainWindow = new BrowserWindow({
     width: 1400,
     height: 900,
+    title: windowTitle,
     icon: iconPath,
     webPreferences: {
       nodeIntegration: false,
@@ -147,6 +151,11 @@ app.on('activate', () => {
   if (mainWindow === null) {
     createWindow();
   }
+});
+
+// Handle app info requests
+ipcMain.handle('is-packaged', async () => {
+  return app.isPackaged;
 });
 
 // Handle RDP connections

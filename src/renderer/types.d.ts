@@ -1,4 +1,7 @@
 export interface ElectronAPI {
+  // App information
+  isPackaged: () => Promise<boolean>;
+
   connectRDP: (host: string, username: string, password: string) => Promise<any>;
   connectSSH: (host: string, port: number, username: string, password: string) => Promise<any>;
   executeCommand: (command: string) => Promise<any>;

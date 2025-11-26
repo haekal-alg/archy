@@ -1,6 +1,9 @@
-import { contextBridge, ipcRenderer } from 'electron';
+import { contextBridge, ipcRenderer, app } from 'electron';
 
 contextBridge.exposeInMainWorld('electron', {
+  // App information
+  isPackaged: () => ipcRenderer.invoke('is-packaged'),
+
   connectRDP: (host: string, username: string, password: string) =>
     ipcRenderer.invoke('connect-rdp', { host, username, password }),
 
