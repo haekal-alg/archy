@@ -13,6 +13,7 @@ import {
   ReactFlowInstance,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
+import { ToolType } from '../types/tools';
 
 interface DesignTabProps {
   nodes: Node[];
@@ -32,6 +33,7 @@ interface DesignTabProps {
   nodeTypes: any;
   edgeTypes: any;
   reactFlowWrapper: React.RefObject<HTMLDivElement | null>;
+  activeTool: ToolType;
   children?: React.ReactNode;
 }
 
@@ -53,10 +55,32 @@ const DesignTab: React.FC<DesignTabProps> = ({
   nodeTypes,
   edgeTypes,
   reactFlowWrapper,
+  activeTool,
   children,
 }) => {
+  // Configure ReactFlow behavior based on active tool
+  const isHandTool = activeTool === 'hand';
+  const isSelectionTool = activeTool === 'selection';
+
+  // Hand tool: enable panning, disable node dragging
+  // Selection tool: disable panning, enable node dragging (default behavior)
+  const panOnDrag = isHandTool;
+  const nodesDraggable = isSelectionTool;
+  const nodesConnectable = isSelectionTool;
+  const elementsSelectable = isSelectionTool;
+
+  // Set cursor based on tool
+  const cursorStyle = isHandTool ? 'grab' : 'default';
+
   return (
-    <div style={{ width: '100%', height: '100%' }} ref={reactFlowWrapper}>
+    <div
+      style={{
+        width: '100%',
+        height: '100%',
+        cursor: cursorStyle,
+      }}
+      ref={reactFlowWrapper}
+    >
       {children}
       <ReactFlow
         nodes={nodes}
@@ -75,6 +99,13 @@ const DesignTab: React.FC<DesignTabProps> = ({
         onDragOver={onDragOver}
         nodeTypes={nodeTypes}
         edgeTypes={edgeTypes}
+        nodesDraggable={nodesDraggable}
+        nodesConnectable={nodesConnectable}
+        elementsSelectable={elementsSelectable}
+        panOnDrag={panOnDrag}
+        panOnScroll={true}
+        selectionOnDrag={isSelectionTool}
+        selectionKeyCode="Control"
         fitView
         snapToGrid={true}
         snapGrid={[15, 15]}

@@ -32,6 +32,8 @@ import TabBar from './components/TabBar';
 import DesignTab from './components/DesignTab';
 import ConnectionsTab from './components/ConnectionsTab';
 import { TabProvider, useTabContext } from './contexts/TabContext';
+import { ToolPalette } from './components/ToolPalette';
+import { ToolType } from './types/tools';
 import './App.css';
 import { toPng, toJpeg } from 'html-to-image';
 import theme from '../theme';
@@ -75,6 +77,7 @@ const AppContent: React.FC = () => {
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [isShapeLibraryOpen, setIsShapeLibraryOpen] = useState(true);
   const [isStylePanelOpen, setIsStylePanelOpen] = useState(true);
+  const [activeTool, setActiveTool] = useState<ToolType>('selection');
   const [contextMenu, setContextMenu] = useState<{
     x: number;
     y: number;
@@ -182,9 +185,13 @@ const AppContent: React.FC = () => {
   const canUndo = historyIndex > 0;
   const canRedo = historyIndex < history.length - 1;
 
-  // Keyboard shortcuts for Undo/Redo
+  // Keyboard shortcuts for Undo/Redo and Tools
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
+      // Ignore if user is typing in an input field
+      const target = event.target as HTMLElement;
+      const isInputField = target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable;
+
       if ((event.ctrlKey || event.metaKey) && event.shiftKey && event.key === 'Z') {
         event.preventDefault();
         handleRedo();
@@ -194,6 +201,14 @@ const AppContent: React.FC = () => {
       } else if ((event.ctrlKey || event.metaKey) && event.key === 'y') {
         event.preventDefault();
         handleRedo();
+      } else if (!isInputField && event.key.toLowerCase() === 'v') {
+        // Selection tool shortcut
+        event.preventDefault();
+        setActiveTool('selection');
+      } else if (!isInputField && event.key.toLowerCase() === 'h') {
+        // Hand tool shortcut
+        event.preventDefault();
+        setActiveTool('hand');
       }
     };
 
@@ -936,6 +951,7 @@ const AppContent: React.FC = () => {
           onNodeContextMenu={onNodeContextMenu}
           onEdgeContextMenu={onEdgeContextMenu}
           onInit={setReactFlowInstance}
+          activeTool={activeTool}
           onDrop={(event) => {
             event.preventDefault();
             const type = event.dataTransfer.getData('application/reactflow');
@@ -986,7 +1002,13 @@ const AppContent: React.FC = () => {
           nodeTypes={nodeTypes}
           edgeTypes={edgeTypes}
           reactFlowWrapper={reactFlowWrapper}
-        />
+        >
+          {/* Tool Palette */}
+          <ToolPalette
+            activeTool={activeTool}
+            onToolChange={setActiveTool}
+          />
+        </DesignTab>
 
         <StylePanel
           selectedNode={selectedNode}
