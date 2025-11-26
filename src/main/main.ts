@@ -93,10 +93,22 @@ function createMenu() {
 }
 
 function createWindow() {
-  // Determine icon path - __dirname is 'dist' folder, build is at same level as dist
-  const iconPath = process.platform === 'win32'
-    ? path.join(__dirname, '../build/icon.ico')
-    : path.join(__dirname, '../build/icon.png');
+  // Determine icon path based on environment
+  // In production, icons are in resources directory via extraResources
+  // In development, icons are in build directory
+  let iconPath: string;
+
+  if (app.isPackaged) {
+    // Production: icons copied to resources directory by electron-builder
+    iconPath = process.platform === 'win32'
+      ? path.join(process.resourcesPath, 'icon.ico')
+      : path.join(process.resourcesPath, 'icon.png');
+  } else {
+    // Development: icons in build directory
+    iconPath = process.platform === 'win32'
+      ? path.join(__dirname, '../build/icon.ico')
+      : path.join(__dirname, '../build/icon.png');
+  }
 
   mainWindow = new BrowserWindow({
     width: 1400,
