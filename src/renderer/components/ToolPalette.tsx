@@ -1,6 +1,10 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { ToolType, TOOLS } from '../types/tools';
 import { darkTheme } from '../../theme';
+
+// CONFIGURATION: Change this single value to adjust the overall size of the tool palette
+// Default: 1.0, Smaller: 0.8, 0.6, Larger: 1.2, 1.5
+const PALETTE_SCALE = 0.8;
 
 interface ToolPaletteProps {
   activeTool: ToolType;
@@ -8,12 +12,20 @@ interface ToolPaletteProps {
 }
 
 export const ToolPalette: React.FC<ToolPaletteProps> = ({ activeTool, onToolChange }) => {
+  console.log('ToolPalette RENDER - activeTool prop:', activeTool);
+
+  // Force re-render when activeTool changes
+  useEffect(() => {
+    console.log('ToolPalette useEffect - activeTool changed to:', activeTool);
+  }, [activeTool]);
+
   return (
     <div style={styles.container}>
       <div style={styles.toolGroup}>
         {(Object.keys(TOOLS) as ToolType[]).map((toolType) => {
           const tool = TOOLS[toolType];
           const isActive = activeTool === toolType;
+          console.log(`Tool ${toolType}: isActive = ${isActive}, activeTool = ${activeTool}`);
 
           return (
             <button
@@ -39,8 +51,8 @@ export const ToolPalette: React.FC<ToolPaletteProps> = ({ activeTool, onToolChan
               {/* Icon SVG based on tool type */}
               {toolType === 'selection' && (
                 <svg
-                  width="20"
-                  height="20"
+                  width={20 * PALETTE_SCALE}
+                  height={20 * PALETTE_SCALE}
                   viewBox="0 0 24 24"
                   fill="none"
                   stroke={isActive ? darkTheme.accent.blue : darkTheme.text.primary}
@@ -53,8 +65,8 @@ export const ToolPalette: React.FC<ToolPaletteProps> = ({ activeTool, onToolChan
               )}
               {toolType === 'hand' && (
                 <svg
-                  width="20"
-                  height="20"
+                  width={20 * PALETTE_SCALE}
+                  height={20 * PALETTE_SCALE}
                   viewBox="0 0 24 24"
                   fill="none"
                   stroke={isActive ? darkTheme.accent.blue : darkTheme.text.primary}
@@ -77,36 +89,37 @@ export const ToolPalette: React.FC<ToolPaletteProps> = ({ activeTool, onToolChan
   );
 };
 
+// Styles that scale based on PALETTE_SCALE
 const styles: Record<string, React.CSSProperties> = {
   container: {
     position: 'absolute',
-    top: '20px',
+    top: `${20 * PALETTE_SCALE}px`,
     left: '50%',
     transform: 'translateX(-50%)',
     zIndex: 1000,
     display: 'flex',
-    gap: '12px',
-    padding: '8px',
+    gap: `${12 * PALETTE_SCALE}px`,
+    padding: `${8 * PALETTE_SCALE}px`,
     background: 'rgba(0, 0, 0, 0.85)',
     backdropFilter: 'blur(10px)',
     border: `1px solid ${darkTheme.border.default}`,
-    borderRadius: '12px',
+    borderRadius: `${12 * PALETTE_SCALE}px`,
     boxShadow: darkTheme.shadow.lg,
   },
   toolGroup: {
     display: 'flex',
-    gap: '4px',
+    gap: `${4 * PALETTE_SCALE}px`,
   },
   toolButton: {
     position: 'relative',
-    width: '44px',
-    height: '44px',
+    width: `${44 * PALETTE_SCALE}px`,
+    height: `${44 * PALETTE_SCALE}px`,
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
     background: 'transparent',
     border: `1px solid transparent`,
-    borderRadius: '8px',
+    borderRadius: `${8 * PALETTE_SCALE}px`,
     cursor: 'pointer',
     transition: 'all 0.2s ease',
     color: darkTheme.text.primary,
@@ -115,17 +128,17 @@ const styles: Record<string, React.CSSProperties> = {
   activeToolButton: {
     background: 'rgba(59, 130, 246, 0.15)',
     border: `1px solid ${darkTheme.accent.blue}`,
-    boxShadow: `0 0 12px rgba(59, 130, 246, 0.3)`,
+    boxShadow: `0 0 ${12 * PALETTE_SCALE}px rgba(59, 130, 246, 0.3)`,
   },
   shortcutLabel: {
     position: 'absolute',
-    bottom: '2px',
-    right: '2px',
-    fontSize: '9px',
+    bottom: `${2 * PALETTE_SCALE}px`,
+    right: `${2 * PALETTE_SCALE}px`,
+    fontSize: `${9 * PALETTE_SCALE}px`,
     fontWeight: 600,
     color: darkTheme.text.secondary,
     background: 'rgba(0, 0, 0, 0.6)',
-    padding: '1px 3px',
-    borderRadius: '3px',
+    padding: `${1 * PALETTE_SCALE}px ${3 * PALETTE_SCALE}px`,
+    borderRadius: `${3 * PALETTE_SCALE}px`,
   },
 };
