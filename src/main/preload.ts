@@ -67,4 +67,10 @@ contextBridge.exposeInMainWorld('electron', {
   onMenuLoad: (callback: () => void) => ipcRenderer.on('menu-load', callback),
   onMenuExport: (callback: () => void) => ipcRenderer.on('menu-export', callback),
   onMenuClear: (callback: () => void) => ipcRenderer.on('menu-clear', callback),
+
+  // Clipboard operations
+  clipboard: {
+    writeText: (text: string) => ipcRenderer.invoke('clipboard-write-text', text),
+    readText: () => ipcRenderer.invoke('clipboard-read-text'),
+  },
 });

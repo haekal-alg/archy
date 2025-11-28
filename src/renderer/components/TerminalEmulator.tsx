@@ -4,6 +4,7 @@ import { FitAddon } from '@xterm/addon-fit';
 import { WebLinksAddon } from '@xterm/addon-web-links';
 import { SerializeAddon } from '@xterm/addon-serialize';
 import '@xterm/xterm/css/xterm.css';
+import { useToast } from '../hooks/useToast';
 
 interface TerminalEmulatorProps {
   connectionId: string;
@@ -19,6 +20,8 @@ const terminalInstances = new Map<string, {
   serializeAddon: SerializeAddon;
   dataListener: () => void;
   onDataDisposable: { dispose: () => void };
+  pasteHandler?: (e: Event) => void;
+  keydownHandler?: (e: KeyboardEvent) => void;
 }>();
 
 // Export cleanup function
@@ -27,6 +30,14 @@ export const cleanupTerminal = (connectionId: string) => {
   if (instance) {
     instance.dataListener(); // Remove SSH data listener
     instance.onDataDisposable.dispose(); // Remove onData handler
+    // Remove paste event listener (must match the addEventListener flags)
+    if (instance.pasteHandler && instance.terminal.element) {
+      instance.terminal.element.removeEventListener('paste', instance.pasteHandler, true);
+    }
+    // Remove keydown event listener
+    if (instance.keydownHandler && instance.terminal.element) {
+      instance.terminal.element.removeEventListener('keydown', instance.keydownHandler, true);
+    }
     instance.terminal.dispose();
     terminalInstances.delete(connectionId);
   }
@@ -43,6 +54,7 @@ export const getTerminalContent = (connectionId: string): string | null => {
 
 const TerminalEmulator: React.FC<TerminalEmulatorProps> = ({ connectionId, isVisible, zoom = 1.0, isActive = false }) => {
   const terminalRef = useRef<HTMLDivElement>(null);
+  const { showToast, ToastContainer } = useToast();
 
   useEffect(() => {
     if (!terminalRef.current) return;
@@ -94,6 +106,60 @@ const TerminalEmulator: React.FC<TerminalEmulatorProps> = ({ connectionId, isVis
       // Open terminal in DOM
       terminal.open(terminalRef.current);
 
+      // Prevent browser's default paste event to avoid double-paste
+      // Use capture phase and stopImmediatePropagation to intercept BEFORE xterm's listener
+      const pasteHandler = (e: Event) => {
+        e.preventDefault();
+        e.stopPropagation();
+        e.stopImmediatePropagation(); // Critical: prevents other listeners from firing
+      };
+
+      // Also block Ctrl+V/Cmd+V keydown events at DOM level to be extra sure
+      const keydownHandler = (e: KeyboardEvent) => {
+        if ((e.ctrlKey || e.metaKey) && e.key === 'v') {
+          e.preventDefault();
+          e.stopPropagation();
+          e.stopImmediatePropagation();
+        }
+      };
+
+      const terminalElement = terminal.element;
+      if (terminalElement) {
+        // Use capture phase (true) to intercept before xterm's listener
+        terminalElement.addEventListener('paste', pasteHandler, true);
+        terminalElement.addEventListener('keydown', keydownHandler, true);
+      }
+
+      // Handle keyboard events for clipboard operations
+      terminal.attachCustomKeyEventHandler((event: KeyboardEvent) => {
+        // Ctrl+C or Cmd+C for copy
+        if ((event.ctrlKey || event.metaKey) && event.key === 'c') {
+          const selection = terminal.getSelection();
+          if (selection) {
+            event.preventDefault();
+            event.stopPropagation();
+            window.electron.clipboard.writeText(selection);
+            showToast('Copied to clipboard');
+            return false;
+          }
+        }
+
+        // Ctrl+V or Cmd+V for paste
+        if ((event.ctrlKey || event.metaKey) && event.key === 'v') {
+          event.preventDefault();
+          event.stopPropagation();
+          window.electron.clipboard.readText().then((text: string) => {
+            if (text) {
+              window.electron.sendSSHData(connectionId, text);
+              showToast('Pasted from clipboard');
+            }
+          });
+          return false;
+        }
+
+        return true;
+      });
+
       // Give terminal time to render before fitting
       setTimeout(() => {
         fitAddon.fit();
@@ -117,7 +183,7 @@ const TerminalEmulator: React.FC<TerminalEmulatorProps> = ({ connectionId, isVis
       window.electron.resizeSSHTerminal(connectionId, terminal.cols, terminal.rows);
 
       // Store instance with all cleanup functions
-      instance = { terminal, fitAddon, serializeAddon, dataListener, onDataDisposable };
+      instance = { terminal, fitAddon, serializeAddon, dataListener, onDataDisposable, pasteHandler, keydownHandler };
       terminalInstances.set(connectionId, instance);
     } else {
       // Reattach existing terminal to DOM if needed
@@ -181,26 +247,29 @@ const TerminalEmulator: React.FC<TerminalEmulatorProps> = ({ connectionId, isVis
   }, [connectionId, zoom]);
 
   return (
-    <div
-      ref={terminalRef}
-      onClick={() => {
-        // Ensure terminal gets focus when clicked
-        const instance = terminalInstances.get(connectionId);
-        if (instance) {
-          instance.terminal.focus();
-        }
-      }}
-      style={{
-        width: '100%',
-        height: '100%',
-        overflow: 'hidden',
-        cursor: 'text',
-        border: isActive ? '2px solid rgba(59, 142, 234, 0.5)' : '2px solid transparent',
-        borderRadius: '4px',
-        transition: 'border-color 0.2s ease',
-        boxShadow: isActive ? '0 0 12px rgba(59, 142, 234, 0.3)' : 'none',
-      }}
-    />
+    <div style={{ position: 'relative', width: '100%', height: '100%' }}>
+      <div
+        ref={terminalRef}
+        onClick={() => {
+          // Ensure terminal gets focus when clicked
+          const instance = terminalInstances.get(connectionId);
+          if (instance) {
+            instance.terminal.focus();
+          }
+        }}
+        style={{
+          width: '100%',
+          height: '100%',
+          overflow: 'hidden',
+          cursor: 'text',
+          border: isActive ? '2px solid rgba(59, 142, 234, 0.5)' : '2px solid transparent',
+          borderRadius: '4px',
+          transition: 'border-color 0.2s ease',
+          boxShadow: isActive ? '0 0 12px rgba(59, 142, 234, 0.3)' : 'none',
+        }}
+      />
+      <ToastContainer />
+    </div>
   );
 };
 

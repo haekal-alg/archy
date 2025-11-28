@@ -33,6 +33,12 @@ export interface ElectronAPI {
   onMenuLoad: (callback: () => void) => void;
   onMenuExport: (callback: () => void) => void;
   onMenuClear: (callback: () => void) => void;
+
+  // Clipboard operations
+  clipboard: {
+    writeText: (text: string) => Promise<{ success: boolean }>;
+    readText: () => Promise<string>;
+  };
 }
 
 declare global {

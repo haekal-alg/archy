@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain, Menu, dialog } from 'electron';
+import { app, BrowserWindow, ipcMain, Menu, dialog, clipboard } from 'electron';
 import * as path from 'path';
 import * as fs from 'fs';
 import { exec } from 'child_process';
@@ -513,4 +513,14 @@ ipcMain.handle('list-diagrams', async () => {
 ipcMain.handle('delete-diagram', async (event, name) => {
   store.delete(`diagram.${name}`);
   return { success: true };
+});
+
+// Clipboard operations
+ipcMain.handle('clipboard-write-text', async (event, text: string) => {
+  clipboard.writeText(text);
+  return { success: true };
+});
+
+ipcMain.handle('clipboard-read-text', async () => {
+  return clipboard.readText();
 });
