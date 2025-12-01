@@ -27,6 +27,7 @@ export interface ElectronAPI {
   closeSSHSession: (connectionId: string) => void;
   onSSHData: (callback: (data: { connectionId: string; data: string }) => void) => () => void;
   onSSHClosed: (callback: (data: { connectionId: string }) => void) => () => void;
+  onSSHLatency: (callback: (data: { connectionId: string; latency: number }) => void) => () => void;
 
   // Menu event listeners
   onMenuSave: (callback: () => void) => void;

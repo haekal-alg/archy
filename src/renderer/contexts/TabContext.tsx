@@ -89,6 +89,20 @@ export const TabProvider: React.FC<TabProviderProps> = ({ children }) => {
     }
   }, [activeConnectionId, connections]);
 
+  // Listen for latency updates
+  useCallback(() => {
+    const unsubscribe = window.electron.onSSHLatency((data: { connectionId: string; latency: number }) => {
+      setConnections(prev =>
+        prev.map(conn =>
+          conn.id === data.connectionId
+            ? { ...conn, latency: data.latency, lastActivity: new Date() }
+            : conn
+        )
+      );
+    });
+    return unsubscribe;
+  }, [])();
+
   const value: TabContextType = {
     activeTab,
     setActiveTab,

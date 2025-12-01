@@ -62,6 +62,12 @@ contextBridge.exposeInMainWorld('electron', {
     return () => ipcRenderer.removeListener('ssh-closed', subscription);
   },
 
+  onSSHLatency: (callback: (data: { connectionId: string; latency: number }) => void) => {
+    const subscription = (_event: any, data: { connectionId: string; latency: number }) => callback(data);
+    ipcRenderer.on('ssh-latency', subscription);
+    return () => ipcRenderer.removeListener('ssh-latency', subscription);
+  },
+
   // Menu event listeners
   onMenuSave: (callback: () => void) => ipcRenderer.on('menu-save', callback),
   onMenuLoad: (callback: () => void) => ipcRenderer.on('menu-load', callback),

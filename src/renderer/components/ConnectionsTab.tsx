@@ -433,6 +433,44 @@ const ConnectionsTab: React.FC = () => {
                 alignItems: 'center',
                 gap: '12px',
               }}>
+                {/* Latency Indicator */}
+                <div style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  padding: '4px 10px',
+                  backgroundColor: '#252d3f',
+                  borderRadius: '4px',
+                  border: '1px solid #3a4556',
+                }}>
+                  {activeConnection.latency !== undefined ? (
+                    <>
+                      <span style={{
+                        fontSize: '14px',
+                      }}>
+                        {activeConnection.latency < 100 ? '🟢' : activeConnection.latency < 300 ? '🟡' : '🔴'}
+                      </span>
+                      <span style={{
+                        fontSize: '12px',
+                        color: activeConnection.latency < 100 ? '#3dd68c' : activeConnection.latency < 300 ? '#ffab40' : '#ff5c5c',
+                        fontWeight: 500,
+                        fontFamily: 'Consolas, monospace',
+                        minWidth: '45px',
+                      }}>
+                        {activeConnection.latency}ms
+                      </span>
+                    </>
+                  ) : (
+                    <span style={{
+                      fontSize: '12px',
+                      color: '#666',
+                      fontFamily: 'Consolas, monospace',
+                      minWidth: '45px',
+                    }}>
+                      ---
+                    </span>
+                  )}
+                </div>
                 {/* Zoom Controls */}
                 <div style={{
                   display: 'flex',
