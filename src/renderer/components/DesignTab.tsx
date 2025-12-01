@@ -128,16 +128,16 @@ const DesignTab: React.FC<DesignTabProps> = ({
       }
     };
 
-    // Add event listeners to window
-    window.addEventListener('mousedown', handleWindowMouseDown);
-    window.addEventListener('mouseup', handleWindowMouseUp);
-    window.addEventListener('mousemove', handleWindowMouseMove);
+    // Add event listeners to window with capture phase to ensure we get them before React Flow
+    window.addEventListener('mousedown', handleWindowMouseDown, true);
+    window.addEventListener('mouseup', handleWindowMouseUp, true);
+    window.addEventListener('mousemove', handleWindowMouseMove, true);
 
     // Cleanup
     return () => {
-      window.removeEventListener('mousedown', handleWindowMouseDown);
-      window.removeEventListener('mouseup', handleWindowMouseUp);
-      window.removeEventListener('mousemove', handleWindowMouseMove);
+      window.removeEventListener('mousedown', handleWindowMouseDown, true);
+      window.removeEventListener('mouseup', handleWindowMouseUp, true);
+      window.removeEventListener('mousemove', handleWindowMouseMove, true);
     };
   }, [onTemporaryHandToolStart, onTemporaryHandToolEnd, isHandTool, isDragging]);
 
