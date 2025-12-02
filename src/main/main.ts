@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain, Menu, dialog } from 'electron';
+import { app, BrowserWindow, ipcMain, Menu, dialog, clipboard } from 'electron';
 import * as path from 'path';
 import * as fs from 'fs';
 import { exec } from 'child_process';
@@ -14,6 +14,8 @@ interface SSHSession {
   client: Client;
   stream: ClientChannel;
   connectionId: string;
+  latency?: number;
+  lastPingTime?: number;
 }
 
 const sshSessions = new Map<string, SSHSession>();
@@ -110,9 +112,13 @@ function createWindow() {
       : path.join(__dirname, '../build/icon.png');
   }
 
+  // Set window title based on environment
+  const windowTitle = app.isPackaged ? 'Archy' : '[DEV] Archy';
+
   mainWindow = new BrowserWindow({
     width: 1400,
     height: 900,
+    title: windowTitle,
     icon: iconPath,
     webPreferences: {
       nodeIntegration: false,
@@ -147,6 +153,11 @@ app.on('activate', () => {
   if (mainWindow === null) {
     createWindow();
   }
+});
+
+// Handle app info requests
+ipcMain.handle('is-packaged', async () => {
+  return app.isPackaged;
 });
 
 // Handle RDP connections
@@ -338,6 +349,57 @@ ipcMain.on('close-ssh-session', (event, { connectionId }) => {
   }
 });
 
+// Periodic latency measurement (measure every 3 seconds)
+// We measure latency by sending a space followed by backspace and timing the response
+// This is invisible but triggers response
+let latencyMeasurementActive = false;
+
+setInterval(() => {
+  if (latencyMeasurementActive) return; // Skip if previous measurement still running
+
+  sshSessions.forEach((session) => {
+    if (session.stream && !session.stream.destroyed) {
+      latencyMeasurementActive = true;
+      const startTime = Date.now();
+      let responded = false;
+
+      // Listen for ANY data response from the stream
+      const onData = (data: Buffer) => {
+        if (!responded) {
+          responded = true;
+          const latency = Date.now() - startTime;
+          session.latency = latency;
+          session.lastPingTime = Date.now();
+
+          // Send latency update to renderer
+          if (mainWindow && !mainWindow.isDestroyed()) {
+            mainWindow.webContents.send('ssh-latency', {
+              connectionId: session.connectionId,
+              latency: latency,
+            });
+          }
+
+          // Remove this listener after receiving the response
+          session.stream.removeListener('data', onData);
+          latencyMeasurementActive = false;
+        }
+      };
+
+      session.stream.on('data', onData);
+
+      // Send a space followed by backspace - invisible but triggers response
+      // This is more reliable than null byte for getting a server response
+      session.stream.write(' \b');
+
+      // Cleanup listener after timeout to avoid memory leaks
+      setTimeout(() => {
+        session.stream.removeListener('data', onData);
+        latencyMeasurementActive = false;
+      }, 2000);
+    }
+  });
+}, 3000);
+
 // Handle generic command execution (for browser, custom commands, etc.)
 ipcMain.handle('execute-command', async (event, { command }) => {
   return new Promise((resolve, reject) => {
@@ -504,4 +566,14 @@ ipcMain.handle('list-diagrams', async () => {
 ipcMain.handle('delete-diagram', async (event, name) => {
   store.delete(`diagram.${name}`);
   return { success: true };
+});
+
+// Clipboard operations
+ipcMain.handle('clipboard-write-text', async (event, text: string) => {
+  clipboard.writeText(text);
+  return { success: true };
+});
+
+ipcMain.handle('clipboard-read-text', async () => {
+  return clipboard.readText();
 });

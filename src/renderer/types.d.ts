@@ -1,4 +1,7 @@
 export interface ElectronAPI {
+  // App information
+  isPackaged: () => Promise<boolean>;
+
   connectRDP: (host: string, username: string, password: string) => Promise<any>;
   connectSSH: (host: string, port: number, username: string, password: string) => Promise<any>;
   executeCommand: (command: string) => Promise<any>;
@@ -24,12 +27,19 @@ export interface ElectronAPI {
   closeSSHSession: (connectionId: string) => void;
   onSSHData: (callback: (data: { connectionId: string; data: string }) => void) => () => void;
   onSSHClosed: (callback: (data: { connectionId: string }) => void) => () => void;
+  onSSHLatency: (callback: (data: { connectionId: string; latency: number }) => void) => () => void;
 
   // Menu event listeners
   onMenuSave: (callback: () => void) => void;
   onMenuLoad: (callback: () => void) => void;
   onMenuExport: (callback: () => void) => void;
   onMenuClear: (callback: () => void) => void;
+
+  // Clipboard operations
+  clipboard: {
+    writeText: (text: string) => Promise<{ success: boolean }>;
+    readText: () => Promise<string>;
+  };
 }
 
 declare global {

@@ -1,6 +1,9 @@
-import { contextBridge, ipcRenderer } from 'electron';
+import { contextBridge, ipcRenderer, app } from 'electron';
 
 contextBridge.exposeInMainWorld('electron', {
+  // App information
+  isPackaged: () => ipcRenderer.invoke('is-packaged'),
+
   connectRDP: (host: string, username: string, password: string) =>
     ipcRenderer.invoke('connect-rdp', { host, username, password }),
 
@@ -59,9 +62,21 @@ contextBridge.exposeInMainWorld('electron', {
     return () => ipcRenderer.removeListener('ssh-closed', subscription);
   },
 
+  onSSHLatency: (callback: (data: { connectionId: string; latency: number }) => void) => {
+    const subscription = (_event: any, data: { connectionId: string; latency: number }) => callback(data);
+    ipcRenderer.on('ssh-latency', subscription);
+    return () => ipcRenderer.removeListener('ssh-latency', subscription);
+  },
+
   // Menu event listeners
   onMenuSave: (callback: () => void) => ipcRenderer.on('menu-save', callback),
   onMenuLoad: (callback: () => void) => ipcRenderer.on('menu-load', callback),
   onMenuExport: (callback: () => void) => ipcRenderer.on('menu-export', callback),
   onMenuClear: (callback: () => void) => ipcRenderer.on('menu-clear', callback),
+
+  // Clipboard operations
+  clipboard: {
+    writeText: (text: string) => ipcRenderer.invoke('clipboard-write-text', text),
+    readText: () => ipcRenderer.invoke('clipboard-read-text'),
+  },
 });

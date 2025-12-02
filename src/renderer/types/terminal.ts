@@ -11,6 +11,7 @@ export interface SSHConnection {
   lastActivity: Date;
   error?: string;
   zoom?: number; // Terminal zoom level (default 1.0)
+  latency?: number; // Connection latency in milliseconds
 }
 
 export interface TerminalSession {
