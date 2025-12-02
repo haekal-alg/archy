@@ -41,7 +41,16 @@ const DeviceNode: React.FC<NodeProps> = ({ data }) => {
       }}
       className="device-node"
     >
-      <Handle type="target" position={Position.Top} />
+      {/* Connection Handles - All 4 directions */}
+      <Handle type="source" position={Position.Top} id="top" style={{ background: getColor() }} />
+      <Handle type="target" position={Position.Top} id="top-target" style={{ background: getColor() }} />
+      <Handle type="source" position={Position.Right} id="right" style={{ background: getColor() }} />
+      <Handle type="target" position={Position.Right} id="right-target" style={{ background: getColor() }} />
+      <Handle type="source" position={Position.Bottom} id="bottom" style={{ background: getColor() }} />
+      <Handle type="target" position={Position.Bottom} id="bottom-target" style={{ background: getColor() }} />
+      <Handle type="source" position={Position.Left} id="left" style={{ background: getColor() }} />
+      <Handle type="target" position={Position.Left} id="left-target" style={{ background: getColor() }} />
+
       <div style={{ textAlign: 'center' }}>
         <div style={{ fontSize: '32px', marginBottom: '8px' }}>{getIcon()}</div>
         <div style={{ fontWeight: 'bold', marginBottom: '4px' }}>{deviceData.label}</div>
@@ -61,7 +70,6 @@ const DeviceNode: React.FC<NodeProps> = ({ data }) => {
           {deviceData.type.toUpperCase()}
         </div>
       </div>
-      <Handle type="source" position={Position.Bottom} />
     </div>
   );
 };

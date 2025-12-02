@@ -1,0 +1,541 @@
+{
+  "nodes": [
+    {
+      "id": "node-redteam-c2",
+      "type": "enhanced",
+      "position": {
+        "x": 0,
+        "y": 105
+      },
+      "data": {
+        "label": "C2-Server",
+        "type": "attacker",
+        "host": "10.10.10.5",
+        "port": 443,
+        "username": "redteam",
+        "password": "RedOps2024!",
+        "ipAddress": "10.10.10.5",
+        "description": "Command & Control Server",
+        "interfaces": [],
+        "color": "#d32f2f",
+        "operatingSystem": "Kali Linux",
+        "connectionType": "ssh",
+        "connections": [
+          {
+            "id": "conn-c2-ssh",
+            "type": "ssh",
+            "host": "10.10.10.5",
+            "port": 22,
+            "username": "redteam",
+            "password": "RedOps2024!",
+            "customCommand": ""
+          }
+        ]
+      },
+      "measured": {
+        "width": 140,
+        "height": 143
+      },
+      "selected": false,
+      "dragging": false
+    },
+    {
+      "id": "node-redteam-attacker",
+      "type": "enhanced",
+      "position": {
+        "x": 0,
+        "y": 285
+      },
+      "data": {
+        "label": "RedTeam-01",
+        "type": "attacker",
+        "host": "10.10.10.10",
+        "port": 22,
+        "username": "operator",
+        "password": "Offensive2024!",
+        "ipAddress": "10.10.10.10",
+        "description": "Red Team Operator",
+        "interfaces": [],
+        "color": "#ff1744",
+        "operatingSystem": "Kali Linux",
+        "connectionType": "ssh",
+        "connections": [
+          {
+            "id": "conn-red1-ssh",
+            "type": "ssh",
+            "host": "10.10.10.10",
+            "port": 22,
+            "username": "operator",
+            "password": "Offensive2024!",
+            "customCommand": ""
+          }
+        ]
+      },
+      "measured": {
+        "width": 140,
+        "height": 143
+      },
+      "selected": false,
+      "dragging": false
+    },
+    {
+      "id": "node-target-web",
+      "type": "enhanced",
+      "position": {
+        "x": 500,
+        "y": 100
+      },
+      "data": {
+        "label": "WebServer",
+        "type": "server",
+        "host": "10.20.20.10",
+        "port": 80,
+        "username": "webadmin",
+        "password": "Web@2024",
+        "ipAddress": "10.20.20.10",
+        "description": "Web Server - Vulnerable",
+        "interfaces": [],
+        "color": "#0288d1",
+        "operatingSystem": "Ubuntu 20.04",
+        "connectionType": "ssh",
+        "connections": [
+          {
+            "id": "conn-web-ssh",
+            "type": "ssh",
+            "host": "10.20.20.10",
+            "port": 22,
+            "username": "webadmin",
+            "password": "Web@2024",
+            "customCommand": ""
+          }
+        ]
+      },
+      "measured": {
+        "width": 140,
+        "height": 143
+      },
+      "selected": false
+    },
+    {
+      "id": "node-target-dc",
+      "type": "enhanced",
+      "position": {
+        "x": 495,
+        "y": 330
+      },
+      "data": {
+        "label": "DC-01",
+        "type": "server",
+        "host": "10.20.20.20",
+        "port": 3389,
+        "username": "Administrator",
+        "password": "P@ssw0rd123!",
+        "ipAddress": "10.20.20.20",
+        "description": "Domain Controller",
+        "interfaces": [],
+        "color": "#7b1fa2",
+        "operatingSystem": "Windows Server 2019",
+        "connectionType": "rdp",
+        "connections": [
+          {
+            "id": "conn-dc-rdp",
+            "type": "rdp",
+            "host": "10.20.20.20",
+            "port": 3389,
+            "username": "Administrator",
+            "password": "P@ssw0rd123!",
+            "customCommand": ""
+          }
+        ]
+      },
+      "measured": {
+        "width": 140,
+        "height": 143
+      },
+      "selected": false,
+      "dragging": false
+    },
+    {
+      "id": "node-target-workstation",
+      "type": "enhanced",
+      "position": {
+        "x": 495,
+        "y": 555
+      },
+      "data": {
+        "label": "Workstation-01",
+        "type": "windows",
+        "host": "10.20.20.50",
+        "port": 3389,
+        "username": "user",
+        "password": "User2024!",
+        "ipAddress": "10.20.20.50",
+        "description": "User Workstation",
+        "interfaces": [],
+        "color": "#1976d2",
+        "operatingSystem": "Windows 11",
+        "connectionType": "rdp",
+        "connections": [
+          {
+            "id": "conn-ws-rdp",
+            "type": "rdp",
+            "host": "10.20.20.50",
+            "port": 3389,
+            "username": "user",
+            "password": "User2024!",
+            "customCommand": ""
+          }
+        ]
+      },
+      "measured": {
+        "width": 140,
+        "height": 143
+      },
+      "selected": false,
+      "dragging": false
+    },
+    {
+      "id": "node-blue-siem",
+      "type": "enhanced",
+      "position": {
+        "x": 1005,
+        "y": 105
+      },
+      "data": {
+        "label": "SIEM",
+        "type": "server",
+        "host": "10.30.30.10",
+        "port": 8000,
+        "username": "admin",
+        "password": "Splunk2024!",
+        "ipAddress": "10.30.30.10",
+        "description": "SIEM - Splunk",
+        "interfaces": [],
+        "color": "#00695c",
+        "operatingSystem": "Ubuntu 22.04",
+        "connectionType": "browser",
+        "connections": [
+          {
+            "id": "conn-siem-web",
+            "type": "browser",
+            "host": "https://10.30.30.10:8000",
+            "port": 8000,
+            "username": "admin",
+            "password": "Splunk2024!",
+            "customCommand": ""
+          }
+        ]
+      },
+      "measured": {
+        "width": 140,
+        "height": 143
+      },
+      "selected": false,
+      "dragging": false
+    },
+    {
+      "id": "node-blue-analyst",
+      "type": "enhanced",
+      "position": {
+        "x": 1005,
+        "y": 285
+      },
+      "data": {
+        "label": "BlueTeam-01",
+        "type": "windows",
+        "host": "10.30.30.20",
+        "port": 3389,
+        "username": "analyst",
+        "password": "Defense2024!",
+        "ipAddress": "10.30.30.20",
+        "description": "SOC Analyst",
+        "interfaces": [],
+        "color": "#1565c0",
+        "operatingSystem": "Windows 11",
+        "connectionType": "rdp",
+        "connections": [
+          {
+            "id": "conn-analyst-rdp",
+            "type": "rdp",
+            "host": "10.30.30.20",
+            "port": 3389,
+            "username": "analyst",
+            "password": "Defense2024!",
+            "customCommand": ""
+          }
+        ]
+      },
+      "measured": {
+        "width": 140,
+        "height": 143
+      },
+      "selected": false,
+      "dragging": false
+    },
+    {
+      "id": "group-redteam",
+      "type": "group",
+      "position": {
+        "x": -80,
+        "y": 25
+      },
+      "style": {
+        "width": 300,
+        "height": 480,
+        "zIndex": -3
+      },
+      "data": {
+        "label": "Red Team Zone (10.10.10.0/24)",
+        "backgroundColor": "rgba(255, 23, 68, 0.15)",
+        "borderColor": "#d32f2f",
+        "borderStyle": "solid",
+        "description": "Attackers",
+        "connections": []
+      },
+      "measured": {
+        "width": 300,
+        "height": 480
+      },
+      "selected": false,
+      "width": 300,
+      "height": 480,
+      "dragging": false
+    },
+    {
+      "id": "group-target",
+      "type": "group",
+      "position": {
+        "x": 420,
+        "y": 20
+      },
+      "style": {
+        "width": 300,
+        "height": 650,
+        "zIndex": -2
+      },
+      "data": {
+        "label": "Target Network (10.20.20.0/24)",
+        "backgroundColor": "rgba(3, 169, 244, 0.15)",
+        "borderColor": "#0288d1",
+        "borderStyle": "solid",
+        "description": "Victim Environment",
+        "connections": []
+      },
+      "measured": {
+        "width": 300,
+        "height": 740
+      },
+      "selected": false,
+      "width": 300,
+      "height": 740,
+      "resizing": false
+    },
+    {
+      "id": "group-blueteam",
+      "type": "group",
+      "position": {
+        "x": 925,
+        "y": 25
+      },
+      "style": {
+        "width": 300,
+        "height": 480,
+        "zIndex": -1
+      },
+      "data": {
+        "label": "Blue Team Zone (10.30.30.0/24)",
+        "backgroundColor": "rgba(0, 150, 136, 0.15)",
+        "borderColor": "#00695c",
+        "borderStyle": "solid",
+        "description": "Defenders",
+        "connections": []
+      },
+      "measured": {
+        "width": 300,
+        "height": 480
+      },
+      "selected": false,
+      "width": 300,
+      "height": 480,
+      "dragging": false
+    }
+  ],
+  "edges": [
+    {
+      "type": "custom",
+      "source": "node-redteam-c2",
+      "sourceHandle": "right",
+      "target": "node-target-web",
+      "targetHandle": "left-target",
+      "data": {
+        "label": "C2 Traffic",
+        "style": "dashed",
+        "color": "#ff1744",
+        "animated": true,
+        "routingType": "smoothstep",
+        "markerStart": "none",
+        "markerEnd": "arrow"
+      },
+      "id": "edge-c2-to-web",
+      "selected": false,
+      "animated": true
+    },
+    {
+      "type": "custom",
+      "source": "node-redteam-attacker",
+      "sourceHandle": "right",
+      "target": "node-target-web",
+      "targetHandle": "left-target",
+      "data": {
+        "label": "Exploit",
+        "style": "dashed",
+        "color": "#ff1744",
+        "animated": true,
+        "routingType": "smoothstep",
+        "markerStart": "none",
+        "markerEnd": "arrow"
+      },
+      "id": "edge-red-to-web",
+      "selected": false,
+      "animated": true
+    },
+    {
+      "type": "custom",
+      "source": "node-target-web",
+      "sourceHandle": "bottom",
+      "target": "node-target-dc",
+      "targetHandle": "top-target",
+      "data": {
+        "label": "Internal",
+        "style": "solid",
+        "color": "#ffffff",
+        "animated": false,
+        "routingType": "smoothstep",
+        "markerStart": "none",
+        "markerEnd": "none"
+      },
+      "id": "edge-web-to-dc",
+      "selected": false,
+      "animated": false
+    },
+    {
+      "type": "custom",
+      "source": "node-target-dc",
+      "sourceHandle": "bottom",
+      "target": "node-target-workstation",
+      "targetHandle": "top-target",
+      "data": {
+        "label": "AD Domain",
+        "style": "solid",
+        "color": "#ffffff",
+        "animated": false,
+        "routingType": "smoothstep",
+        "markerStart": "none",
+        "markerEnd": "none"
+      },
+      "id": "edge-dc-to-ws",
+      "selected": false,
+      "animated": false
+    },
+    {
+      "type": "custom",
+      "source": "node-target-web",
+      "sourceHandle": "right",
+      "target": "node-blue-siem",
+      "targetHandle": "left-target",
+      "data": {
+        "label": "Logs",
+        "style": "dashed",
+        "color": "#00e676",
+        "animated": true,
+        "routingType": "smoothstep",
+        "markerStart": "arrow",
+        "markerEnd": "none"
+      },
+      "id": "edge-web-to-siem",
+      "selected": false,
+      "animated": true
+    },
+    {
+      "type": "custom",
+      "source": "node-target-dc",
+      "sourceHandle": "right",
+      "target": "node-blue-siem",
+      "targetHandle": "left-target",
+      "data": {
+        "label": "Events",
+        "style": "dashed",
+        "color": "#00e676",
+        "animated": true,
+        "routingType": "smoothstep",
+        "markerStart": "arrow",
+        "markerEnd": "none"
+      },
+      "id": "edge-dc-to-siem",
+      "selected": false,
+      "animated": true
+    },
+    {
+      "type": "custom",
+      "source": "node-target-workstation",
+      "sourceHandle": "right",
+      "target": "node-blue-siem",
+      "targetHandle": "left-target",
+      "data": {
+        "label": "Telemetry",
+        "style": "dashed",
+        "color": "#00e676",
+        "animated": true,
+        "routingType": "smoothstep",
+        "markerStart": "arrow",
+        "markerEnd": "none"
+      },
+      "id": "edge-ws-to-siem",
+      "selected": false,
+      "animated": true
+    },
+    {
+      "type": "custom",
+      "source": "node-blue-analyst",
+      "sourceHandle": "left",
+      "target": "node-blue-siem",
+      "targetHandle": "bottom-target",
+      "data": {
+        "label": "Analysis",
+        "style": "solid",
+        "color": "#1565c0",
+        "animated": false,
+        "routingType": "smoothstep",
+        "markerStart": "none",
+        "markerEnd": "none"
+      },
+      "id": "edge-analyst-to-siem",
+      "selected": false,
+      "animated": false
+    },
+    {
+      "type": "custom",
+      "source": "node-target-workstation",
+      "sourceHandle": "left",
+      "target": "node-redteam-c2",
+      "targetHandle": "right-target",
+      "data": {
+        "label": "Compromised",
+        "style": "dashed",
+        "color": "#ff1744",
+        "animated": true,
+        "routingType": "smoothstep",
+        "markerStart": "none",
+        "markerEnd": "arrow"
+      },
+      "id": "edge-ws-to-c2",
+      "selected": false,
+      "animated": true
+    }
+  ],
+  "metadata": {
+    "name": "Attack-Defend Simulation Lab (Simplified)",
+    "created": "2025-11-26T09:44:29.487Z",
+    "version": "1.0"
+  }
+}

@@ -1,127 +1,73 @@
-# Archy - Visual Network Architecture Tool
+<div align="center">
+  <img src="./images/icon.png" alt="Archy Logo" width="120"/>
+  <h1>Archy</h1>
+</div>
 
-A desktop application that combines network architecture visualization with seamless remote access capabilities. Design your network topology and connect to devices with a single click.
+## Overview
 
-## Features
+**Archy** is a desktop application that combines network topology visualization with integrated remote access management. Born from the challenges of managing multiple virtual machines across various environments, Archy eliminates context-switching between diagram tools and credential managers.
 
-- **Visual Diagramming**: Drag-and-drop interface to create network architecture diagrams
-- **One-Click Remote Access**:
-  - RDP for Windows machines
-  - SSH for Linux boxes
-- **Credential Management**: Store connection credentials securely within each device node
-- **Save/Load Diagrams**: Persist your network architectures and load them anytime
-- **Interactive Canvas**: Pan, zoom, and arrange your network layout
-- **Multiple Device Types**: Support for Windows, Linux, and generic devices
+![alt text](./images/image.png)
 
-## Installation
+![alt text](./images/image-1.png)
+
+## Core Features
+
+### Visual Network Diagramming
+- **Drag-and-drop interface** powered by React Flow
+- **Device library** with 11+ pre-built icons (Router, Server, Firewall, Linux, Windows, Cloud, Database, etc.)
+- **Custom edges** with multiple line styles, colors, and arrow types
+- **Network zones** using colored group containers
+- **Text annotations** for documentation
+
+### Integrated Connection Management
+- **Multiple protocols**: RDP, SSH, HTTP/HTTPS, custom commands
+- **Built-in SSH terminal** using xterm.js with full PTY support
+- **One-click connections** from diagram nodes
+- **Credential storage** embedded in device nodes
+- **Tab-based interface** for managing multiple simultaneous connections
+
+### Productivity Tools
+- **Undo/Redo** with 50-state history
+- **Save/Load** diagrams with metadata
+- **Export** to PNG, JPG, or SVG
+- **Auto-save** last session
+- **Context menus** for quick actions
+
+## Installation & Development
 
 ```bash
 # Install dependencies
 npm install
 
-# Build the application
+# Build application
 npm run build
 
-# Run the application
+# Start application
 npm start
-```
 
-## Usage
-
-### Creating Your Network Diagram
-
-1. **Add Devices**: Click the toolbar buttons to add Windows, Linux, or Generic devices
-2. **Position Devices**: Drag devices around the canvas to arrange your architecture
-3. **Connect Devices**: Click and drag from one device's handle to another to create connections
-4. **Edit Device Properties**: Double-click any device to configure:
-   - Label/Name
-   - IP Address/Host
-   - Port number
-   - Username
-   - Password
-
-### Connecting to Devices
-
-1. Double-click a device to open the edit modal
-2. Click **"Connect Now"** to immediately launch:
-   - **RDP connection** for Windows devices (via `mstsc`)
-   - **SSH connection** for Linux devices (opens in terminal)
-
-### Saving Your Work
-
-- Click **Save** in the toolbar to save your diagram
-- Click **Load** to restore a previously saved diagram
-- Click **Clear** to start fresh
-
-## Architecture
-
-- **Electron**: Cross-platform desktop application
-- **React**: UI framework
-- **React Flow**: Visual diagramming library
-- **Electron Store**: Secure local storage for diagrams
-- **SSH2**: SSH connection handling
-- **Windows RDP**: Native mstsc integration
-
-## Security Notes
-
-- Credentials are stored locally using electron-store
-- For production use, consider implementing encryption for stored credentials
-- The current implementation stores passwords in plain text for convenience
-- Recommended for use in secure, trusted environments only
-
-## Platform Support
-
-### Windows
-- RDP connections use native `mstsc` command
-- Credentials are temporarily stored using `cmdkey`
-
-### Linux/Mac
-- SSH connections open in system terminal
-- May require `sshpass` utility for password authentication
-
-## Development
-
-```bash
-# Start development server
+# Development mode
 npm run dev
 
-# Build main process
-npm run build:main
-
-# Build renderer process
-npm run build:renderer
-
-# Package application
+# Create distributable
 npm run package
 ```
+## Security Considerations
 
-## Project Structure
+**Important**: Archy stores credentials in plain text locally for convenience in lab environments.
 
-```
-archy/
-├── src/
-│   ├── main/           # Electron main process
-│   │   ├── main.ts     # Main entry point
-│   │   └── preload.ts  # Preload script for IPC
-│   └── renderer/       # React application
-│       ├── components/ # React components
-│       ├── App.tsx     # Main app component
-│       └── index.tsx   # React entry point
-├── dist/              # Compiled output
-└── package.json
-```
+- Designed for **isolated lab networks** and **personal research environments**
+- **Not recommended** for production infrastructure or shared systems
+- Always use dedicated test credentials, never production passwords
 
-## Future Enhancements
+## Use Cases
 
-- Credential encryption at rest
-- Multiple diagram workspaces
-- Export diagrams as images
-- Network scanning/discovery
-- SSH key authentication
-- VNC support
-- Connection history/favorites
-- Team collaboration features
+- **Red Team Operations**: Map attack surfaces and maintain access to compromised hosts
+- **Penetration Testing**: Document network topology during engagements
+- **Lab Management**: Track virtual machines across multiple Proxmox/ESXi hosts
+- **Security Research**: Organize sandbox environments and tool deployments
+- **Network Administration**: Quick-access dashboard for infrastructure management
 
-## License
+## Contributing
 
-ISC
+Contributions welcome! Please open an issue or submit a pull request.
