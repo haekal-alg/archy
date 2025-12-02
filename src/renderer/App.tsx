@@ -32,6 +32,8 @@ import TabBar from './components/TabBar';
 import DesignTab from './components/DesignTab';
 import ConnectionsTab from './components/ConnectionsTab';
 import { TabProvider, useTabContext } from './contexts/TabContext';
+import { ToolPalette } from './components/ToolPalette';
+import { ToolType } from './types/tools';
 import './App.css';
 import { toPng, toJpeg } from 'html-to-image';
 import theme from '../theme';
@@ -75,12 +77,22 @@ const AppContent: React.FC = () => {
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [isShapeLibraryOpen, setIsShapeLibraryOpen] = useState(true);
   const [isStylePanelOpen, setIsStylePanelOpen] = useState(true);
+  const [activeTool, setActiveTool] = useState<ToolType>('selection');
+  const [isHandToolTemporary, setIsHandToolTemporary] = useState(false);
   const [contextMenu, setContextMenu] = useState<{
     x: number;
     y: number;
     node?: Node;
     edge?: Edge;
   } | null>(null);
+
+  // Debug logging for tool changes
+  useEffect(() => {
+    console.log('===== ACTIVE TOOL CHANGED =====');
+    console.log('New activeTool:', activeTool);
+    console.log('isHandToolTemporary:', isHandToolTemporary);
+    console.log('===============================');
+  }, [activeTool, isHandToolTemporary]);
 
   // History state for Undo/Redo
   const [history, setHistory] = useState<HistoryState[]>([]);
@@ -182,9 +194,44 @@ const AppContent: React.FC = () => {
   const canUndo = historyIndex > 0;
   const canRedo = historyIndex < history.length - 1;
 
-  // Keyboard shortcuts for Undo/Redo
+  // Handle manual tool changes (from UI or keyboard)
+  const handleToolChange = useCallback((tool: ToolType) => {
+    setActiveTool(tool);
+    setIsHandToolTemporary(false); // Reset temporary flag on manual change
+  }, []);
+
+  // Handle temporary hand tool activation (middle mouse button)
+  const handleTemporaryHandToolStart = useCallback(() => {
+    console.log('handleTemporaryHandToolStart called - Current tool:', activeTool);
+    if (activeTool !== 'hand') {
+      // Only activate temporary hand tool if not already in hand tool mode
+      console.log('Setting activeTool to HAND (temporary)');
+      setActiveTool('hand');
+      setIsHandToolTemporary(true);
+    } else {
+      console.log('Already in hand tool mode, not changing');
+    }
+  }, [activeTool]);
+
+  const handleTemporaryHandToolEnd = useCallback(() => {
+    console.log('handleTemporaryHandToolEnd called - isHandToolTemporary:', isHandToolTemporary);
+    if (isHandToolTemporary) {
+      // Only revert if it was temporary
+      console.log('Setting activeTool back to SELECTION');
+      setActiveTool('selection');
+      setIsHandToolTemporary(false);
+    } else {
+      console.log('Not temporary mode, not reverting');
+    }
+  }, [isHandToolTemporary]);
+
+  // Keyboard shortcuts for Undo/Redo and Tools
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
+      // Ignore if user is typing in an input field
+      const target = event.target as HTMLElement;
+      const isInputField = target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable;
+
       if ((event.ctrlKey || event.metaKey) && event.shiftKey && event.key === 'Z') {
         event.preventDefault();
         handleRedo();
@@ -194,12 +241,20 @@ const AppContent: React.FC = () => {
       } else if ((event.ctrlKey || event.metaKey) && event.key === 'y') {
         event.preventDefault();
         handleRedo();
+      } else if (!isInputField && event.key.toLowerCase() === 'v') {
+        // Selection tool shortcut
+        event.preventDefault();
+        handleToolChange('selection');
+      } else if (!isInputField && event.key.toLowerCase() === 'h') {
+        // Hand tool shortcut
+        event.preventDefault();
+        handleToolChange('hand');
       }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [handleUndo, handleRedo]);
+  }, [handleUndo, handleRedo, handleToolChange]);
 
   // Track node position changes and save to history when dragging ends
   const nodesMoveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -442,7 +497,7 @@ const AppContent: React.FC = () => {
       return;
     }
 
-    const { type, host, port, username, password, customCommand } = connection;
+    const { type, host, port, username, password, customCommand, privateKeyPath } = connection;
 
     try {
       // Handle connection types
@@ -461,6 +516,7 @@ const AppContent: React.FC = () => {
           port: port || 22,
           username,
           password,
+          privateKeyPath,
         });
         console.log('SSH connection initiated in terminal emulator');
       } else if (type === 'browser') {
@@ -935,6 +991,9 @@ const AppContent: React.FC = () => {
           onNodeContextMenu={onNodeContextMenu}
           onEdgeContextMenu={onEdgeContextMenu}
           onInit={setReactFlowInstance}
+          activeTool={activeTool}
+          onTemporaryHandToolStart={handleTemporaryHandToolStart}
+          onTemporaryHandToolEnd={handleTemporaryHandToolEnd}
           onDrop={(event) => {
             event.preventDefault();
             const type = event.dataTransfer.getData('application/reactflow');
@@ -985,7 +1044,13 @@ const AppContent: React.FC = () => {
           nodeTypes={nodeTypes}
           edgeTypes={edgeTypes}
           reactFlowWrapper={reactFlowWrapper}
-        />
+        >
+          {/* Tool Palette */}
+          <ToolPalette
+            activeTool={activeTool}
+            onToolChange={handleToolChange}
+          />
+        </DesignTab>
 
         <StylePanel
           selectedNode={selectedNode}

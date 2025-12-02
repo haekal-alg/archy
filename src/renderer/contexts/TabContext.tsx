@@ -28,6 +28,7 @@ export const TabProvider: React.FC<TabProviderProps> = ({ children }) => {
     port: number;
     username: string;
     password: string;
+    privateKeyPath?: string;
   }) => {
     const connectionId = `conn-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
 
@@ -53,6 +54,7 @@ export const TabProvider: React.FC<TabProviderProps> = ({ children }) => {
         port: config.port,
         username: config.username,
         password: config.password,
+        privateKeyPath: config.privateKeyPath,
       });
 
       setConnections(prev =>
@@ -86,6 +88,20 @@ export const TabProvider: React.FC<TabProviderProps> = ({ children }) => {
       setActiveConnectionId(remainingConnections.length > 0 ? remainingConnections[0].id : null);
     }
   }, [activeConnectionId, connections]);
+
+  // Listen for latency updates
+  useCallback(() => {
+    const unsubscribe = window.electron.onSSHLatency((data: { connectionId: string; latency: number }) => {
+      setConnections(prev =>
+        prev.map(conn =>
+          conn.id === data.connectionId
+            ? { ...conn, latency: data.latency, lastActivity: new Date() }
+            : conn
+        )
+      );
+    });
+    return unsubscribe;
+  }, [])();
 
   const value: TabContextType = {
     activeTab,

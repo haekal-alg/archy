@@ -18,12 +18,14 @@ import {
 
 export interface ConnectionConfig {
   id: string;
+  label?: string;
   type: 'rdp' | 'ssh' | 'browser' | 'custom';
   host?: string;
   port?: number;
   username?: string;
   password?: string;
   customCommand?: string;
+  privateKeyPath?: string;
 }
 
 export interface EnhancedDeviceData {

@@ -77,7 +77,7 @@ const ConnectionsTab: React.FC = () => {
   }, []);
 
   return (
-    <div style={{ display: 'flex', height: '100%', overflow: 'hidden' }}>
+    <div style={{ display: 'flex', height: '100%', overflow: 'hidden', position: 'relative' }}>
       {/* Side Panel - Always rendered for animation */}
       <div style={{
         width: sidePanelCollapsed ? '0px' : '320px',
@@ -117,33 +117,6 @@ const ConnectionsTab: React.FC = () => {
             }}>
               Active Connections
             </h3>
-            <button
-              onClick={() => setSidePanelCollapsed(true)}
-              style={{
-                background: '#252d3f',
-                border: '1px solid #3a4556',
-                borderRadius: '4px',
-                color: '#b4bcc9',
-                cursor: 'pointer',
-                padding: '6px 8px',
-                display: 'flex',
-                alignItems: 'center',
-                fontSize: '16px',
-                transition: 'all 0.2s ease',
-                lineHeight: '1',
-              }}
-              title="Collapse sidebar"
-              onMouseEnter={(e) => {
-                e.currentTarget.style.color = '#e8ecf4';
-                e.currentTarget.style.background = '#303948';
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.color = '#b4bcc9';
-                e.currentTarget.style.background = '#252d3f';
-              }}
-            >
-              ‹
-            </button>
           </div>
           {connections.some(c => c.status === 'disconnected' || c.status === 'error') && (
             <button
@@ -363,44 +336,46 @@ const ConnectionsTab: React.FC = () => {
 
       </div>
 
-      {/* Collapse Button (when collapsed) */}
-      {sidePanelCollapsed && (
-        <button
-          onClick={() => setSidePanelCollapsed(false)}
-          style={{
-            width: '30px',
-            height: '60px',
-            background: '#252d3f',
-            border: '1px solid #3a4556',
-            borderRight: 'none',
-            borderTopLeftRadius: '4px',
-            borderBottomLeftRadius: '4px',
-            color: '#b4bcc9',
-            cursor: 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            fontSize: '18px',
-            transition: 'all 0.2s ease',
-            position: 'fixed',
-            top: '50%',
-            transform: 'translateY(-50%)',
-            left: '0',
-            zIndex: 1000,
-          }}
-          title="Expand sidebar"
-          onMouseEnter={(e) => {
-            e.currentTarget.style.color = '#e8ecf4';
-            e.currentTarget.style.background = '#303948';
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.color = '#b4bcc9';
-            e.currentTarget.style.background = '#252d3f';
-          }}
-        >
-          ›
-        </button>
-      )}
+      {/* Unified Toggle Button */}
+      <button
+        onClick={() => setSidePanelCollapsed(!sidePanelCollapsed)}
+        style={{
+          position: 'absolute',
+          left: sidePanelCollapsed ? '0' : '290px', // Inside sidebar when expanded
+          top: '10px', // Aligned with header
+          width: '30px',
+          height: '40px', // Smaller height to fit header
+          border: '1px solid rgba(255, 255, 255, 0.25)',
+          // Dynamic borders based on state
+          borderRight: sidePanelCollapsed ? '1px solid rgba(255, 255, 255, 0.25)' : 'none',
+          borderLeft: sidePanelCollapsed ? 'none' : '1px solid rgba(255, 255, 255, 0.25)',
+          borderTopRightRadius: sidePanelCollapsed ? '8px' : '0',
+          borderBottomRightRadius: sidePanelCollapsed ? '8px' : '0',
+          borderTopLeftRadius: sidePanelCollapsed ? '0' : '8px',
+          borderBottomLeftRadius: sidePanelCollapsed ? '0' : '8px',
+
+          background: 'rgba(30, 33, 51, 0.65)',
+          backdropFilter: 'blur(60px) saturate(200%) brightness(1.1)',
+          WebkitBackdropFilter: 'blur(60px) saturate(200%) brightness(1.1)',
+          color: '#e8ecf4',
+          cursor: 'pointer',
+          fontSize: '18px',
+          boxShadow: '4px 0 16px rgba(0, 0, 0, 0.3)',
+          transition: 'all 0.3s ease',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 100,
+        }}
+        onMouseEnter={(e) => {
+          e.currentTarget.style.background = 'rgba(40, 44, 68, 0.8)';
+        }}
+        onMouseLeave={(e) => {
+          e.currentTarget.style.background = 'rgba(30, 33, 51, 0.65)';
+        }}
+      >
+        {sidePanelCollapsed ? '›' : '‹'}
+      </button>
 
       {/* Main Terminal Canvas */}
       <div style={{
@@ -433,6 +408,44 @@ const ConnectionsTab: React.FC = () => {
                 alignItems: 'center',
                 gap: '12px',
               }}>
+                {/* Latency Indicator */}
+                <div style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  padding: '4px 10px',
+                  backgroundColor: '#252d3f',
+                  borderRadius: '4px',
+                  border: '1px solid #3a4556',
+                }}>
+                  {activeConnection.latency !== undefined ? (
+                    <>
+                      <span style={{
+                        fontSize: '14px',
+                      }}>
+                        {activeConnection.latency < 100 ? '🟢' : activeConnection.latency < 300 ? '🟡' : '🔴'}
+                      </span>
+                      <span style={{
+                        fontSize: '12px',
+                        color: activeConnection.latency < 100 ? '#3dd68c' : activeConnection.latency < 300 ? '#ffab40' : '#ff5c5c',
+                        fontWeight: 500,
+                        fontFamily: 'Consolas, monospace',
+                        minWidth: '45px',
+                      }}>
+                        {activeConnection.latency}ms
+                      </span>
+                    </>
+                  ) : (
+                    <span style={{
+                      fontSize: '12px',
+                      color: '#666',
+                      fontFamily: 'Consolas, monospace',
+                      minWidth: '45px',
+                    }}>
+                      ---
+                    </span>
+                  )}
+                </div>
                 {/* Zoom Controls */}
                 <div style={{
                   display: 'flex',

@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain, Menu, dialog } from 'electron';
+import { app, BrowserWindow, ipcMain, Menu, dialog, clipboard } from 'electron';
 import * as path from 'path';
 import * as fs from 'fs';
 import { exec } from 'child_process';
@@ -14,6 +14,8 @@ interface SSHSession {
   client: Client;
   stream: ClientChannel;
   connectionId: string;
+  latency?: number;
+  lastPingTime?: number;
 }
 
 const sshSessions = new Map<string, SSHSession>();
@@ -93,14 +95,30 @@ function createMenu() {
 }
 
 function createWindow() {
-  // Determine icon path - __dirname is 'dist' folder, build is at same level as dist
-  const iconPath = process.platform === 'win32'
-    ? path.join(__dirname, '../build/icon.ico')
-    : path.join(__dirname, '../build/icon.png');
+  // Determine icon path based on environment
+  // In production, icons are in resources directory via extraResources
+  // In development, icons are in build directory
+  let iconPath: string;
+
+  if (app.isPackaged) {
+    // Production: icons copied to resources directory by electron-builder
+    iconPath = process.platform === 'win32'
+      ? path.join(process.resourcesPath, 'icon.ico')
+      : path.join(process.resourcesPath, 'icon.png');
+  } else {
+    // Development: icons in build directory
+    iconPath = process.platform === 'win32'
+      ? path.join(__dirname, '../build/icon.ico')
+      : path.join(__dirname, '../build/icon.png');
+  }
+
+  // Set window title based on environment
+  const windowTitle = app.isPackaged ? 'Archy' : '[DEV] Archy';
 
   mainWindow = new BrowserWindow({
     width: 1400,
     height: 900,
+    title: windowTitle,
     icon: iconPath,
     webPreferences: {
       nodeIntegration: false,
@@ -135,6 +153,11 @@ app.on('activate', () => {
   if (mainWindow === null) {
     createWindow();
   }
+});
+
+// Handle app info requests
+ipcMain.handle('is-packaged', async () => {
+  return app.isPackaged;
 });
 
 // Handle RDP connections
@@ -207,7 +230,7 @@ ipcMain.handle('connect-ssh', async (event, { host, port = 22, username, passwor
 });
 
 // Create persistent SSH session with xterm.js
-ipcMain.handle('create-ssh-session', async (event, { connectionId, host, port = 22, username, password }) => {
+ipcMain.handle('create-ssh-session', async (event, { connectionId, host, port = 22, username, password, privateKeyPath }) => {
   return new Promise((resolve, reject) => {
     const client = new Client();
 
@@ -269,14 +292,34 @@ ipcMain.handle('create-ssh-session', async (event, { connectionId, host, port = 
       reject(err);
     });
 
-    client.connect({
+    // Prepare connection config
+    const connectConfig: any = {
       host,
       port,
       username,
-      password,
       keepaliveInterval: 10000,
       keepaliveCountMax: 3,
-    });
+    };
+
+    // Use private key if provided, otherwise use password
+    if (privateKeyPath && privateKeyPath.trim() !== '') {
+      try {
+        const privateKey = fs.readFileSync(privateKeyPath, 'utf8');
+        connectConfig.privateKey = privateKey;
+
+        // If password is also provided, use it as passphrase for encrypted keys
+        if (password && password.trim() !== '') {
+          connectConfig.passphrase = password;
+        }
+      } catch (error) {
+        reject(new Error(`Failed to read private key file: ${error}`));
+        return;
+      }
+    } else if (password) {
+      connectConfig.password = password;
+    }
+
+    client.connect(connectConfig);
   });
 });
 
@@ -306,6 +349,57 @@ ipcMain.on('close-ssh-session', (event, { connectionId }) => {
   }
 });
 
+// Periodic latency measurement (measure every 3 seconds)
+// We measure latency by sending a space followed by backspace and timing the response
+// This is invisible but triggers response
+let latencyMeasurementActive = false;
+
+setInterval(() => {
+  if (latencyMeasurementActive) return; // Skip if previous measurement still running
+
+  sshSessions.forEach((session) => {
+    if (session.stream && !session.stream.destroyed) {
+      latencyMeasurementActive = true;
+      const startTime = Date.now();
+      let responded = false;
+
+      // Listen for ANY data response from the stream
+      const onData = (data: Buffer) => {
+        if (!responded) {
+          responded = true;
+          const latency = Date.now() - startTime;
+          session.latency = latency;
+          session.lastPingTime = Date.now();
+
+          // Send latency update to renderer
+          if (mainWindow && !mainWindow.isDestroyed()) {
+            mainWindow.webContents.send('ssh-latency', {
+              connectionId: session.connectionId,
+              latency: latency,
+            });
+          }
+
+          // Remove this listener after receiving the response
+          session.stream.removeListener('data', onData);
+          latencyMeasurementActive = false;
+        }
+      };
+
+      session.stream.on('data', onData);
+
+      // Send a space followed by backspace - invisible but triggers response
+      // This is more reliable than null byte for getting a server response
+      session.stream.write(' \b');
+
+      // Cleanup listener after timeout to avoid memory leaks
+      setTimeout(() => {
+        session.stream.removeListener('data', onData);
+        latencyMeasurementActive = false;
+      }, 2000);
+    }
+  });
+}, 3000);
+
 // Handle generic command execution (for browser, custom commands, etc.)
 ipcMain.handle('execute-command', async (event, { command }) => {
   return new Promise((resolve, reject) => {
@@ -319,6 +413,17 @@ ipcMain.handle('execute-command', async (event, { command }) => {
       }
     });
   });
+});
+
+// Show open dialog for file selection
+ipcMain.handle('show-open-dialog', async (event, options) => {
+  try {
+    const result = await dialog.showOpenDialog(mainWindow!, options);
+    return result;
+  } catch (error) {
+    console.error('Error showing open dialog:', error);
+    throw error;
+  }
 });
 
 // Save diagram - if filePath provided, save directly; otherwise show save dialog
@@ -461,4 +566,14 @@ ipcMain.handle('list-diagrams', async () => {
 ipcMain.handle('delete-diagram', async (event, name) => {
   store.delete(`diagram.${name}`);
   return { success: true };
+});
+
+// Clipboard operations
+ipcMain.handle('clipboard-write-text', async (event, text: string) => {
+  clipboard.writeText(text);
+  return { success: true };
+});
+
+ipcMain.handle('clipboard-read-text', async () => {
+  return clipboard.readText();
 });

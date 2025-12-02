@@ -25,6 +25,12 @@ const ContextMenu: React.FC<ContextMenuProps> = ({
 }) => {
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
   const getConnectionLabel = (connection: ConnectionConfig): string => {
+    // Use custom label if provided
+    if (connection.label && connection.label.trim() !== '') {
+      return connection.label;
+    }
+
+    // Fall back to default labels based on connection type
     switch (connection.type) {
       case 'rdp':
         return `Connect via RDP`;
