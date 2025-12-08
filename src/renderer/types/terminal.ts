@@ -12,6 +12,9 @@ export interface SSHConnection {
   error?: string;
   zoom?: number; // Terminal zoom level (default 1.0)
   latency?: number; // Connection latency in milliseconds
+  // Store credentials for retry functionality
+  password?: string;
+  privateKeyPath?: string;
 }
 
 export interface TerminalSession {
@@ -35,4 +38,6 @@ export interface TabContextType {
     privateKeyPath?: string;
   }) => Promise<void>;
   disconnectConnection: (id: string) => void;
+  removeConnection: (id: string) => void;
+  retryConnection: (id: string) => Promise<void>;
 }

@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { useTabContext } from '../contexts/TabContext';
 import TerminalEmulator from './TerminalEmulator';
+import ConnectionContextMenu from './ConnectionContextMenu';
 
 const ConnectionsTab: React.FC = () => {
-  const { connections, activeConnectionId, setActiveConnectionId, disconnectConnection } = useTabContext();
+  const { connections, activeConnectionId, setActiveConnectionId, disconnectConnection, removeConnection, retryConnection } = useTabContext();
   const [sidePanelCollapsed, setSidePanelCollapsed] = useState(false);
   const [, setForceUpdate] = useState(false);
+  const [contextMenu, setContextMenu] = useState<{ x: number; y: number; connectionId: string } | null>(null);
 
   // Helper functions defined first
   const getConnectionZoom = (connectionId: string): number => {
@@ -50,7 +52,7 @@ const ConnectionsTab: React.FC = () => {
   const clearDisconnected = () => {
     connections
       .filter(c => c.status === 'disconnected' || c.status === 'error')
-      .forEach(c => disconnectConnection(c.id));
+      .forEach(c => removeConnection(c.id));
   };
 
   const handleZoomChange = (connectionId: string, delta: number) => {
@@ -60,6 +62,41 @@ const ConnectionsTab: React.FC = () => {
 
     localStorage.setItem(`terminal-zoom-${connectionId}`, newZoom.toString());
     window.dispatchEvent(new CustomEvent('terminal-zoom-change', { detail: { connectionId, zoom: newZoom } }));
+  };
+
+  const handleContextMenu = (e: React.MouseEvent, connectionId: string) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setContextMenu({
+      x: e.clientX,
+      y: e.clientY,
+      connectionId,
+    });
+  };
+
+  const closeContextMenu = () => {
+    setContextMenu(null);
+  };
+
+  const handleRetry = () => {
+    if (contextMenu) {
+      retryConnection(contextMenu.connectionId);
+      closeContextMenu();
+    }
+  };
+
+  const handleDisconnect = () => {
+    if (contextMenu) {
+      disconnectConnection(contextMenu.connectionId);
+      closeContextMenu();
+    }
+  };
+
+  const handleRemove = () => {
+    if (contextMenu) {
+      removeConnection(contextMenu.connectionId);
+      closeContextMenu();
+    }
   };
 
   // Derived state
@@ -174,6 +211,7 @@ const ConnectionsTab: React.FC = () => {
               <div
                 key={conn.id}
                 onClick={() => setActiveConnectionId(conn.id)}
+                onContextMenu={(e) => handleContextMenu(e, conn.id)}
                 style={{
                   position: 'relative',
                   marginBottom: '8px',
@@ -599,6 +637,24 @@ const ConnectionsTab: React.FC = () => {
           </div>
         )}
       </div>
+
+      {/* Context Menu */}
+      {contextMenu && (() => {
+        const conn = connections.find(c => c.id === contextMenu.connectionId);
+        if (!conn) return null;
+
+        return (
+          <ConnectionContextMenu
+            x={contextMenu.x}
+            y={contextMenu.y}
+            connectionStatus={conn.status}
+            onRetry={handleRetry}
+            onDisconnect={handleDisconnect}
+            onRemove={handleRemove}
+            onClose={closeContextMenu}
+          />
+        );
+      })()}
 
       {/* CSS Animations */}
       <style>{`

@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain, Menu, dialog, clipboard } from 'electron';
+import { app, BrowserWindow, ipcMain, Menu, dialog, clipboard, session } from 'electron';
 import * as path from 'path';
 import * as fs from 'fs';
 import { exec } from 'child_process';
@@ -8,6 +8,21 @@ const Store = require('electron-store');
 const store = new Store.default();
 
 let mainWindow: BrowserWindow | null = null;
+
+// Fix cache permission issues - clear cache in development
+if (!app.isPackaged) {
+  app.commandLine.appendSwitch('disable-http-cache');
+  app.commandLine.appendSwitch('disk-cache-size', '0');
+  // Additional flags to reduce cache-related errors
+  app.commandLine.appendSwitch('disable-gpu-shader-disk-cache');
+  app.commandLine.appendSwitch('disable-gpu-program-cache');
+}
+
+// Set a custom user data path to avoid permission issues
+if (!app.isPackaged) {
+  const userDataPath = path.join(app.getPath('appData'), 'archy-dev');
+  app.setPath('userData', userDataPath);
+}
 
 // Store active SSH sessions
 interface SSHSession {
@@ -124,6 +139,8 @@ function createWindow() {
       nodeIntegration: false,
       contextIsolation: true,
       preload: path.join(__dirname, 'preload.js'),
+      // Use separate partitions for dev and production
+      partition: app.isPackaged ? 'persist:main' : 'persist:dev',
     },
   });
 
@@ -141,7 +158,21 @@ function createWindow() {
   });
 }
 
-app.whenReady().then(createWindow);
+app.whenReady().then(() => {
+  // Clear cache in development to avoid permission errors
+  if (!app.isPackaged) {
+    session.defaultSession.clearCache().catch(() => {
+      // Ignore cache clear errors - not critical
+    });
+    session.defaultSession.clearStorageData({
+      storages: ['cachestorage', 'serviceworkers']
+    }).catch(() => {
+      // Ignore storage clear errors - not critical
+    });
+  }
+
+  createWindow();
+});
 
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') {
@@ -299,6 +330,18 @@ ipcMain.handle('create-ssh-session', async (event, { connectionId, host, port = 
       username,
       keepaliveInterval: 10000,
       keepaliveCountMax: 3,
+      // Optimize for low-latency: use fast ciphers and no compression
+      algorithms: {
+        cipher: [
+          'aes128-gcm@openssh.com',
+          'aes128-ctr',
+          'aes192-ctr',
+          'aes256-ctr',
+        ],
+        compress: ['none', 'zlib@openssh.com'],
+      },
+      // Reduce initial connection timeout for faster failure detection
+      readyTimeout: 20000,
     };
 
     // Use private key if provided, otherwise use password

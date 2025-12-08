@@ -41,6 +41,8 @@ export const TabProvider: React.FC<TabProviderProps> = ({ children }) => {
       username: config.username,
       status: 'connecting',
       lastActivity: new Date(),
+      password: config.password,
+      privateKeyPath: config.privateKeyPath,
     };
 
     setConnections(prev => [...prev, newConnection]);
@@ -76,9 +78,33 @@ export const TabProvider: React.FC<TabProviderProps> = ({ children }) => {
   }, []);
 
   const disconnectConnection = useCallback((id: string) => {
+    // Close SSH session
     window.electron.closeSSHSession(id);
 
-    // Always remove completely and cleanup terminal
+    // Cleanup terminal but keep connection in list
+    cleanupTerminal(id);
+
+    // Update status to disconnected
+    setConnections(prev =>
+      prev.map(conn =>
+        conn.id === id
+          ? { ...conn, status: 'disconnected', lastActivity: new Date() }
+          : conn
+      )
+    );
+
+    // If this was the active connection, switch to another connected one
+    if (activeConnectionId === id) {
+      const remainingConnections = connections.filter(c => c.id !== id && c.status === 'connected');
+      setActiveConnectionId(remainingConnections.length > 0 ? remainingConnections[0].id : null);
+    }
+  }, [activeConnectionId, connections]);
+
+  const removeConnection = useCallback((id: string) => {
+    // Close SSH session
+    window.electron.closeSSHSession(id);
+
+    // Completely remove and cleanup terminal
     cleanupTerminal(id);
     setConnections(prev => prev.filter(c => c.id !== id));
 
@@ -88,6 +114,54 @@ export const TabProvider: React.FC<TabProviderProps> = ({ children }) => {
       setActiveConnectionId(remainingConnections.length > 0 ? remainingConnections[0].id : null);
     }
   }, [activeConnectionId, connections]);
+
+  const retryConnection = useCallback(async (id: string) => {
+    const connection = connections.find(c => c.id === id);
+    if (!connection) return;
+
+    // Cleanup old terminal if exists
+    cleanupTerminal(id);
+
+    // Reset to connecting state
+    setConnections(prev =>
+      prev.map(conn =>
+        conn.id === id
+          ? { ...conn, status: 'connecting', error: undefined, lastActivity: new Date() }
+          : conn
+      )
+    );
+
+    // Set as active connection
+    setActiveConnectionId(id);
+    setActiveTab('connections');
+
+    try {
+      await window.electron.createSSHSession({
+        connectionId: id,
+        host: connection.host,
+        port: connection.port,
+        username: connection.username,
+        password: connection.password || '',
+        privateKeyPath: connection.privateKeyPath,
+      });
+
+      setConnections(prev =>
+        prev.map(conn =>
+          conn.id === id
+            ? { ...conn, status: 'connected', lastActivity: new Date() }
+            : conn
+        )
+      );
+    } catch (error) {
+      setConnections(prev =>
+        prev.map(conn =>
+          conn.id === id
+            ? { ...conn, status: 'error', error: error instanceof Error ? error.message : 'Connection failed', lastActivity: new Date() }
+            : conn
+        )
+      );
+    }
+  }, [connections]);
 
   // Listen for latency updates
   useCallback(() => {
@@ -111,6 +185,8 @@ export const TabProvider: React.FC<TabProviderProps> = ({ children }) => {
     setActiveConnectionId,
     createConnection,
     disconnectConnection,
+    removeConnection,
+    retryConnection,
   };
 
   return <TabContext.Provider value={value}>{children}</TabContext.Provider>;

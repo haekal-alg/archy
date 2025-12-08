@@ -22,7 +22,53 @@ const terminalInstances = new Map<string, {
   onDataDisposable: { dispose: () => void };
   pasteHandler?: (e: Event) => void;
   keydownHandler?: (e: KeyboardEvent) => void;
+  writeQueue: string[]; // Queue for smooth character streaming
+  isWriting: boolean; // Track if currently processing write queue
 }>();
+
+// Process write queue with smooth character streaming
+const processWriteQueue = (connectionId: string) => {
+  const instance = terminalInstances.get(connectionId);
+  if (!instance || instance.isWriting || instance.writeQueue.length === 0) {
+    return;
+  }
+
+  instance.isWriting = true;
+  const data = instance.writeQueue.shift()!;
+
+  // For very short data or control sequences, write immediately
+  if (data.length <= 2 || data.includes('\x1b') || data.includes('\r') || data.includes('\n')) {
+    instance.terminal.write(data);
+    instance.isWriting = false;
+    // Process next item immediately
+    if (instance.writeQueue.length > 0) {
+      processWriteQueue(connectionId);
+    }
+    return;
+  }
+
+  // For longer data, stream character-by-character for smooth effect
+  let index = 0;
+  const streamChars = () => {
+    if (index < data.length) {
+      const char = data[index];
+      instance.terminal.write(char);
+      index++;
+
+      // Adaptive delay: faster for bursts, slower for single chars
+      const delay = instance.writeQueue.length > 3 ? 0.5 : 1.5;
+      setTimeout(streamChars, delay);
+    } else {
+      instance.isWriting = false;
+      // Process next queued item
+      if (instance.writeQueue.length > 0) {
+        processWriteQueue(connectionId);
+      }
+    }
+  };
+
+  streamChars();
+};
 
 // Export cleanup function
 export const cleanupTerminal = (connectionId: string) => {
@@ -150,6 +196,7 @@ const TerminalEmulator: React.FC<TerminalEmulatorProps> = ({ connectionId, isVis
           event.stopPropagation();
           window.electron.clipboard.readText().then((text: string) => {
             if (text) {
+              // Send to server - let server echo it back
               window.electron.sendSSHData(connectionId, text);
               showToast('Pasted from clipboard');
             }
@@ -169,13 +216,22 @@ const TerminalEmulator: React.FC<TerminalEmulatorProps> = ({ connectionId, isVis
 
       // Handle terminal input (user typing) - store disposable to prevent duplicates
       const onDataDisposable = terminal.onData((data) => {
+        // Send all user input directly to server - let server handle echo
         window.electron.sendSSHData(connectionId, data);
       });
 
       // Listen for data from SSH session - only ONE listener per terminal
       const dataListener = window.electron.onSSHData((data: { connectionId: string; data: string }) => {
         if (data.connectionId === connectionId) {
-          terminal.write(data.data);
+          const inst = instance!;
+
+          // Add data to write queue for smooth streaming
+          inst.writeQueue.push(data.data);
+
+          // Start processing if not already writing
+          if (!inst.isWriting) {
+            processWriteQueue(connectionId);
+          }
         }
       });
 
@@ -183,7 +239,17 @@ const TerminalEmulator: React.FC<TerminalEmulatorProps> = ({ connectionId, isVis
       window.electron.resizeSSHTerminal(connectionId, terminal.cols, terminal.rows);
 
       // Store instance with all cleanup functions
-      instance = { terminal, fitAddon, serializeAddon, dataListener, onDataDisposable, pasteHandler, keydownHandler };
+      instance = {
+        terminal,
+        fitAddon,
+        serializeAddon,
+        dataListener,
+        onDataDisposable,
+        pasteHandler,
+        keydownHandler,
+        writeQueue: [],
+        isWriting: false,
+      };
       terminalInstances.set(connectionId, instance);
     } else {
       // Reattach existing terminal to DOM if needed
