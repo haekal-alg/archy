@@ -22,53 +22,7 @@ const terminalInstances = new Map<string, {
   onDataDisposable: { dispose: () => void };
   pasteHandler?: (e: Event) => void;
   keydownHandler?: (e: KeyboardEvent) => void;
-  writeQueue: string[]; // Queue for smooth character streaming
-  isWriting: boolean; // Track if currently processing write queue
 }>();
-
-// Process write queue with smooth character streaming
-const processWriteQueue = (connectionId: string) => {
-  const instance = terminalInstances.get(connectionId);
-  if (!instance || instance.isWriting || instance.writeQueue.length === 0) {
-    return;
-  }
-
-  instance.isWriting = true;
-  const data = instance.writeQueue.shift()!;
-
-  // For very short data or control sequences, write immediately
-  if (data.length <= 2 || data.includes('\x1b') || data.includes('\r') || data.includes('\n')) {
-    instance.terminal.write(data);
-    instance.isWriting = false;
-    // Process next item immediately
-    if (instance.writeQueue.length > 0) {
-      processWriteQueue(connectionId);
-    }
-    return;
-  }
-
-  // For longer data, stream character-by-character for smooth effect
-  let index = 0;
-  const streamChars = () => {
-    if (index < data.length) {
-      const char = data[index];
-      instance.terminal.write(char);
-      index++;
-
-      // Adaptive delay: faster for bursts, slower for single chars
-      const delay = instance.writeQueue.length > 3 ? 0.5 : 1.5;
-      setTimeout(streamChars, delay);
-    } else {
-      instance.isWriting = false;
-      // Process next queued item
-      if (instance.writeQueue.length > 0) {
-        processWriteQueue(connectionId);
-      }
-    }
-  };
-
-  streamChars();
-};
 
 // Export cleanup function
 export const cleanupTerminal = (connectionId: string) => {
@@ -108,11 +62,18 @@ const TerminalEmulator: React.FC<TerminalEmulatorProps> = ({ connectionId, isVis
     let instance = terminalInstances.get(connectionId);
 
     if (!instance) {
-      // Create terminal instance
+      // Create terminal instance with performance optimizations
       const terminal = new Terminal({
-        cursorBlink: true,
+        cursorBlink: false, // Disable cursor blink for better performance
         fontSize: Math.round(14 * zoom),
         fontFamily: 'Consolas, "Courier New", monospace',
+
+        // Performance optimizations
+        scrollback: 10000, // Limit scrollback to prevent memory issues
+        fastScrollModifier: 'shift', // Enable fast scrolling with Shift key
+        fastScrollSensitivity: 5, // Scroll 5 lines per wheel tick when fast scrolling
+        // Note: Canvas renderer is now default in xterm.js 5.x, no need to specify
+
         theme: {
           background: '#000000',
           foreground: '#d4d4d4',
@@ -207,12 +168,11 @@ const TerminalEmulator: React.FC<TerminalEmulatorProps> = ({ connectionId, isVis
         return true;
       });
 
-      // Give terminal time to render before fitting
-      setTimeout(() => {
+      // Give terminal time to render before fitting (use requestAnimationFrame for better performance)
+      requestAnimationFrame(() => {
         fitAddon.fit();
-        // Force focus immediately after fit
         terminal.focus();
-      }, 10);
+      });
 
       // Handle terminal input (user typing) - store disposable to prevent duplicates
       const onDataDisposable = terminal.onData((data) => {
@@ -223,15 +183,8 @@ const TerminalEmulator: React.FC<TerminalEmulatorProps> = ({ connectionId, isVis
       // Listen for data from SSH session - only ONE listener per terminal
       const dataListener = window.electron.onSSHData((data: { connectionId: string; data: string }) => {
         if (data.connectionId === connectionId) {
-          const inst = instance!;
-
-          // Add data to write queue for smooth streaming
-          inst.writeQueue.push(data.data);
-
-          // Start processing if not already writing
-          if (!inst.isWriting) {
-            processWriteQueue(connectionId);
-          }
+          // Write data directly to terminal - xterm.js handles buffering and rendering efficiently
+          instance!.terminal.write(data.data);
         }
       });
 
@@ -247,8 +200,6 @@ const TerminalEmulator: React.FC<TerminalEmulatorProps> = ({ connectionId, isVis
         onDataDisposable,
         pasteHandler,
         keydownHandler,
-        writeQueue: [],
-        isWriting: false,
       };
       terminalInstances.set(connectionId, instance);
     } else {
@@ -257,10 +208,10 @@ const TerminalEmulator: React.FC<TerminalEmulatorProps> = ({ connectionId, isVis
       if (element && instance && !element.contains(instance.terminal.element!)) {
         instance.terminal.open(element);
         const inst = instance; // Capture for closure
-        setTimeout(() => {
+        requestAnimationFrame(() => {
           inst.fitAddon.fit();
           inst.terminal.focus();
-        }, 10);
+        });
       }
     }
 
@@ -276,17 +227,11 @@ const TerminalEmulator: React.FC<TerminalEmulatorProps> = ({ connectionId, isVis
 
     // Fit terminal when it becomes visible
     if (isVisible && instance) {
-      // Use multiple attempts to ensure focus
-      setTimeout(() => {
+      // Single focus attempt using requestAnimationFrame for optimal timing
+      requestAnimationFrame(() => {
         instance.fitAddon.fit();
         instance.terminal.focus();
-      }, 0);
-      setTimeout(() => {
-        instance.terminal.focus();
-      }, 50);
-      setTimeout(() => {
-        instance.terminal.focus();
-      }, 150);
+      });
     }
 
     // Cleanup on unmount (but keep terminal instance alive)

@@ -35,6 +35,42 @@ interface SSHSession {
 
 const sshSessions = new Map<string, SSHSession>();
 
+// Data buffering for improved terminal performance
+interface BufferState {
+  buffer: Buffer[];
+  timer: NodeJS.Timeout | null;
+  lastFlush: number;
+}
+
+const dataBuffers = new Map<string, BufferState>();
+
+// Buffer configuration - optimized for 60fps rendering and low latency
+const BUFFER_TIME_MS = 16; // ~60fps, balance between latency and batching
+const BUFFER_SIZE_BYTES = 8192; // 8KB max buffer before force flush
+const MIN_FLUSH_INTERVAL_MS = 8; // Minimum time between flushes
+
+function flushBuffer(connectionId: string) {
+  const bufferState = dataBuffers.get(connectionId);
+  if (!bufferState || bufferState.buffer.length === 0) return;
+
+  // Concatenate all buffered chunks into single buffer
+  const combinedBuffer = Buffer.concat(bufferState.buffer);
+  const dataStr = combinedBuffer.toString('utf-8');
+
+  // Send single IPC message with batched data
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    mainWindow.webContents.send('ssh-data', {
+      connectionId,
+      data: dataStr,
+    });
+  }
+
+  // Reset buffer state
+  bufferState.buffer = [];
+  bufferState.lastFlush = Date.now();
+  bufferState.timer = null;
+}
+
 function createMenu() {
   const template: any = [
     {
@@ -197,15 +233,39 @@ ipcMain.handle('connect-rdp', async (event, { host, username, password }) => {
     const rdpContent = `full address:s:${host}
 username:s:${username}
 prompt for credentials:i:0
-authentication level:i:0`;
+authentication level:i:0
+enablecredsspsupport:i:0
+disableconnectionsharing:i:1
+alternate shell:s:
+shell working directory:s:
+gatewayhostname:s:
+gatewayusagemethod:i:4
+gatewaycredentialssource:i:4
+gatewayprofileusagemethod:i:0
+promptcredentialonce:i:0
+gatewaybrokeringtype:i:0
+use redirection server name:i:0
+rdgiskdcproxy:i:0
+kdcproxyname:s:`;
 
     const tempPath = path.join(app.getPath('temp'), 'temp_connection.rdp');
     fs.writeFileSync(tempPath, rdpContent);
 
-    const command = `cmdkey /generic:${host} /user:${username} /pass:${password} && mstsc "${tempPath}"`;
+    // IMPORTANT: For RDP, cmdkey requires TERMSRV/ prefix
+    const credentialTarget = `TERMSRV/${host}`;
 
-    exec(command, (error) => {
+    // First, delete any existing credentials for this host
+    const deleteCmd = `cmdkey /delete:${credentialTarget}`;
+
+    // Then add the new credentials and launch mstsc
+    const addCmd = `cmdkey /generic:${credentialTarget} /user:${username} /pass:"${password}"`;
+    const launchCmd = `mstsc "${tempPath}"`;
+
+    const fullCommand = `${deleteCmd} 2>nul & ${addCmd} && ${launchCmd}`;
+
+    exec(fullCommand, (error) => {
       if (error) {
+        console.error('RDP connection error:', error);
         reject(error);
       } else {
         resolve({ success: true });
@@ -280,13 +340,38 @@ ipcMain.handle('create-ssh-session', async (event, { connectionId, host, port = 
         // Store the session
         sshSessions.set(connectionId, { client, stream, connectionId });
 
-        // Forward stream data to renderer
+        // Forward stream data to renderer with buffering for better performance
         stream.on('data', (data: Buffer) => {
-          if (mainWindow && !mainWindow.isDestroyed()) {
-            mainWindow.webContents.send('ssh-data', {
-              connectionId,
-              data: data.toString('utf-8'),
-            });
+          let bufferState = dataBuffers.get(connectionId);
+
+          if (!bufferState) {
+            bufferState = { buffer: [], timer: null, lastFlush: Date.now() };
+            dataBuffers.set(connectionId, bufferState);
+          }
+
+          bufferState.buffer.push(data);
+
+          // Calculate current buffer size
+          const totalSize = bufferState.buffer.reduce((sum, buf) => sum + buf.length, 0);
+
+          // Force flush if buffer is too large (prevents excessive memory usage)
+          if (totalSize >= BUFFER_SIZE_BYTES) {
+            if (bufferState.timer) {
+              clearTimeout(bufferState.timer);
+            }
+            flushBuffer(connectionId);
+            return;
+          }
+
+          // Schedule flush if not already scheduled
+          if (!bufferState.timer) {
+            // Respect minimum flush interval to prevent excessive IPC
+            const timeSinceLastFlush = Date.now() - bufferState.lastFlush;
+            const delay = Math.max(0, MIN_FLUSH_INTERVAL_MS - timeSinceLastFlush);
+
+            bufferState.timer = setTimeout(() => {
+              flushBuffer(connectionId);
+            }, Math.max(delay, BUFFER_TIME_MS));
           }
         });
 
@@ -298,6 +383,14 @@ ipcMain.handle('create-ssh-session', async (event, { connectionId, host, port = 
         }, 300);
 
         stream.on('close', () => {
+          // Cleanup buffer state
+          const bufferState = dataBuffers.get(connectionId);
+          if (bufferState) {
+            if (bufferState.timer) clearTimeout(bufferState.timer);
+            flushBuffer(connectionId); // Flush any remaining data
+            dataBuffers.delete(connectionId);
+          }
+
           sshSessions.delete(connectionId);
           if (mainWindow && !mainWindow.isDestroyed()) {
             mainWindow.webContents.send('ssh-closed', { connectionId });
@@ -306,11 +399,31 @@ ipcMain.handle('create-ssh-session', async (event, { connectionId, host, port = 
         });
 
         stream.stderr.on('data', (data: Buffer) => {
-          if (mainWindow && !mainWindow.isDestroyed()) {
-            mainWindow.webContents.send('ssh-data', {
-              connectionId,
-              data: data.toString('utf-8'),
-            });
+          // Buffer stderr data same as stdout for consistency
+          let bufferState = dataBuffers.get(connectionId);
+
+          if (!bufferState) {
+            bufferState = { buffer: [], timer: null, lastFlush: Date.now() };
+            dataBuffers.set(connectionId, bufferState);
+          }
+
+          bufferState.buffer.push(data);
+
+          const totalSize = bufferState.buffer.reduce((sum, buf) => sum + buf.length, 0);
+
+          if (totalSize >= BUFFER_SIZE_BYTES) {
+            if (bufferState.timer) clearTimeout(bufferState.timer);
+            flushBuffer(connectionId);
+            return;
+          }
+
+          if (!bufferState.timer) {
+            const timeSinceLastFlush = Date.now() - bufferState.lastFlush;
+            const delay = Math.max(0, MIN_FLUSH_INTERVAL_MS - timeSinceLastFlush);
+
+            bufferState.timer = setTimeout(() => {
+              flushBuffer(connectionId);
+            }, Math.max(delay, BUFFER_TIME_MS));
           }
         });
 
