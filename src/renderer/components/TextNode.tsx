@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Handle, Position, NodeProps } from '@xyflow/react';
 import CONFIG from '../../config';
 import theme from '../../theme';
@@ -15,6 +15,7 @@ export interface TextNodeData {
 
 const TextNode: React.FC<NodeProps> = ({ data, selected }) => {
   const textData = data as unknown as TextNodeData;
+  const [isHovered, setIsHovered] = useState(false);
 
   const fontSize = textData.fontSize || 14;
   const fontColor = textData.fontColor || theme.text.primary;
@@ -35,12 +36,17 @@ const TextNode: React.FC<NodeProps> = ({ data, selected }) => {
         minWidth: '50px',
         maxWidth: '300px',
         wordWrap: 'break-word',
-        boxShadow: selected ? `0 0 0 2px ${theme.border.focus}` : 'none',
+        boxShadow: selected
+          ? `0 0 0 3px #9ca3af`
+          : isHovered
+            ? theme.shadow.sm
+            : 'none',
         cursor: 'pointer',
-        transition: theme.transition.normal,
         position: 'relative',
       }}
       className="text-node"
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
     >
       {/* Connection Handles */}
       <Handle

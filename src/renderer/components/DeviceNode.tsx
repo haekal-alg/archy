@@ -1,9 +1,11 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Handle, Position, NodeProps } from '@xyflow/react';
 import { DeviceData } from '../App';
+import theme from '../../theme';
 
-const DeviceNode: React.FC<NodeProps> = ({ data }) => {
+const DeviceNode: React.FC<NodeProps> = ({ data, selected }) => {
   const deviceData = data as unknown as DeviceData;
+  const [isHovered, setIsHovered] = useState(false);
 
   const getIcon = () => {
     switch (deviceData.type) {
@@ -19,27 +21,35 @@ const DeviceNode: React.FC<NodeProps> = ({ data }) => {
   const getColor = () => {
     switch (deviceData.type) {
       case 'windows':
-        return '#0078d4';
+        return theme.device.windows;
       case 'linux':
-        return '#f7a41d';
+        return theme.device.linux;
       default:
-        return '#666';
+        return theme.text.tertiary;
     }
   };
+
+  const borderColor = getColor();
 
   return (
     <div
       style={{
-        padding: '15px',
-        borderRadius: '8px',
-        border: `2px solid ${getColor()}`,
-        background: 'white',
-        minWidth: '150px',
-        boxShadow: '0 4px 6px rgba(0,0,0,0.1)',
+        padding: theme.spacing.lg,
+        borderRadius: theme.radius.xl,
+        border: selected ? `2px solid ${borderColor}` : `2px solid ${borderColor}`,
+        background: isHovered ? theme.gradient.nodeHover : theme.gradient.nodeDefault,
+        minWidth: '140px',
+        maxWidth: '200px',
+        boxShadow: selected
+          ? `${theme.shadow.lg}, 0 0 0 3px #9ca3af`
+          : isHovered
+            ? theme.shadow.lg
+            : theme.shadow.md,
         cursor: 'pointer',
-        transition: 'all 0.2s',
       }}
       className="device-node"
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
     >
       {/* Connection Handles - All 4 directions */}
       <Handle type="source" position={Position.Top} id="top" style={{ background: getColor() }} />
@@ -52,19 +62,31 @@ const DeviceNode: React.FC<NodeProps> = ({ data }) => {
       <Handle type="target" position={Position.Left} id="left-target" style={{ background: getColor() }} />
 
       <div style={{ textAlign: 'center' }}>
-        <div style={{ fontSize: '32px', marginBottom: '8px' }}>{getIcon()}</div>
-        <div style={{ fontWeight: 'bold', marginBottom: '4px' }}>{deviceData.label}</div>
+        <div style={{ fontSize: '32px', marginBottom: theme.spacing.md }}>{getIcon()}</div>
+        <div style={{
+          fontWeight: theme.fontWeight.bold,
+          marginBottom: theme.spacing.xs,
+          fontSize: theme.fontSize.md,
+          color: theme.text.primary
+        }}>
+          {deviceData.label}
+        </div>
         {deviceData.host && (
-          <div style={{ fontSize: '12px', color: '#666' }}>{deviceData.host}</div>
+          <div style={{
+            fontSize: theme.fontSize.sm,
+            color: theme.text.secondary
+          }}>
+            {deviceData.host}
+          </div>
         )}
         <div
           style={{
-            fontSize: '10px',
-            marginTop: '6px',
-            padding: '4px 8px',
-            background: getColor(),
-            color: 'white',
-            borderRadius: '4px',
+            fontSize: theme.fontSize.xs,
+            marginTop: theme.spacing.sm,
+            padding: `${theme.spacing.xs} ${theme.spacing.md}`,
+            background: borderColor,
+            color: theme.text.primary,
+            borderRadius: theme.radius.sm,
           }}
         >
           {deviceData.type.toUpperCase()}

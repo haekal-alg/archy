@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import theme from '../../theme';
 
 interface ConnectionContextMenuProps {
@@ -11,6 +11,59 @@ interface ConnectionContextMenuProps {
   onClose: () => void;
 }
 
+// Icons for menu items
+const RetryIcon = () => (
+  <svg width="14" height="14" viewBox="0 0 14 14" fill="none" style={{ marginRight: '8px' }}>
+    <path d="M12 7C12 9.76142 9.76142 12 7 12C4.23858 12 2 9.76142 2 7C2 4.23858 4.23858 2 7 2C8.38071 2 9.61929 2.57857 10.5 3.5M10.5 3.5V1M10.5 3.5H8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+  </svg>
+);
+
+const DisconnectIcon = () => (
+  <svg width="14" height="14" viewBox="0 0 14 14" fill="none" style={{ marginRight: '8px' }}>
+    <path d="M5 2V5M9 9V12M2 5H5M9 12H12M3.5 3.5L5.5 5.5M8.5 8.5L10.5 10.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+    <circle cx="7" cy="7" r="2" stroke="currentColor" strokeWidth="1.5" fill="none" />
+  </svg>
+);
+
+const RemoveIcon = () => (
+  <svg width="14" height="14" viewBox="0 0 14 14" fill="none" style={{ marginRight: '8px' }}>
+    <path d="M10.5 3.5L3.5 10.5M3.5 3.5L10.5 10.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+  </svg>
+);
+
+// Shared menu styles
+const getMenuContainerStyle = (isVisible: boolean) => ({
+  background: 'rgba(50, 50, 55, 0.65)',
+  backdropFilter: 'blur(60px) saturate(200%) brightness(1.1)',
+  WebkitBackdropFilter: 'blur(60px) saturate(200%) brightness(1.1)',
+  border: '1px solid rgba(255, 255, 255, 0.25)',
+  borderTop: '1px solid rgba(255, 255, 255, 0.35)',
+  borderRadius: '10px',
+  boxShadow: '0 8px 32px rgba(0, 0, 0, 0.5), 0 2px 8px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.1)',
+  opacity: isVisible ? 1 : 0,
+  transform: isVisible ? 'scale(1)' : 'scale(0.95)',
+  transition: 'opacity 0.2s ease-out, transform 0.2s ease-out',
+  transformOrigin: 'top left',
+});
+
+const getMenuItemStyle = (isHovered: boolean, isDanger: boolean = false) => ({
+  width: '100%',
+  padding: '6px 12px',
+  border: 'none',
+  background: isHovered
+    ? (isDanger ? 'rgba(255, 92, 92, 0.25)' : 'rgba(255, 255, 255, 0.2)')
+    : 'transparent',
+  borderRadius: '6px',
+  color: isDanger ? '#ff5c5c' : theme.text.primary,
+  textAlign: 'left' as const,
+  cursor: 'pointer',
+  fontSize: theme.fontSize.sm,
+  transition: 'background 0.12s ease-out',
+  outline: 'none',
+  display: 'flex',
+  alignItems: 'center',
+});
+
 const ConnectionContextMenu: React.FC<ConnectionContextMenuProps> = ({
   x,
   y,
@@ -21,6 +74,13 @@ const ConnectionContextMenu: React.FC<ConnectionContextMenuProps> = ({
   onClose,
 }) => {
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
+  const [isVisible, setIsVisible] = useState(false);
+
+  // Entrance animation on mount
+  useEffect(() => {
+    const timer = setTimeout(() => setIsVisible(true), 10);
+    return () => clearTimeout(timer);
+  }, []);
 
   return (
     <>
@@ -48,13 +108,7 @@ const ConnectionContextMenu: React.FC<ConnectionContextMenuProps> = ({
           position: 'fixed',
           top: y,
           left: x,
-          background: 'rgba(50, 50, 55, 0.65)',
-          backdropFilter: 'blur(60px) saturate(200%) brightness(1.1)',
-          WebkitBackdropFilter: 'blur(60px) saturate(200%) brightness(1.1)',
-          border: '1px solid rgba(255, 255, 255, 0.25)',
-          borderTop: '1px solid rgba(255, 255, 255, 0.35)',
-          borderRadius: '10px',
-          boxShadow: '0 8px 32px rgba(0, 0, 0, 0.5), 0 2px 8px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.1)',
+          ...getMenuContainerStyle(isVisible),
           zIndex: 9999,
           minWidth: '180px',
           padding: '4px',
@@ -76,20 +130,9 @@ const ConnectionContextMenu: React.FC<ConnectionContextMenuProps> = ({
               }}
               onMouseEnter={() => setHoveredIndex(retryIndex)}
               onMouseLeave={() => setHoveredIndex(null)}
-              style={{
-                width: '100%',
-                padding: '6px 12px',
-                border: 'none',
-                background: isHovered ? 'rgba(255, 255, 255, 0.2)' : 'transparent',
-                borderRadius: '6px',
-                color: theme.text.primary,
-                textAlign: 'left',
-                cursor: 'pointer',
-                fontSize: theme.fontSize.sm,
-                transition: 'background 0.12s ease-out',
-                outline: 'none',
-              }}
+              style={getMenuItemStyle(isHovered)}
             >
+              <RetryIcon />
               Retry Connection
             </button>
           );
@@ -109,20 +152,9 @@ const ConnectionContextMenu: React.FC<ConnectionContextMenuProps> = ({
               }}
               onMouseEnter={() => setHoveredIndex(disconnectIndex)}
               onMouseLeave={() => setHoveredIndex(null)}
-              style={{
-                width: '100%',
-                padding: '6px 12px',
-                border: 'none',
-                background: isHovered ? 'rgba(255, 255, 255, 0.2)' : 'transparent',
-                borderRadius: '6px',
-                color: theme.text.primary,
-                textAlign: 'left',
-                cursor: 'pointer',
-                fontSize: theme.fontSize.sm,
-                transition: 'background 0.12s ease-out',
-                outline: 'none',
-              }}
+              style={getMenuItemStyle(isHovered)}
             >
+              <DisconnectIcon />
               Disconnect
             </button>
           );
@@ -148,20 +180,9 @@ const ConnectionContextMenu: React.FC<ConnectionContextMenuProps> = ({
               }}
               onMouseEnter={() => setHoveredIndex(removeIndex)}
               onMouseLeave={() => setHoveredIndex(null)}
-              style={{
-                width: '100%',
-                padding: '6px 12px',
-                border: 'none',
-                background: isHovered ? 'rgba(255, 92, 92, 0.25)' : 'transparent',
-                borderRadius: '6px',
-                color: '#ff5c5c',
-                textAlign: 'left',
-                cursor: 'pointer',
-                fontSize: theme.fontSize.sm,
-                transition: 'background 0.12s ease-out',
-                outline: 'none',
-              }}
+              style={getMenuItemStyle(isHovered, true)}
             >
+              <RemoveIcon />
               Remove
             </button>
           );

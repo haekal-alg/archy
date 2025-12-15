@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { Node, Edge } from '@xyflow/react';
 import { EnhancedDeviceData, ConnectionConfig } from './EnhancedDeviceNode';
 import { GroupNodeData } from './GroupNode';
-import { CustomEdgeData, MarkerType } from './CustomEdge';
 import { TextNodeData } from './TextNode';
 import theme from '../../theme';
 
@@ -10,7 +9,7 @@ interface StylePanelProps {
   selectedNode: Node | null;
   selectedEdge: Edge | null;
   onUpdateNode: (nodeId: string, data: Partial<EnhancedDeviceData | GroupNodeData | TextNodeData>) => void;
-  onUpdateEdge: (edgeId: string, data: Partial<CustomEdgeData>) => void;
+  onUpdateEdge: (edgeId: string, data: any) => void;
   onMoveToFront?: (nodeId: string) => void;
   onMoveToBack?: (nodeId: string) => void;
   onDeleteNode?: (nodeId: string) => void;
@@ -79,8 +78,8 @@ const StylePanel: React.FC<StylePanelProps> = ({
   const [edgeStyle, setEdgeStyle] = useState<'solid' | 'dashed' | 'dotted'>('solid');
   const [edgeRouting, setEdgeRouting] = useState<'bezier' | 'smoothstep' | 'straight'>('bezier');
   const [edgeAnimated, setEdgeAnimated] = useState(false);
-  const [edgeMarkerStart, setEdgeMarkerStart] = useState<MarkerType>('none');
-  const [edgeMarkerEnd, setEdgeMarkerEnd] = useState<MarkerType>('arrow');
+  const [edgeMarkerStart, setEdgeMarkerStart] = useState<string>('none');
+  const [edgeMarkerEnd, setEdgeMarkerEnd] = useState<string>('arrow');
 
   // Background opacity and transparency controls
   const [textBgOpacity, setTextBgOpacity] = useState(100);
@@ -252,14 +251,30 @@ const StylePanel: React.FC<StylePanelProps> = ({
 
   useEffect(() => {
     if (selectedEdge) {
-      const data = (selectedEdge.data as unknown as CustomEdgeData) || {};
-      setEdgeLabel(data.label || '');
-      setEdgeColor(data.color || '#000000');
-      setEdgeStyle(data.style || 'solid');
-      setEdgeRouting(data.routingType || 'bezier');
-      setEdgeAnimated(data.animated || false);
-      setEdgeMarkerStart(data.markerStart || 'none');
-      setEdgeMarkerEnd(data.markerEnd || 'arrow');
+      const data = selectedEdge.data || {};
+      const style: any = selectedEdge.style || {};
+      setEdgeLabel((selectedEdge as any).label || '');
+      setEdgeColor(style.stroke || data.customColor || '#ffffff');
+
+      // Read line style from strokeDasharray
+      const dasharray = style.strokeDasharray;
+      let lineStyle: 'solid' | 'dashed' | 'dotted' = 'solid';
+      if (dasharray === '5 5') lineStyle = 'dashed';
+      else if (dasharray === '1 3') lineStyle = 'dotted';
+      else if (data.lineStyle && (data.lineStyle === 'solid' || data.lineStyle === 'dashed' || data.lineStyle === 'dotted')) {
+        lineStyle = data.lineStyle;
+      }
+      setEdgeStyle(lineStyle);
+
+      const routing = data.routingType;
+      setEdgeRouting(
+        routing === 'bezier' || routing === 'smoothstep' || routing === 'straight'
+          ? routing
+          : 'bezier'
+      );
+      setEdgeAnimated(selectedEdge.animated || false);
+      setEdgeMarkerStart('none'); // Simplified for native edges
+      setEdgeMarkerEnd('arrow'); // Simplified for native edges
     }
   }, [selectedEdge]);
 
@@ -303,11 +318,9 @@ const StylePanel: React.FC<StylePanelProps> = ({
       onUpdateEdge(selectedEdge.id, {
         label: edgeLabel,
         color: edgeColor,
-        style: edgeStyle,
         routingType: edgeRouting,
         animated: edgeAnimated,
-        markerStart: edgeMarkerStart,
-        markerEnd: edgeMarkerEnd
+        style: edgeStyle
       });
     }
   };
@@ -2143,7 +2156,7 @@ const StylePanel: React.FC<StylePanelProps> = ({
               <select
                 value={edgeMarkerStart}
                 onChange={(e) => {
-                  const newMarker = e.target.value as MarkerType;
+                  const newMarker = e.target.value;
                   setEdgeMarkerStart(newMarker);
                   if (selectedEdge) {
                     onUpdateEdge(selectedEdge.id, {
@@ -2196,7 +2209,7 @@ const StylePanel: React.FC<StylePanelProps> = ({
               <select
                 value={edgeMarkerEnd}
                 onChange={(e) => {
-                  const newMarker = e.target.value as MarkerType;
+                  const newMarker = e.target.value;
                   setEdgeMarkerEnd(newMarker);
                   if (selectedEdge) {
                     onUpdateEdge(selectedEdge.id, {

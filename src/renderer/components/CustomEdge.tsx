@@ -9,7 +9,7 @@ import {
 } from '@xyflow/react';
 import theme from '../../theme';
 
-export type MarkerType = 'arrow' | 'arrow-open' | 'diamond' | 'diamond-filled' | 'circle' | 'circle-filled' | 'square' | 'square-filled' | 'cross' | 'bar' | 'none';
+export type MarkerType = 'arrow' | 'none';
 
 export interface CustomEdgeData {
   label?: string;
@@ -98,10 +98,10 @@ const CustomEdge: React.FC<EdgeProps> = ({
         markerEnd={markerEndUrl}
         style={{
           stroke: color,
-          strokeWidth: selected ? 3 : 2,
+          strokeWidth: selected ? 6 : 4,
           strokeDasharray,
           opacity: selected ? 1 : 0.8,
-          filter: selected ? `drop-shadow(0 0 4px ${theme.shadow.md})` : 'none',
+          transition: theme.transition.normal,
         }}
       />
 
@@ -113,7 +113,7 @@ const CustomEdge: React.FC<EdgeProps> = ({
             d={path}
             fill="none"
             stroke={color}
-            strokeWidth="8"
+            strokeWidth="10"
             style={{
               filter: 'blur(8px)',
               opacity: 0.6,
@@ -125,7 +125,7 @@ const CustomEdge: React.FC<EdgeProps> = ({
             d={path}
             fill="none"
             stroke={color}
-            strokeWidth="4"
+            strokeWidth="6"
             style={{
               filter: 'blur(4px)',
               opacity: 0.8,
@@ -137,7 +137,7 @@ const CustomEdge: React.FC<EdgeProps> = ({
             d={path}
             fill="none"
             stroke={color}
-            strokeWidth="2"
+            strokeWidth="4"
             strokeDasharray="5 5"
             style={{
               animation: 'dashdraw 0.5s linear infinite',
@@ -187,6 +187,14 @@ const CustomEdge: React.FC<EdgeProps> = ({
             50% {
               opacity: 1;
             }
+          }
+          /* Hover effect for edges - using CSS hover */
+          .react-flow__edge-path {
+            transition: stroke-width 0.2s ease, filter 0.2s ease;
+          }
+          .react-flow__edge:hover .react-flow__edge-path {
+            stroke-width: 5;
+            filter: brightness(1.2);
           }
         `}
       </style>

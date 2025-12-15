@@ -79,6 +79,18 @@ export const darkTheme = {
     gray: '#8892a6',
   },
 
+  // Status Colors (for notifications and states)
+  status: {
+    success: '#51cf66',
+    error: '#ff6b6b',
+    warning: '#ffa94d',
+    info: '#4dabf7',
+    successBg: 'rgba(81, 207, 102, 0.1)',
+    errorBg: 'rgba(255, 107, 107, 0.1)',
+    warningBg: 'rgba(255, 169, 77, 0.1)',
+    infoBg: 'rgba(77, 171, 247, 0.1)',
+  },
+
   // Shadows (lighter for dark theme)
   shadow: {
     xs: '0 1px 2px rgba(0, 0, 0, 0.5)',
@@ -88,6 +100,15 @@ export const darkTheme = {
     xl: '0 12px 24px rgba(0, 0, 0, 0.8)',
     glow: '0 0 20px rgba(77, 124, 254, 0.3)',
     glowStrong: '0 0 30px rgba(77, 124, 254, 0.5)',
+  },
+
+  // Elevation Shadows (for layered UI elements)
+  elevation: {
+    0: 'none',
+    1: '0 1px 3px rgba(0, 0, 0, 0.12)',
+    2: '0 4px 6px rgba(0, 0, 0, 0.12)',
+    3: '0 10px 20px rgba(0, 0, 0, 0.15)',
+    4: '0 20px 40px rgba(0, 0, 0, 0.2)',
   },
 
   // Gradients
@@ -147,6 +168,26 @@ export const darkTheme = {
     fast: 'all 0.15s ease',
     normal: 'all 0.2s ease',
     slow: 'all 0.3s ease',
+  },
+
+  // Focus States (for accessibility)
+  focus: {
+    ring: '0 0 0 3px rgba(77, 124, 254, 0.4)',
+    ringOffset: '2px',
+  },
+
+  // Animation Tokens
+  animation: {
+    duration: {
+      fast: '150ms',
+      normal: '250ms',
+      slow: '350ms',
+    },
+    easing: {
+      easeIn: 'cubic-bezier(0.4, 0, 1, 1)',
+      easeOut: 'cubic-bezier(0, 0, 0.2, 1)',
+      easeInOut: 'cubic-bezier(0.4, 0, 0.2, 1)',
+    },
   },
 
   // Z-index

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Handle, Position, NodeProps, NodeResizer } from '@xyflow/react';
 import CONFIG from '../../config';
 import { ConnectionConfig } from './EnhancedDeviceNode';
@@ -20,6 +20,7 @@ export interface GroupNodeData {
 
 const GroupNode: React.FC<NodeProps> = ({ data, selected }) => {
   const groupData = data as unknown as GroupNodeData;
+  const [isHovered, setIsHovered] = useState(false);
 
   const backgroundColor = groupData.backgroundColor || theme.accent.pink + '40';
   const borderColor = groupData.borderColor || theme.accent.pink;
@@ -139,12 +140,17 @@ const GroupNode: React.FC<NodeProps> = ({ data, selected }) => {
           width: '100%',
           height: '100%',
           background: backgroundColor,
-          border: `3px ${borderStyle} ${borderColor}`,
+          border: selected ? `3px ${borderStyle} ${borderColor}` : `3px ${borderStyle} ${borderColor}`,
           borderRadius: theme.radius.xl,
           padding: theme.spacing.xl,
           position: 'relative',
-          boxShadow: 'none',
+          boxShadow: selected
+            ? `${isHovered ? theme.shadow.md : 'none'}, 0 0 0 3px #9ca3af`
+            : isHovered ? theme.shadow.md : 'none',
+          cursor: 'pointer',
         }}
+        onMouseEnter={() => setIsHovered(true)}
+        onMouseLeave={() => setIsHovered(false)}
       >
         {/* Title Bar - only show if label exists */}
         {groupData.label && (

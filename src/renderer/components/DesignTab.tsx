@@ -11,9 +11,11 @@ import {
   EdgeChange,
   Connection,
   ReactFlowInstance,
+  EdgeTypes,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import { ToolType } from '../types/tools';
+import CustomEdge from './CustomEdge';
 
 interface DesignTabProps {
   nodes: Node[];
@@ -31,13 +33,17 @@ interface DesignTabProps {
   onDrop: (event: React.DragEvent) => void;
   onDragOver: (event: React.DragEvent) => void;
   nodeTypes: any;
-  edgeTypes: any;
   reactFlowWrapper: React.RefObject<HTMLDivElement | null>;
   activeTool: ToolType;
   onTemporaryHandToolStart: () => void;
   onTemporaryHandToolEnd: () => void;
   children?: React.ReactNode;
 }
+
+// Define edge types
+const edgeTypes: EdgeTypes = {
+  custom: CustomEdge,
+};
 
 const DesignTab: React.FC<DesignTabProps> = ({
   nodes,
@@ -55,7 +61,6 @@ const DesignTab: React.FC<DesignTabProps> = ({
   onDrop,
   onDragOver,
   nodeTypes,
-  edgeTypes,
   reactFlowWrapper,
   activeTool,
   onTemporaryHandToolStart,
@@ -63,10 +68,8 @@ const DesignTab: React.FC<DesignTabProps> = ({
   children,
 }) => {
   // Configure ReactFlow behavior based on active tool
-  console.log('DesignTab render - activeTool prop:', activeTool);
   const isHandTool = activeTool === 'hand';
   const isSelectionTool = activeTool === 'selection';
-  console.log('isHandTool:', isHandTool, 'isSelectionTool:', isSelectionTool);
 
   // Hand tool: enable panning with left or middle mouse, disable node dragging
   // Selection tool: enable panning with middle mouse only, enable node dragging
@@ -80,40 +83,40 @@ const DesignTab: React.FC<DesignTabProps> = ({
   // Set cursor based on tool - using state-based cursor
   const [currentCursor, setCurrentCursor] = useState<string>('default');
   const [isDragging, setIsDragging] = useState(false);
+  const [isMiddleMouseDragging, setIsMiddleMouseDragging] = useState(false);
 
   useEffect(() => {
     // Update cursor based on tool and drag state
-    if (isHandTool) {
+    if (isMiddleMouseDragging) {
+      // Middle mouse button is being used - always show grabbing cursor
+      setCurrentCursor('grabbing');
+    } else if (isHandTool) {
       setCurrentCursor(isDragging ? 'grabbing' : 'grab');
     } else {
       setCurrentCursor('default');
     }
-  }, [isHandTool, isDragging]);
+  }, [isHandTool, isDragging, isMiddleMouseDragging]);
 
   // Use window-level event listeners to capture middle mouse button
   // ReactFlow captures events and prevents bubbling, so we need to listen at window level
   useEffect(() => {
     const handleWindowMouseDown = (event: MouseEvent) => {
-      console.log('WINDOW Mouse down - button:', event.button, 'buttons:', event.buttons);
       if (event.button === 1) {
         // Middle mouse button (button 1)
-        console.log('MIDDLE MOUSE BUTTON PRESSED - Activating Hand Tool');
         event.preventDefault();
         onTemporaryHandToolStart();
         setIsDragging(true);
-        console.log('Active tool should now be: hand, isDragging:', true);
+        setIsMiddleMouseDragging(true);
       }
     };
 
     const handleWindowMouseUp = (event: MouseEvent) => {
-      console.log('WINDOW Mouse up - button:', event.button, 'buttons:', event.buttons);
       if (event.button === 1) {
         // Middle mouse button released
-        console.log('MIDDLE MOUSE BUTTON RELEASED - Returning to Selection Tool');
         event.preventDefault();
         setIsDragging(false);
+        setIsMiddleMouseDragging(false);
         onTemporaryHandToolEnd();
-        console.log('Active tool should now be: selection, isDragging:', false);
       }
     };
 
@@ -123,8 +126,9 @@ const DesignTab: React.FC<DesignTabProps> = ({
         // Left mouse button is pressed in hand tool mode
         if (!isDragging) setIsDragging(true);
       } else if (event.buttons === 0) {
-        // No buttons pressed
+        // No buttons pressed - reset all dragging states
         if (isDragging) setIsDragging(false);
+        if (isMiddleMouseDragging) setIsMiddleMouseDragging(false);
       }
     };
 
@@ -149,6 +153,7 @@ const DesignTab: React.FC<DesignTabProps> = ({
         cursor: currentCursor,
       }}
       ref={reactFlowWrapper}
+      className={isMiddleMouseDragging ? 'middle-mouse-dragging' : ''}
     >
       {children}
       <ReactFlow
@@ -173,6 +178,10 @@ const DesignTab: React.FC<DesignTabProps> = ({
         elementsSelectable={elementsSelectable}
         panOnDrag={panOnDrag}
         panOnScroll={true}
+        zoomOnScroll={true}
+        zoomOnPinch={true}
+        zoomOnDoubleClick={false}
+        preventScrolling={true}
         selectionOnDrag={isSelectionTool}
         selectionKeyCode="Control"
         fitView
@@ -186,7 +195,13 @@ const DesignTab: React.FC<DesignTabProps> = ({
         }}
         deleteKeyCode="Delete"
       >
-        <Background color="#000000" gap={20} />
+        <Background
+          color="rgba(77, 124, 254, 0.05)"
+          gap={20}
+          style={{
+            opacity: 0.4,
+          }}
+        />
         <Controls />
         <MiniMap
           nodeStrokeWidth={3}
@@ -199,6 +214,118 @@ const DesignTab: React.FC<DesignTabProps> = ({
           }}
         />
       </ReactFlow>
+
+      {/* Selection Marquee Animation Styles */}
+      <style>
+        {`
+          @keyframes selection-dash {
+            to {
+              stroke-dashoffset: -20;
+            }
+          }
+
+          /* Custom selection rectangle styling */
+          .react-flow__selection {
+            background: rgba(77, 124, 254, 0.08) !important;
+            border: 2px dashed rgba(77, 124, 254, 0.6) !important;
+            animation: selection-dash 0.5s linear infinite;
+            stroke-dasharray: 5, 5;
+          }
+
+          /* Instant pan/zoom for performance */
+          .react-flow__viewport {
+            transition: none !important;
+          }
+
+          /* Cursor override for middle mouse dragging */
+          .react-flow__pane {
+            cursor: ${isMiddleMouseDragging ? 'grabbing' : 'inherit'} !important;
+          }
+
+          .middle-mouse-dragging,
+          .middle-mouse-dragging *:not(.react-flow__edge):not(.react-flow__edge-path) {
+            cursor: grabbing !important;
+          }
+
+          /* Drag ghost/preview styling */
+          .react-flow__node.dragging {
+            opacity: 0.5;
+            cursor: grabbing !important;
+          }
+
+          /* Connection line preview while dragging */
+          .react-flow__connectionline {
+            stroke: rgba(77, 124, 254, 0.8);
+            stroke-width: 2;
+            stroke-dasharray: 5, 5;
+            animation: dashdraw 0.5s linear infinite;
+          }
+
+          @keyframes dashdraw {
+            to {
+              stroke-dashoffset: -10;
+            }
+          }
+
+          /* Edge hover effects */
+          .react-flow__edge {
+            cursor: pointer !important;
+          }
+
+          .react-flow__edge-path {
+            cursor: pointer !important;
+            transition: stroke 0.15s ease;
+            pointer-events: all !important;
+          }
+
+          .react-flow__edge:hover .react-flow__edge-path {
+            stroke: #9ca3af !important;
+            stroke-width: 3 !important;
+          }
+
+          /* Edge selected effect */
+          .react-flow__edge.selected .react-flow__edge-path {
+            stroke: #9ca3af !important;
+            stroke-width: 3 !important;
+          }
+
+          /* Edge interaction area (make it easier to hover) */
+          .react-flow__edge-interaction {
+            cursor: pointer !important;
+          }
+
+          /* Handle hover effects */
+          .react-flow__handle {
+            width: 12px !important;
+            height: 12px !important;
+            transition: all 0.2s ease;
+          }
+
+          .react-flow__handle:hover {
+            width: 16px !important;
+            height: 16px !important;
+            box-shadow: 0 0 8px rgba(77, 124, 254, 0.6);
+          }
+
+          /* Node selection highlight */
+          .react-flow__node.selected {
+            z-index: 10;
+          }
+
+          /* Snap-to-grid visual feedback */
+          .react-flow__node.dragging::after {
+            content: '';
+            position: absolute;
+            top: -2px;
+            left: -2px;
+            right: -2px;
+            bottom: -2px;
+            border: 2px dashed rgba(77, 124, 254, 0.4);
+            border-radius: inherit;
+            pointer-events: none;
+          }
+        `}
+      </style>
     </div>
   );
 };

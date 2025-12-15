@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Handle, Position, NodeProps } from '@xyflow/react';
 import CONFIG from '../../config';
 import theme from '../../theme';
@@ -46,6 +46,7 @@ export interface EnhancedDeviceData {
 
 const EnhancedDeviceNode: React.FC<NodeProps> = ({ data, selected }) => {
   const deviceData = data as unknown as EnhancedDeviceData;
+  const [isHovered, setIsHovered] = useState(false);
 
   const getIcon = () => {
     const color = deviceData.color;
@@ -100,17 +101,21 @@ const EnhancedDeviceNode: React.FC<NodeProps> = ({ data, selected }) => {
       style={{
         padding: theme.spacing.lg,
         borderRadius: theme.radius.xl,
-        border: selected ? `3px solid ${borderColor}` : `2px solid ${borderColor}`,
-        background: theme.gradient.nodeDefault,
+        border: selected ? `2px solid ${borderColor}` : `2px solid ${borderColor}`,
+        background: isHovered ? theme.gradient.nodeHover : theme.gradient.nodeDefault,
         minWidth: '140px',
         maxWidth: '200px',
         boxShadow: selected
-          ? `${theme.shadow.lg}, 0 0 0 3px ${borderColor}40`
-          : theme.shadow.md,
+          ? `${theme.shadow.lg}, 0 0 0 3px #9ca3af`
+          : isHovered
+            ? theme.shadow.lg
+            : theme.shadow.md,
         cursor: 'pointer',
         position: 'relative',
       }}
       className="enhanced-device-node device-node"
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
     >
       {/* Connection Handles - All 4 directions as both source and target */}
       <Handle

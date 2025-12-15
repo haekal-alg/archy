@@ -9,7 +9,6 @@ import {
   Edge,
   Node,
   NodeTypes,
-  EdgeTypes,
   useNodesState,
   useEdgesState,
   Panel,
@@ -23,7 +22,6 @@ import DeviceNode from './components/DeviceNode';
 import EnhancedDeviceNode, { EnhancedDeviceData } from './components/EnhancedDeviceNode';
 import GroupNode from './components/GroupNode';
 import TextNode from './components/TextNode';
-import CustomEdge, { CustomEdgeData } from './components/CustomEdge';
 import EditNodeModal from './components/EditNodeModal';
 import ShapeLibrary from './components/ShapeLibrary';
 import StylePanel from './components/StylePanel';
@@ -31,9 +29,12 @@ import ContextMenu from './components/ContextMenu';
 import TabBar from './components/TabBar';
 import DesignTab from './components/DesignTab';
 import ConnectionsTab from './components/ConnectionsTab';
+import KeyboardShortcuts from './components/KeyboardShortcuts';
+import LoadingSpinner from './components/LoadingSpinner';
 import { TabProvider, useTabContext } from './contexts/TabContext';
 import { ToolPalette } from './components/ToolPalette';
 import { ToolType } from './types/tools';
+import { useToast } from './hooks/useToast';
 import './App.css';
 import { toPng, toJpeg } from 'html-to-image';
 import theme from '../theme';
@@ -43,10 +44,6 @@ const nodeTypes: NodeTypes = {
   enhanced: EnhancedDeviceNode,
   group: GroupNode,
   text: TextNode,
-};
-
-const edgeTypes: EdgeTypes = {
-  custom: CustomEdge,
 };
 
 export interface DeviceData {
@@ -79,6 +76,10 @@ const AppContent: React.FC = () => {
   const [isStylePanelOpen, setIsStylePanelOpen] = useState(true);
   const [activeTool, setActiveTool] = useState<ToolType>('selection');
   const [isHandToolTemporary, setIsHandToolTemporary] = useState(false);
+  const [showKeyboardShortcuts, setShowKeyboardShortcuts] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [loadingText, setLoadingText] = useState('');
+  const { showSuccess, showError, showWarning, showInfo, ToastContainer } = useToast();
   const [contextMenu, setContextMenu] = useState<{
     x: number;
     y: number;
@@ -179,8 +180,11 @@ const AppContent: React.FC = () => {
       setNodes(prevState.nodes);
       setEdges(prevState.edges);
       setHistoryIndex(historyIndex - 1);
+
+      // Visual feedback
+      showInfo('Undo', { duration: 2000 });
     }
-  }, [historyIndex, history, setNodes, setEdges]);
+  }, [historyIndex, history, setNodes, setEdges, showInfo]);
 
   const handleRedo = useCallback(() => {
     if (historyIndex < history.length - 1) {
@@ -188,8 +192,11 @@ const AppContent: React.FC = () => {
       setNodes(nextState.nodes);
       setEdges(nextState.edges);
       setHistoryIndex(historyIndex + 1);
+
+      // Visual feedback
+      showInfo('Redo', { duration: 2000 });
     }
-  }, [historyIndex, history, setNodes, setEdges]);
+  }, [historyIndex, history, setNodes, setEdges, showInfo]);
 
   const canUndo = historyIndex > 0;
   const canRedo = historyIndex < history.length - 1;
@@ -232,7 +239,21 @@ const AppContent: React.FC = () => {
       const target = event.target as HTMLElement;
       const isInputField = target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable;
 
-      if ((event.ctrlKey || event.metaKey) && event.shiftKey && event.key === 'Z') {
+      // Toggle keyboard shortcuts modal with ?
+      if (!isInputField && event.key === '?' && !event.shiftKey) {
+        event.preventDefault();
+        setShowKeyboardShortcuts(true);
+      } else if (event.key === 'Escape') {
+        // Close keyboard shortcuts modal or deselect
+        if (showKeyboardShortcuts) {
+          event.preventDefault();
+          setShowKeyboardShortcuts(false);
+        } else {
+          setSelectedNode(null);
+          setSelectedEdge(null);
+          setContextMenu(null);
+        }
+      } else if ((event.ctrlKey || event.metaKey) && event.shiftKey && event.key === 'Z') {
         event.preventDefault();
         handleRedo();
       } else if ((event.ctrlKey || event.metaKey) && event.key === 'z') {
@@ -254,7 +275,7 @@ const AppContent: React.FC = () => {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [handleUndo, handleRedo, handleToolChange]);
+  }, [handleUndo, handleRedo, handleToolChange, showKeyboardShortcuts]);
 
   // Track node position changes and save to history when dragging ends
   const nodesMoveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -295,6 +316,9 @@ const AppContent: React.FC = () => {
   // Setup menu event listeners (only once on mount)
   useEffect(() => {
     const handleSave = async () => {
+      setIsLoading(true);
+      setLoadingText('Saving diagram...');
+
       const diagramData = {
         nodes: nodesRef.current,
         edges: edgesRef.current,
@@ -316,17 +340,23 @@ const AppContent: React.FC = () => {
         if (result.success) {
           setCurrentFilePath(result.path);
           setHasUnsavedChanges(false);
-          alert('Diagram saved successfully!');
+          showSuccess('Diagram saved successfully!');
         } else if (!result.canceled) {
-          alert('Failed to save diagram');
+          showError('Failed to save diagram');
         }
       } catch (error) {
         console.error('Save failed:', error);
-        alert('Failed to save diagram');
+        showError('Failed to save diagram');
+      } finally {
+        setIsLoading(false);
+        setLoadingText('');
       }
     };
 
     const handleLoad = async () => {
+      setIsLoading(true);
+      setLoadingText('Loading diagram...');
+
       try {
         const result = await window.electron.loadDiagram();
         if (result.success && result.data) {
@@ -335,25 +365,31 @@ const AppContent: React.FC = () => {
           setDiagramName(result.data.metadata?.name || result.filename || 'Untitled');
           setCurrentFilePath(result.filePath);
           setHasUnsavedChanges(false);
-          alert('Diagram loaded successfully!');
+          showSuccess('Diagram loaded successfully!');
         }
       } catch (error) {
         console.error('Load failed:', error);
-        alert('Failed to load diagram');
+        showError('Failed to load diagram');
+      } finally {
+        setIsLoading(false);
+        setLoadingText('');
       }
     };
 
     const handleExport = () => {
       if (!reactFlowWrapper.current || !reactFlowInstance) {
-        alert('Please wait for the diagram to load');
+        showWarning('Please wait for the diagram to load');
         return;
       }
 
       const nodesBounds = getNodesBounds(nodesRef.current);
       if (nodesRef.current.length === 0) {
-        alert('Please add some nodes to export');
+        showWarning('Please add some nodes to export');
         return;
       }
+
+      setIsLoading(true);
+      setLoadingText('Exporting diagram...');
 
       const viewport = getViewportForBounds(
         nodesBounds,
@@ -378,10 +414,13 @@ const AppContent: React.FC = () => {
         link.download = `${diagramNameRef.current}.png`;
         link.href = dataUrl;
         link.click();
-        alert('Diagram exported as PNG!');
+        showSuccess('Diagram exported as PNG!');
       }).catch((error) => {
         console.error('Export failed:', error);
-        alert('Failed to export diagram');
+        showError('Failed to export diagram');
+      }).finally(() => {
+        setIsLoading(false);
+        setLoadingText('');
       });
     };
 
@@ -405,14 +444,16 @@ const AppContent: React.FC = () => {
     (params: Connection) => {
       const newEdge = {
         ...params,
-        type: 'custom',
+        type: 'custom', // Use custom edge type for arrow support
+        label: '',
+        style: { stroke: '#ffffff', strokeWidth: 2 },
+        animated: false,
         data: {
-          label: '',
-          style: 'solid',
-          color: '#ffffff',
-          animated: false,
-          routingType: 'bezier'
-        } as CustomEdgeData
+          customColor: '#ffffff',
+          routingType: 'bezier',
+          markerEnd: 'arrow', // Add arrow marker at the end
+          color: '#ffffff'
+        }
       };
       setEdges((eds) => addEdge(newEdge, eds));
       // Save to history after adding edge
@@ -484,9 +525,18 @@ const AppContent: React.FC = () => {
       position: {
         x: node.position.x + 50,
         y: node.position.y + 50
-      }
+      },
+      className: 'node-entrance', // Entrance animation
     };
     setNodes((nds: Node[]) => [...nds, newNode]);
+
+    // Remove entrance animation class after animation completes
+    setTimeout(() => {
+      setNodes((nds: Node[]) =>
+        nds.map((n) => (n.id === newNode.id ? { ...n, className: '' } : n))
+      );
+    }, 350); // Match animation duration
+
     // Save to history after duplication
     setTimeout(() => saveToHistory(), 0);
   }, [setNodes, saveToHistory]);
@@ -593,9 +643,18 @@ const AppContent: React.FC = () => {
         description: '',
         interfaces: []
       } as unknown as Record<string, unknown>,
+      className: 'node-entrance', // Entrance animation
     };
 
     setNodes((nds: Node[]) => [...nds, newNode]);
+
+    // Remove entrance animation class after animation completes
+    setTimeout(() => {
+      setNodes((nds: Node[]) =>
+        nds.map((n) => (n.id === newNode.id ? { ...n, className: '' } : n))
+      );
+    }, 350); // Match animation duration
+
     // Save to history after adding node
     setTimeout(() => saveToHistory(), 0);
   };
@@ -630,9 +689,18 @@ const AppContent: React.FC = () => {
         borderStyle: 'solid',
         description: ''
       },
+      className: 'node-entrance', // Entrance animation
     };
 
     setNodes((nds: Node[]) => [...nds, newNode]);
+
+    // Remove entrance animation class after animation completes
+    setTimeout(() => {
+      setNodes((nds: Node[]) =>
+        nds.map((n) => (n.id === newNode.id ? { ...n, className: '' } : n))
+      );
+    }, 350); // Match animation duration
+
     // Save to history after adding group
     setTimeout(() => saveToHistory(), 0);
   };
@@ -654,9 +722,18 @@ const AppContent: React.FC = () => {
         borderStyle: 'none',
         borderWidth: 1
       },
+      className: 'node-entrance', // Entrance animation
     };
 
     setNodes((nds: Node[]) => [...nds, newNode]);
+
+    // Remove entrance animation class after animation completes
+    setTimeout(() => {
+      setNodes((nds: Node[]) =>
+        nds.map((n) => (n.id === newNode.id ? { ...n, className: '' } : n))
+      );
+    }, 350); // Match animation duration
+
     // Save to history after adding text
     setTimeout(() => saveToHistory(), 0);
   };
@@ -716,18 +793,58 @@ const AppContent: React.FC = () => {
     });
   };
 
-  const updateEdgeData = (edgeId: string, data: Partial<CustomEdgeData>) => {
+  const updateEdgeData = (edgeId: string, data: any) => {
     setEdges((eds) =>
       eds.map((edge) => {
         if (edge.id === edgeId) {
-          return {
-            ...edge,
-            animated: data.animated !== undefined ? data.animated : edge.animated,
-            data: {
-              ...edge.data,
-              ...data
-            }
+          const updates: any = {
+            ...edge
           };
+
+          // Handle native edge properties
+          if (data.label !== undefined) updates.label = data.label;
+          if (data.animated !== undefined) updates.animated = data.animated;
+
+          // Handle routing type (bezier, smoothstep, straight)
+          if (data.routingType !== undefined) {
+            // Map routing type to React Flow edge types
+            const typeMap: Record<string, string> = {
+              'bezier': 'default',
+              'smoothstep': 'smoothstep',
+              'straight': 'straight'
+            };
+            updates.type = typeMap[data.routingType] || 'default';
+          }
+
+          // Handle style updates (color, strokeWidth, line style)
+          const currentStyle = edge.style || {};
+          const newStyle: any = { ...currentStyle };
+
+          if (data.color !== undefined) {
+            newStyle.stroke = data.color;
+          }
+
+          // Handle line style (solid, dashed, dotted)
+          if (data.style !== undefined) {
+            const dashMap: Record<string, string | undefined> = {
+              'solid': undefined,
+              'dashed': '5 5',
+              'dotted': '1 3'
+            };
+            newStyle.strokeDasharray = dashMap[data.style];
+          }
+
+          updates.style = newStyle;
+
+          // Store additional data
+          updates.data = {
+            ...edge.data,
+            customColor: data.color,
+            routingType: data.routingType,
+            lineStyle: data.style
+          };
+
+          return updates;
         }
         return edge;
       })
@@ -1042,7 +1159,6 @@ const AppContent: React.FC = () => {
             event.dataTransfer.dropEffect = 'move';
           }}
           nodeTypes={nodeTypes}
-          edgeTypes={edgeTypes}
           reactFlowWrapper={reactFlowWrapper}
         >
           {/* Tool Palette */}
@@ -1286,7 +1402,7 @@ const AppContent: React.FC = () => {
         <svg style={{ position: 'absolute', width: 0, height: 0 }}>
           <defs>
             {/* Generate markers for each color used in edges */}
-            {Array.from(new Set(edges.map(e => (e.data as CustomEdgeData)?.color || theme.border.default))).map(color => {
+            {Array.from(new Set(edges.map(e => (e.data as any)?.customColor || theme.border.default))).map(color => {
               const colorId = String(color).replace('#', '');
               return (
                 <React.Fragment key={colorId}>
@@ -1673,6 +1789,24 @@ const AppContent: React.FC = () => {
       }}>
         <ConnectionsTab />
       </div>
+
+      {/* Keyboard Shortcuts Modal */}
+      <KeyboardShortcuts
+        isOpen={showKeyboardShortcuts}
+        onClose={() => setShowKeyboardShortcuts(false)}
+      />
+
+      {/* Loading Overlay */}
+      {isLoading && (
+        <LoadingSpinner
+          overlay
+          size="lg"
+          text={loadingText}
+        />
+      )}
+
+      {/* Toast Notifications */}
+      <ToastContainer />
     </div>
   );
 };
