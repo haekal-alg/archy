@@ -47,7 +47,7 @@ interface BufferState {
 const dataBuffers = new Map<string, BufferState>();
 
 // Buffer configuration - optimized for 60fps rendering and low latency
-const BUFFER_TIME_MS = 16; // ~60fps, balance between latency and batching
+const BUFFER_TIME_MS = 4; // Minimum latency mode (trade-off: higher CPU during throughput)
 const BUFFER_SIZE_BYTES = 8192; // 8KB max buffer before force flush
 const MIN_FLUSH_INTERVAL_MS = 8; // Minimum time between flushes
 
