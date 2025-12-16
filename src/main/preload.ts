@@ -50,6 +50,11 @@ contextBridge.exposeInMainWorld('electron', {
     ipcRenderer.send('close-ssh-session', { connectionId });
   },
 
+  // Flow control: signal that SSH data has been consumed by renderer
+  sshDataConsumed: (connectionId: string, bytesConsumed: number) => {
+    ipcRenderer.send('ssh-data-consumed', { connectionId, bytesConsumed });
+  },
+
   onSSHData: (callback: (data: { connectionId: string; data: string }) => void) => {
     const subscription = (_event: any, data: { connectionId: string; data: string }) => callback(data);
     ipcRenderer.on('ssh-data', subscription);

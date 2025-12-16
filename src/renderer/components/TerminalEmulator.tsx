@@ -3,6 +3,7 @@ import { Terminal } from '@xterm/xterm';
 import { FitAddon } from '@xterm/addon-fit';
 import { WebLinksAddon } from '@xterm/addon-web-links';
 import { SerializeAddon } from '@xterm/addon-serialize';
+import { WebglAddon } from '@xterm/addon-webgl';
 import '@xterm/xterm/css/xterm.css';
 import { useToast } from '../hooks/useToast';
 
@@ -18,6 +19,7 @@ const terminalInstances = new Map<string, {
   terminal: Terminal;
   fitAddon: FitAddon;
   serializeAddon: SerializeAddon;
+  webglAddon?: WebglAddon;
   dataListener: () => void;
   onDataDisposable: { dispose: () => void };
   pasteHandler?: (e: Event) => void;
@@ -37,6 +39,10 @@ export const cleanupTerminal = (connectionId: string) => {
     // Remove keydown event listener
     if (instance.keydownHandler && instance.terminal.element) {
       instance.terminal.element.removeEventListener('keydown', instance.keydownHandler, true);
+    }
+    // Dispose WebGL addon if active
+    if (instance.webglAddon) {
+      instance.webglAddon.dispose();
     }
     instance.terminal.dispose();
     terminalInstances.delete(connectionId);
@@ -113,6 +119,22 @@ const TerminalEmulator: React.FC<TerminalEmulatorProps> = ({ connectionId, isVis
       // Open terminal in DOM
       terminal.open(terminalRef.current);
 
+      // Load WebGL renderer for GPU-accelerated rendering (up to 900% faster than canvas)
+      let webglAddon: WebglAddon | undefined;
+      try {
+        webglAddon = new WebglAddon();
+        // Handle WebGL context loss gracefully
+        webglAddon.onContextLoss(() => {
+          console.warn('[TerminalEmulator] WebGL context lost, falling back to canvas renderer');
+          webglAddon?.dispose();
+        });
+        terminal.loadAddon(webglAddon);
+        console.log('[TerminalEmulator] WebGL renderer loaded successfully');
+      } catch (e) {
+        console.warn('[TerminalEmulator] WebGL not supported, using canvas renderer:', e);
+        webglAddon = undefined;
+      }
+
       // Prevent browser's default paste event to avoid double-paste
       // Use capture phase and stopImmediatePropagation to intercept BEFORE xterm's listener
       const pasteHandler = (e: Event) => {
@@ -181,10 +203,32 @@ const TerminalEmulator: React.FC<TerminalEmulatorProps> = ({ connectionId, isVis
       });
 
       // Listen for data from SSH session - only ONE listener per terminal
+      // Use requestAnimationFrame batching for smoother rendering aligned with display refresh
+      let pendingData = '';
+      let writeScheduled = false;
+
       const dataListener = window.electron.onSSHData((data: { connectionId: string; data: string }) => {
         if (data.connectionId === connectionId) {
-          // Write data directly to terminal - xterm.js handles buffering and rendering efficiently
-          instance!.terminal.write(data.data);
+          // Accumulate data for batched write
+          pendingData += data.data;
+
+          if (!writeScheduled) {
+            writeScheduled = true;
+            requestAnimationFrame(() => {
+              // Get the current instance from map (avoid stale closure)
+              const currentInstance = terminalInstances.get(connectionId);
+              if (pendingData && currentInstance) {
+                // Write all accumulated data in one call, synced with display refresh
+                currentInstance.terminal.write(pendingData);
+                // Signal consumption for flow control (defensive check for preload compatibility)
+                if (window.electron.sshDataConsumed) {
+                  window.electron.sshDataConsumed(connectionId, pendingData.length);
+                }
+                pendingData = '';
+              }
+              writeScheduled = false;
+            });
+          }
         }
       });
 
@@ -196,6 +240,7 @@ const TerminalEmulator: React.FC<TerminalEmulatorProps> = ({ connectionId, isVis
         terminal,
         fitAddon,
         serializeAddon,
+        webglAddon,
         dataListener,
         onDataDisposable,
         pasteHandler,

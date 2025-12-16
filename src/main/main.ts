@@ -31,6 +31,8 @@ interface SSHSession {
   connectionId: string;
   latency?: number;
   lastPingTime?: number;
+  isPaused: boolean;     // Flow control: track if stream is paused
+  queuedBytes: number;   // Flow control: track bytes queued for renderer
 }
 
 const sshSessions = new Map<string, SSHSession>();
@@ -49,6 +51,10 @@ const BUFFER_TIME_MS = 16; // ~60fps, balance between latency and batching
 const BUFFER_SIZE_BYTES = 8192; // 8KB max buffer before force flush
 const MIN_FLUSH_INTERVAL_MS = 8; // Minimum time between flushes
 
+// Flow control configuration - prevents renderer from being overwhelmed
+const MAX_QUEUED_BYTES = 65536; // 64KB max queue before pausing stream
+const RESUME_THRESHOLD_BYTES = 32768; // 32KB resume threshold (50%)
+
 function flushBuffer(connectionId: string) {
   const bufferState = dataBuffers.get(connectionId);
   if (!bufferState || bufferState.buffer.length === 0) return;
@@ -56,6 +62,7 @@ function flushBuffer(connectionId: string) {
   // Concatenate all buffered chunks into single buffer
   const combinedBuffer = Buffer.concat(bufferState.buffer);
   const dataStr = combinedBuffer.toString('utf-8');
+  const bytesSent = combinedBuffer.length;
 
   // Send single IPC message with batched data
   if (mainWindow && !mainWindow.isDestroyed()) {
@@ -63,6 +70,19 @@ function flushBuffer(connectionId: string) {
       connectionId,
       data: dataStr,
     });
+  }
+
+  // Track queued bytes for flow control
+  const session = sshSessions.get(connectionId);
+  if (session) {
+    session.queuedBytes += bytesSent;
+
+    // Pause stream if queue exceeds threshold to prevent overwhelming renderer
+    if (session.queuedBytes >= MAX_QUEUED_BYTES && !session.isPaused) {
+      session.stream.pause();
+      session.isPaused = true;
+      console.log(`[${connectionId}] Stream paused: queue size ${session.queuedBytes} bytes`);
+    }
   }
 
   // Reset buffer state
@@ -337,8 +357,14 @@ ipcMain.handle('create-ssh-session', async (event, { connectionId, host, port = 
           return;
         }
 
-        // Store the session
-        sshSessions.set(connectionId, { client, stream, connectionId });
+        // Store the session with flow control state initialized
+        sshSessions.set(connectionId, {
+          client,
+          stream,
+          connectionId,
+          isPaused: false,
+          queuedBytes: 0,
+        });
 
         // Forward stream data to renderer with buffering for better performance
         stream.on('data', (data: Buffer) => {
@@ -502,6 +528,22 @@ ipcMain.on('close-ssh-session', (event, { connectionId }) => {
     session.stream.end();
     session.client.end();
     sshSessions.delete(connectionId);
+  }
+});
+
+// Flow control: renderer signals that data has been consumed
+ipcMain.on('ssh-data-consumed', (event, { connectionId, bytesConsumed }) => {
+  const session = sshSessions.get(connectionId);
+  if (!session) return;
+
+  // Decrement queued bytes counter
+  session.queuedBytes = Math.max(0, session.queuedBytes - bytesConsumed);
+
+  // Resume stream if queue is below threshold and currently paused
+  if (session.queuedBytes < RESUME_THRESHOLD_BYTES && session.isPaused) {
+    session.stream.resume();
+    session.isPaused = false;
+    console.log(`[${connectionId}] Stream resumed: queue size ${session.queuedBytes} bytes`);
   }
 });
 

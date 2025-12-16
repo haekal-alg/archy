@@ -25,6 +25,7 @@ export interface ElectronAPI {
   sendSSHData: (connectionId: string, data: string) => void;
   resizeSSHTerminal: (connectionId: string, cols: number, rows: number) => void;
   closeSSHSession: (connectionId: string) => void;
+  sshDataConsumed: (connectionId: string, bytesConsumed: number) => void;
   onSSHData: (callback: (data: { connectionId: string; data: string }) => void) => () => void;
   onSSHClosed: (callback: (data: { connectionId: string }) => void) => () => void;
   onSSHLatency: (callback: (data: { connectionId: string; latency: number }) => void) => () => void;

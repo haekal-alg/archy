@@ -245,16 +245,20 @@ fastScrollSensitivity: 5,       // Increase for faster scrolling
 
 ## Future Work (Phase 2 & 3)
 
-### Phase 2: Flow Control (Not Yet Implemented)
-- Add backpressure to pause SSH stream when terminal can't keep up
-- Prevents memory accumulation during extreme throughput
-- **Estimated Impact**: +20-30% under load conditions
+### Phase 2: Flow Control ✅ Complete (2025-12-16)
+- ✅ Added backpressure to pause SSH stream when terminal can't keep up
+- ✅ Session tracks `isPaused` and `queuedBytes` state
+- ✅ Stream pauses at 64KB queue, resumes at 32KB
+- ✅ Renderer signals data consumption via `sshDataConsumed` IPC
+- **Expected Impact**: +20-30% under load conditions
 
-### Phase 3: Advanced Optimizations (Not Yet Implemented)
-- WebGL renderer testing
-- SharedArrayBuffer for zero-copy data transfer
-- WebWorker for data processing
-- **Estimated Impact**: +2-3x additional improvement
+### Phase 3: Advanced Optimizations ✅ Complete (2025-12-16)
+- ✅ WebGL renderer with canvas fallback (up to 900% faster rendering)
+- ✅ Renderer-side write batching with `requestAnimationFrame`
+- ✅ Proper WebGL context loss handling
+- ⏸️ SharedArrayBuffer (deferred - complex, requires COOP/COEP headers)
+- ⏸️ WebWorker data processing (deferred - evaluate if needed)
+- **Expected Impact**: +2-3x additional improvement
 
 ---
 

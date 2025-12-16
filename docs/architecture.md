@@ -260,6 +260,7 @@ The preload script exposes a secure API via `window.electron`:
 - `sendSSHData(connectionId, data)` - Sends input to terminal
 - `resizeSSHTerminal(connectionId, cols, rows)` - Resize PTY
 - `closeSSHSession(connectionId)` - Closes connection
+- `sshDataConsumed(connectionId, bytesConsumed)` - Flow control signal
 - `onSSHData(callback)` - Listens for terminal output
 - `onSSHClosed(callback)` - Listens for connection close
 - `onSSHLatency(callback)` - Receives latency measurements
@@ -544,8 +545,8 @@ All components use theme tokens for consistent styling.
 
 ---
 
-*Last Updated: 2025-12-15*
-*Version: 1.1.0*
+*Last Updated: 2025-12-16*
+*Version: 1.3.0*
 *Branch: feature/improvements*
 
 ## Recent Updates (v1.1.0)
