@@ -542,6 +542,9 @@ All components use theme tokens for consistent styling.
 - **Logging**: Structured logging for debugging
 - **Updates**: Auto-update mechanism via electron-updater
 - **Multi-platform**: Test and optimize for Linux/macOS
+- **Terminal Performance**: For native-like terminal performance, consider:
+  - **Tauri + Rust**: Full rewrite with 10-50x performance gain ([details](features/feature-native-terminal-alternatives.md))
+  - **Native Node.js addon**: node-pty for local PTY, napi-rs for native SSH
 
 ---
 

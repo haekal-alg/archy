@@ -260,12 +260,18 @@ const TerminalEmulator: React.FC<TerminalEmulatorProps> = ({ connectionId, isVis
       }
     }
 
-    // Handle window resize
+    // Handle window resize with debouncing (prevents 50-100 calls/sec during window drag)
+    let resizeTimeout: ReturnType<typeof setTimeout> | null = null;
     const handleResize = () => {
-      if (instance && isVisible) {
-        instance.fitAddon.fit();
-        window.electron.resizeSSHTerminal(connectionId, instance.terminal.cols, instance.terminal.rows);
+      if (resizeTimeout) {
+        clearTimeout(resizeTimeout);
       }
+      resizeTimeout = setTimeout(() => {
+        if (instance && isVisible) {
+          instance.fitAddon.fit();
+          window.electron.resizeSSHTerminal(connectionId, instance.terminal.cols, instance.terminal.rows);
+        }
+      }, 100); // Wait 100ms after resize stops
     };
 
     window.addEventListener('resize', handleResize);
@@ -282,6 +288,9 @@ const TerminalEmulator: React.FC<TerminalEmulatorProps> = ({ connectionId, isVis
     // Cleanup on unmount (but keep terminal instance alive)
     return () => {
       window.removeEventListener('resize', handleResize);
+      if (resizeTimeout) {
+        clearTimeout(resizeTimeout);
+      }
     };
   }, [connectionId, isVisible, zoom]);
 
