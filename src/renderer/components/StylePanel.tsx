@@ -273,8 +273,8 @@ const StylePanel: React.FC<StylePanelProps> = ({
           : 'bezier'
       );
       setEdgeAnimated(selectedEdge.animated || false);
-      setEdgeMarkerStart('none'); // Simplified for native edges
-      setEdgeMarkerEnd('arrow'); // Simplified for native edges
+      setEdgeMarkerStart(typeof data.markerStart === 'string' ? data.markerStart : 'none'); // Read from edge data
+      setEdgeMarkerEnd(typeof data.markerEnd === 'string' ? data.markerEnd : 'arrow'); // Read from edge data
     }
   }, [selectedEdge]);
 
@@ -320,7 +320,9 @@ const StylePanel: React.FC<StylePanelProps> = ({
         color: edgeColor,
         routingType: edgeRouting,
         animated: edgeAnimated,
-        style: edgeStyle
+        style: edgeStyle,
+        markerStart: edgeMarkerStart,
+        markerEnd: edgeMarkerEnd
       });
     }
   };

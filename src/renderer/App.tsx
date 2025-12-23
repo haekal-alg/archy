@@ -810,13 +810,8 @@ const AppContent: React.FC = () => {
 
           // Handle routing type (bezier, smoothstep, straight)
           if (data.routingType !== undefined) {
-            // Map routing type to React Flow edge types
-            const typeMap: Record<string, string> = {
-              'bezier': 'default',
-              'smoothstep': 'smoothstep',
-              'straight': 'straight'
-            };
-            updates.type = typeMap[data.routingType] || 'default';
+            // Keep type as 'custom' to preserve arrow functionality
+            updates.type = 'custom';
           }
 
           // Handle style updates (color, strokeWidth, line style)
@@ -839,12 +834,15 @@ const AppContent: React.FC = () => {
 
           updates.style = newStyle;
 
-          // Store additional data
+          // Store additional data - preserve all existing data and only update what's provided
           updates.data = {
             ...edge.data,
-            customColor: data.color,
-            routingType: data.routingType,
-            lineStyle: data.style
+            ...(data.color !== undefined && { customColor: data.color, color: data.color }),
+            ...(data.routingType !== undefined && { routingType: data.routingType }),
+            ...(data.style !== undefined && { lineStyle: data.style }),
+            ...(data.animated !== undefined && { animated: data.animated }),
+            ...(data.markerStart !== undefined && { markerStart: data.markerStart }),
+            ...(data.markerEnd !== undefined && { markerEnd: data.markerEnd })
           };
 
           return updates;
