@@ -448,10 +448,13 @@ const AppContent: React.FC = () => {
         label: '',
         style: { stroke: '#ffffff', strokeWidth: 2 },
         animated: false,
+        markerStart: undefined, // Will be handled by CustomEdge component
+        markerEnd: undefined, // No marker at end (point B)
         data: {
           customColor: '#ffffff',
           routingType: 'bezier',
-          markerEnd: 'arrow', // Add arrow marker at the end
+          markerStart: 'arrow', // Add arrow marker at the start (point A - source)
+          markerEnd: 'none', // No arrow at the end (point B)
           color: '#ffffff'
         }
       };
@@ -1409,15 +1412,15 @@ const AppContent: React.FC = () => {
                   {/* Arrow (filled triangle) - End */}
                   <marker
                     id={`arrow-end-${colorId}`}
-                    markerWidth="10"
-                    markerHeight="10"
-                    refX="9"
-                    refY="5"
+                    markerWidth="4"
+                    markerHeight="4"
+                    refX="3.6"
+                    refY="2"
                     orient="auto"
                     markerUnits="strokeWidth"
                   >
                     <polygon
-                      points="0,0 10,5 0,10"
+                      points="0,0 4,2 0,4"
                       fill={color}
                     />
                   </marker>
@@ -1425,15 +1428,15 @@ const AppContent: React.FC = () => {
                   {/* Arrow (filled triangle) - Start */}
                   <marker
                     id={`arrow-start-${colorId}`}
-                    markerWidth="10"
-                    markerHeight="10"
-                    refX="1"
-                    refY="5"
+                    markerWidth="4"
+                    markerHeight="4"
+                    refX="0.4"
+                    refY="2"
                     orient="auto"
                     markerUnits="strokeWidth"
                   >
                     <polygon
-                      points="10,0 0,5 10,10"
+                      points="4,0 0,2 4,4"
                       fill={color}
                     />
                   </marker>
@@ -1441,15 +1444,15 @@ const AppContent: React.FC = () => {
                   {/* Arrow Open (hollow triangle) - End */}
                   <marker
                     id={`arrow-open-end-${colorId}`}
-                    markerWidth="10"
-                    markerHeight="10"
-                    refX="9"
-                    refY="5"
+                    markerWidth="4"
+                    markerHeight="4"
+                    refX="3.6"
+                    refY="2"
                     orient="auto"
                     markerUnits="strokeWidth"
                   >
                     <polygon
-                      points="0,0 10,5 0,10"
+                      points="0,0 4,2 0,4"
                       fill="none"
                       stroke={color}
                       strokeWidth="1.5"
@@ -1459,15 +1462,15 @@ const AppContent: React.FC = () => {
                   {/* Arrow Open (hollow triangle) - Start */}
                   <marker
                     id={`arrow-open-start-${colorId}`}
-                    markerWidth="10"
-                    markerHeight="10"
-                    refX="1"
-                    refY="5"
+                    markerWidth="4"
+                    markerHeight="4"
+                    refX="0.4"
+                    refY="2"
                     orient="auto"
                     markerUnits="strokeWidth"
                   >
                     <polygon
-                      points="10,0 0,5 10,10"
+                      points="4,0 0,2 4,4"
                       fill="none"
                       stroke={color}
                       strokeWidth="1.5"
@@ -1776,6 +1779,41 @@ const AppContent: React.FC = () => {
                 </React.Fragment>
               );
             })}
+
+            {/* Red markers for hover/selected states */}
+            <React.Fragment key="red-hover">
+              {/* Arrow (filled triangle) - End - Red */}
+              <marker
+                id="arrow-end-ff5c5c"
+                markerWidth="4"
+                markerHeight="4"
+                refX="3.6"
+                refY="2"
+                orient="auto"
+                markerUnits="strokeWidth"
+              >
+                <polygon
+                  points="0,0 4,2 0,4"
+                  fill="#ff5c5c"
+                />
+              </marker>
+
+              {/* Arrow (filled triangle) - Start - Red */}
+              <marker
+                id="arrow-start-ff5c5c"
+                markerWidth="4"
+                markerHeight="4"
+                refX="0.4"
+                refY="2"
+                orient="auto"
+                markerUnits="strokeWidth"
+              >
+                <polygon
+                  points="4,0 0,2 4,4"
+                  fill="#ff5c5c"
+                />
+              </marker>
+            </React.Fragment>
           </defs>
         </svg>
       </div>

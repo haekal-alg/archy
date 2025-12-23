@@ -21,10 +21,16 @@ const Toast: React.FC<ToastProps> = ({
   onClose,
   action,
 }) => {
-  const [isVisible, setIsVisible] = useState(true);
+  const [isVisible, setIsVisible] = useState(false);
+  const [isFadingOut, setIsFadingOut] = useState(false);
   const [progress, setProgress] = useState(100);
 
   useEffect(() => {
+    // Trigger entry animation after mount
+    requestAnimationFrame(() => {
+      setIsVisible(true);
+    });
+
     // Animate progress bar
     const progressInterval = setInterval(() => {
       setProgress((prev) => {
@@ -33,10 +39,13 @@ const Toast: React.FC<ToastProps> = ({
       });
     }, 50);
 
-    // Auto-close timer - immediately close when time is up
+    // Auto-close timer - start fade out animation, then close
     const timer = setTimeout(() => {
-      setIsVisible(false);
-      onClose(); // Close immediately without delay
+      setIsFadingOut(true);
+      // Wait for fade out animation to complete before closing
+      setTimeout(() => {
+        onClose();
+      }, 300); // Match fade out animation duration
     }, duration);
 
     return () => {
@@ -79,9 +88,6 @@ const Toast: React.FC<ToastProps> = ({
   return (
     <div
       style={{
-        position: 'fixed',
-        top: theme.spacing.xl,
-        right: theme.spacing.xl,
         background: theme.background.elevated,
         color: theme.text.primary,
         padding: theme.spacing.lg,
@@ -89,11 +95,14 @@ const Toast: React.FC<ToastProps> = ({
         border: `2px solid ${config.color}`,
         boxShadow: `${theme.shadow.xl}, 0 0 20px ${config.color}40`,
         fontSize: theme.fontSize.md,
-        zIndex: theme.zIndex.tooltip,
-        opacity: isVisible ? 1 : 0,
-        transform: isVisible ? 'translateY(0) scale(1)' : 'translateY(-10px) scale(0.95)',
-        transition: 'opacity 0.3s ease, transform 0.3s ease',
-        pointerEvents: isVisible ? 'auto' : 'none',
+        opacity: isFadingOut ? 0 : (isVisible ? 1 : 0),
+        transform: isFadingOut
+          ? 'translateX(100%) scale(0.9)'
+          : (isVisible ? 'translateX(0) scale(1)' : 'translateX(-100%) scale(0.9)'),
+        transition: isFadingOut
+          ? 'opacity 0.3s ease, transform 0.3s ease'
+          : 'opacity 0.3s ease, transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1)',
+        pointerEvents: (isVisible && !isFadingOut) ? 'auto' : 'none',
       }}
     >
       {/* Toast Content */}
@@ -140,8 +149,8 @@ const Toast: React.FC<ToastProps> = ({
             onClick={(e) => {
               e.stopPropagation();
               action.onClick();
-              setIsVisible(false);
-              onClose(); // Close immediately
+              setIsFadingOut(true);
+              setTimeout(() => onClose(), 300);
             }}
             style={{
               background: 'transparent',
@@ -170,8 +179,8 @@ const Toast: React.FC<ToastProps> = ({
         <button
           onClick={(e) => {
             e.stopPropagation();
-            setIsVisible(false);
-            onClose(); // Close immediately
+            setIsFadingOut(true);
+            setTimeout(() => onClose(), 300);
           }}
           style={{
             background: 'transparent',

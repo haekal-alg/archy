@@ -82,22 +82,15 @@ export const useToast = () => {
             pointerEvents: 'auto',
           }}
         >
-          {toasts.map((toast, index) => (
-            <div
+          {toasts.map((toast) => (
+            <Toast
               key={toast.id}
-              style={{
-                transform: `translateY(${index * 4}px)`,
-                transition: 'transform 0.3s ease',
-              }}
-            >
-              <Toast
-                message={toast.message}
-                type={toast.type}
-                duration={toast.duration}
-                action={toast.action}
-                onClose={() => removeToast(toast.id)}
-              />
-            </div>
+              message={toast.message}
+              type={toast.type}
+              duration={toast.duration}
+              action={toast.action}
+              onClose={() => removeToast(toast.id)}
+            />
           ))}
         </div>
       </div>

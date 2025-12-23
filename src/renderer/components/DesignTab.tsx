@@ -192,6 +192,8 @@ const DesignTab: React.FC<DesignTabProps> = ({
         defaultEdgeOptions={{
           type: 'custom',
           animated: false,
+          markerStart: undefined,
+          markerEnd: undefined,
         }}
         deleteKeyCode="Delete"
       >
@@ -274,19 +276,17 @@ const DesignTab: React.FC<DesignTabProps> = ({
 
           .react-flow__edge-path {
             cursor: pointer !important;
-            transition: stroke 0.15s ease;
+            transition: stroke 0.15s ease, stroke-width 0.15s ease;
             pointer-events: all !important;
           }
 
           .react-flow__edge:hover .react-flow__edge-path {
-            stroke: #9ca3af !important;
-            stroke-width: 3 !important;
+            stroke: #ff5c5c !important;
           }
 
           /* Edge selected effect */
           .react-flow__edge.selected .react-flow__edge-path {
-            stroke: #9ca3af !important;
-            stroke-width: 3 !important;
+            stroke: #ff5c5c !important;
           }
 
           /* Edge interaction area (make it easier to hover) */

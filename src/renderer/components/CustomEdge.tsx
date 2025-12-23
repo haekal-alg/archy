@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   EdgeProps,
   getBezierPath,
@@ -34,6 +34,7 @@ const CustomEdge: React.FC<EdgeProps> = ({
   markerEnd,
   selected,
 }) => {
+  const [isHovered, setIsHovered] = useState(false);
   const edgeData = data as CustomEdgeData;
 
   const color = edgeData?.color || theme.border.default;
@@ -47,6 +48,10 @@ const CustomEdge: React.FC<EdgeProps> = ({
   // Generate marker URL references
   const getMarkerUrl = (markerType: MarkerType, position: 'start' | 'end') => {
     if (markerType === 'none') return undefined;
+    // Use red markers when hovered or selected
+    if (isHovered || selected) {
+      return `url(#${markerType}-${position}-ff5c5c)`;
+    }
     // Encode color for URL (remove # and handle transparency)
     const colorId = color.replace('#', '');
     return `url(#${markerType}-${position}-${colorId})`;
@@ -98,11 +103,13 @@ const CustomEdge: React.FC<EdgeProps> = ({
         markerEnd={markerEndUrl}
         style={{
           stroke: color,
-          strokeWidth: selected ? 6 : 4,
+          strokeWidth: 4,
           strokeDasharray,
-          opacity: selected ? 1 : 0.8,
+          opacity: 1,
           transition: theme.transition.normal,
         }}
+        onMouseEnter={() => setIsHovered(true)}
+        onMouseLeave={() => setIsHovered(false)}
       />
 
       {/* Animated flow effect with intense glow */}
