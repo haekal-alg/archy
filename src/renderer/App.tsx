@@ -837,6 +837,7 @@ const AppContent: React.FC = () => {
           // Store additional data - preserve all existing data and only update what's provided
           updates.data = {
             ...edge.data,
+            ...(data.label !== undefined && { label: data.label }),
             ...(data.color !== undefined && { customColor: data.color, color: data.color }),
             ...(data.routingType !== undefined && { routingType: data.routingType }),
             ...(data.style !== undefined && { lineStyle: data.style }),
