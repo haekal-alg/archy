@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import theme from '../../theme';
 
 export type ToastType = 'success' | 'error' | 'warning' | 'info';
@@ -24,6 +24,12 @@ const Toast: React.FC<ToastProps> = ({
   const [isVisible, setIsVisible] = useState(false);
   const [isFadingOut, setIsFadingOut] = useState(false);
   const [progress, setProgress] = useState(100);
+  const onCloseRef = useRef(onClose);
+
+  // Keep the ref up to date
+  useEffect(() => {
+    onCloseRef.current = onClose;
+  }, [onClose]);
 
   useEffect(() => {
     // Trigger entry animation after mount
@@ -40,19 +46,21 @@ const Toast: React.FC<ToastProps> = ({
     }, 50);
 
     // Auto-close timer - start fade out animation, then close
-    const timer = setTimeout(() => {
+    const fadeOutTimer = setTimeout(() => {
       setIsFadingOut(true);
-      // Wait for fade out animation to complete before closing
-      setTimeout(() => {
-        onClose();
-      }, 300); // Match fade out animation duration
     }, duration);
 
+    // Close timer - actually remove the toast after fade out
+    const closeTimer = setTimeout(() => {
+      onCloseRef.current();
+    }, duration + 300); // Duration + fade out animation
+
     return () => {
-      clearTimeout(timer);
+      clearTimeout(fadeOutTimer);
+      clearTimeout(closeTimer);
       clearInterval(progressInterval);
     };
-  }, [duration, onClose]);
+  }, [duration]);
 
   const getTypeConfig = () => {
     switch (type) {
@@ -150,7 +158,7 @@ const Toast: React.FC<ToastProps> = ({
               e.stopPropagation();
               action.onClick();
               setIsFadingOut(true);
-              setTimeout(() => onClose(), 300);
+              setTimeout(() => onCloseRef.current(), 300);
             }}
             style={{
               background: 'transparent',
@@ -180,7 +188,7 @@ const Toast: React.FC<ToastProps> = ({
           onClick={(e) => {
             e.stopPropagation();
             setIsFadingOut(true);
-            setTimeout(() => onClose(), 300);
+            setTimeout(() => onCloseRef.current(), 300);
           }}
           style={{
             background: 'transparent',

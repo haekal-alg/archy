@@ -39,7 +39,7 @@ const CustomEdge: React.FC<EdgeProps> = ({
 
   const color = edgeData?.color || theme.border.default;
   const routingType = edgeData?.routingType || 'bezier';
-  const strokeStyle = edgeData?.style || 'solid';
+  const strokeStyle = (edgeData as any)?.lineStyle || edgeData?.style || 'solid';
   const animated = edgeData?.animated || false;
   const label = edgeData?.label;
   const markerStartType = edgeData?.markerStart || 'none';
