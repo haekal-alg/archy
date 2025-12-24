@@ -7,6 +7,7 @@ import {
   LinuxIcon,
   SwitchIcon,
   CloudIcon,
+  CloudIcon2,
   DatabaseIcon,
   LaptopIcon,
   AttackIcon,
@@ -41,6 +42,7 @@ const ShapeLibrary: React.FC<ShapeLibraryProps> = ({ onAddNode, onAddGroup, onAd
       { type: 'server', icon: ServerIcon, label: 'Server', color: theme.device.server },
       { type: 'database', icon: DatabaseIcon, label: 'Database', color: theme.device.database },
       { type: 'cloud', icon: CloudIcon, label: 'Cloud', color: theme.device.cloud },
+      { type: 'cloud2', icon: CloudIcon2, label: 'Cloud 2', color: '#5c9ded' },
     ],
     security: [
       { type: 'attacker', icon: AttackIcon, label: 'Attacker', color: theme.device.attacker },

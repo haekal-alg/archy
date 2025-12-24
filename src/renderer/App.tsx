@@ -1130,6 +1130,7 @@ const AppContent: React.FC = () => {
                 linux: 'Linux Server',
                 switch: 'Network Switch',
                 cloud: 'Cloud',
+                cloud2: 'Cloud 2',
                 database: 'Database',
                 laptop: 'Laptop',
                 attacker: 'Attacker',

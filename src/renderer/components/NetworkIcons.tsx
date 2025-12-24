@@ -137,3 +137,14 @@ export const AttackIcon: React.FC<{ color?: string }> = ({ color = '#e91e63' }) 
     <circle cx="24" cy="24" r="14" fill="none" stroke={color} strokeWidth="2" opacity="0.3" />
   </svg>
 );
+
+// Cloud Icon 2 (Alternative simplified design)
+export const CloudIcon2: React.FC<{ color?: string }> = ({ color = '#5c9ded' }) => (
+  <svg width="48" height="48" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <path d="M38 26 C38 26 38.5 22 36 20 C34 18 30 18 28 20 C28 20 28 16 24 14 C20 12 16 14 14 18 C12 22 14 26 14 26" stroke={color} strokeWidth="3" fill="none" strokeLinecap="round" strokeLinejoin="round" />
+    <path d="M12 26 C10 26 8 27 8 30 C8 33 10 34 12 34 L36 34 C38 34 40 33 40 30 C40 27 38 26 36 26" fill={color} />
+    <ellipse cx="24" cy="28" rx="10" ry="6" fill="white" opacity="0.2" />
+    <circle cx="18" cy="26" r="2" fill="white" opacity="0.4" />
+    <circle cx="30" cy="26" r="1.5" fill="white" opacity="0.4" />
+  </svg>
+);

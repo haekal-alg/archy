@@ -10,6 +10,7 @@ import {
   LinuxIcon,
   SwitchIcon,
   CloudIcon,
+  CloudIcon2,
   DatabaseIcon,
   GenericIcon,
   LaptopIcon,
@@ -30,7 +31,7 @@ export interface ConnectionConfig {
 
 export interface EnhancedDeviceData {
   label: string;
-  type: 'router' | 'server' | 'firewall' | 'windows' | 'linux' | 'switch' | 'cloud' | 'database' | 'laptop' | 'attacker' | 'generic';
+  type: 'router' | 'server' | 'firewall' | 'windows' | 'linux' | 'switch' | 'cloud' | 'cloud2' | 'database' | 'laptop' | 'attacker' | 'generic';
   host?: string;
   port?: number;
   username?: string;
@@ -65,6 +66,8 @@ const EnhancedDeviceNode: React.FC<NodeProps> = ({ data, selected }) => {
         return <SwitchIcon color={color} />;
       case 'cloud':
         return <CloudIcon color={color} />;
+      case 'cloud2':
+        return <CloudIcon2 color={color} />;
       case 'database':
         return <DatabaseIcon color={color} />;
       case 'laptop':

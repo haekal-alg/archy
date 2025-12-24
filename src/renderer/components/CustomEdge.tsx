@@ -106,7 +106,6 @@ const CustomEdge: React.FC<EdgeProps> = ({
           strokeWidth: 4,
           strokeDasharray,
           opacity: 1,
-          transition: theme.transition.normal,
         }}
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={() => setIsHovered(false)}
