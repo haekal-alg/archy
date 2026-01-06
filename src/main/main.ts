@@ -3,6 +3,7 @@ import * as path from 'path';
 import * as fs from 'fs';
 import { exec } from 'child_process';
 import { Client, ClientChannel } from 'ssh2';
+import * as pty from 'node-pty';
 
 const Store = require('electron-store');
 const store = new Store.default();
@@ -36,6 +37,16 @@ interface SSHSession {
 }
 
 const sshSessions = new Map<string, SSHSession>();
+
+// Store active local terminal sessions
+interface LocalSession {
+  ptyProcess: pty.IPty;
+  connectionId: string;
+  isPaused: boolean;     // Flow control: track if stream is paused
+  queuedBytes: number;   // Flow control: track bytes queued for renderer
+}
+
+const localSessions = new Map<string, LocalSession>();
 
 // Data buffering for improved terminal performance
 interface BufferState {
@@ -505,98 +516,198 @@ ipcMain.handle('create-ssh-session', async (event, { connectionId, host, port = 
   });
 });
 
-// Send data to SSH session (fire-and-forget for low latency)
+// Create local terminal session
+ipcMain.handle('create-local-terminal', async (event, { connectionId }) => {
+  return new Promise((resolve, reject) => {
+    try {
+      // Spawn PTY session for proper terminal emulation
+      const shell = process.platform === 'win32' ? 'cmd.exe' : '/bin/bash';
+
+      const ptyProcess = pty.spawn(shell, [], {
+        name: 'xterm-256color',
+        cols: 80,
+        rows: 24,
+        cwd: process.env.HOME || process.env.USERPROFILE || process.cwd(),
+        env: process.env as { [key: string]: string },
+      });
+
+      // Store the session with flow control state initialized
+      localSessions.set(connectionId, {
+        ptyProcess: ptyProcess,
+        connectionId,
+        isPaused: false,
+        queuedBytes: 0,
+      });
+
+      // Forward PTY data to renderer with buffering
+      ptyProcess.onData((data: string) => {
+        let bufferState = dataBuffers.get(connectionId);
+
+        if (!bufferState) {
+          bufferState = { buffer: [], timer: null, lastFlush: Date.now() };
+          dataBuffers.set(connectionId, bufferState);
+        }
+
+        bufferState.buffer.push(Buffer.from(data, 'utf8'));
+
+        // Calculate current buffer size
+        const totalSize = bufferState.buffer.reduce((sum, buf) => sum + buf.length, 0);
+
+        // Force flush if buffer is too large
+        if (totalSize >= BUFFER_SIZE_BYTES) {
+          if (bufferState.timer) {
+            clearTimeout(bufferState.timer);
+          }
+          flushBuffer(connectionId);
+          return;
+        }
+
+        // Schedule flush if not already scheduled
+        if (!bufferState.timer) {
+          const timeSinceLastFlush = Date.now() - bufferState.lastFlush;
+          const delay = Math.max(0, MIN_FLUSH_INTERVAL_MS - timeSinceLastFlush);
+
+          bufferState.timer = setTimeout(() => {
+            flushBuffer(connectionId);
+          }, Math.max(delay, BUFFER_TIME_MS));
+        }
+      });
+
+      // Handle process exit
+      ptyProcess.onExit((e) => {
+        // Cleanup buffer state
+        const bufferState = dataBuffers.get(connectionId);
+        if (bufferState) {
+          if (bufferState.timer) clearTimeout(bufferState.timer);
+          flushBuffer(connectionId); // Flush any remaining data
+          dataBuffers.delete(connectionId);
+        }
+
+        localSessions.delete(connectionId);
+        if (mainWindow && !mainWindow.isDestroyed()) {
+          mainWindow.webContents.send('ssh-closed', { connectionId });
+        }
+      });
+
+      resolve({ success: true });
+    } catch (error) {
+      reject(error);
+    }
+  });
+});
+
+// Send data to SSH or local terminal session (fire-and-forget for low latency)
 ipcMain.on('send-ssh-data', (event, { connectionId, data }) => {
-  const session = sshSessions.get(connectionId);
-  if (session && session.stream) {
-    session.stream.write(data);
+  const sshSession = sshSessions.get(connectionId);
+  if (sshSession && sshSession.stream) {
+    sshSession.stream.write(data);
+    return;
+  }
+
+  const localSession = localSessions.get(connectionId);
+  if (localSession && localSession.ptyProcess) {
+    localSession.ptyProcess.write(data);
   }
 });
 
-// Resize SSH terminal (fire-and-forget)
+// Resize SSH or local terminal (fire-and-forget)
 ipcMain.on('resize-ssh-terminal', (event, { connectionId, cols, rows }) => {
-  const session = sshSessions.get(connectionId);
-  if (session && session.stream) {
-    session.stream.setWindow(rows, cols, 0, 0);
+  const sshSession = sshSessions.get(connectionId);
+  if (sshSession && sshSession.stream) {
+    sshSession.stream.setWindow(rows, cols, 0, 0);
+    return;
+  }
+
+  const localSession = localSessions.get(connectionId);
+  if (localSession && localSession.ptyProcess) {
+    localSession.ptyProcess.resize(cols, rows);
   }
 });
 
-// Close SSH session (fire-and-forget)
+// Close SSH or local terminal session (fire-and-forget)
 ipcMain.on('close-ssh-session', (event, { connectionId }) => {
-  const session = sshSessions.get(connectionId);
-  if (session) {
-    session.stream.end();
-    session.client.end();
+  const sshSession = sshSessions.get(connectionId);
+  if (sshSession) {
+    sshSession.stream.end();
+    sshSession.client.end();
     sshSessions.delete(connectionId);
+    return;
+  }
+
+  const localSession = localSessions.get(connectionId);
+  if (localSession) {
+    localSession.ptyProcess.kill();
+    localSessions.delete(connectionId);
   }
 });
 
 // Flow control: renderer signals that data has been consumed
 ipcMain.on('ssh-data-consumed', (event, { connectionId, bytesConsumed }) => {
-  const session = sshSessions.get(connectionId);
-  if (!session) return;
+  const sshSession = sshSessions.get(connectionId);
+  if (sshSession) {
+    // Decrement queued bytes counter
+    sshSession.queuedBytes = Math.max(0, sshSession.queuedBytes - bytesConsumed);
 
-  // Decrement queued bytes counter
-  session.queuedBytes = Math.max(0, session.queuedBytes - bytesConsumed);
+    // Resume stream if queue is below threshold and currently paused
+    if (sshSession.queuedBytes < RESUME_THRESHOLD_BYTES && sshSession.isPaused) {
+      sshSession.stream.resume();
+      sshSession.isPaused = false;
+      console.log(`[${connectionId}] SSH stream resumed: queue size ${sshSession.queuedBytes} bytes`);
+    }
+    return;
+  }
 
-  // Resume stream if queue is below threshold and currently paused
-  if (session.queuedBytes < RESUME_THRESHOLD_BYTES && session.isPaused) {
-    session.stream.resume();
-    session.isPaused = false;
-    console.log(`[${connectionId}] Stream resumed: queue size ${session.queuedBytes} bytes`);
+  const localSession = localSessions.get(connectionId);
+  if (localSession) {
+    // Decrement queued bytes counter
+    localSession.queuedBytes = Math.max(0, localSession.queuedBytes - bytesConsumed);
+
+    // Note: node-pty doesn't support pause/resume, but we track queue size for monitoring
+    if (localSession.queuedBytes < RESUME_THRESHOLD_BYTES && localSession.isPaused) {
+      localSession.isPaused = false;
+      console.log(`[${connectionId}] Local terminal queue resumed: queue size ${localSession.queuedBytes} bytes`);
+    }
   }
 });
 
-// Periodic latency measurement (measure every 3 seconds)
-// We measure latency by sending a space followed by backspace and timing the response
-// This is invisible but triggers response
-let latencyMeasurementActive = false;
+// Periodic latency measurement - DISABLED
+// The latency measurement was causing issues by sending space+backspace characters
+// which would appear as ^H when the user is in an interactive input mode (like cat, vim, etc.)
+// Disabled for better user experience. Connection status is still shown without exact latency.
 
-setInterval(() => {
-  if (latencyMeasurementActive) return; // Skip if previous measurement still running
-
-  sshSessions.forEach((session) => {
-    if (session.stream && !session.stream.destroyed) {
-      latencyMeasurementActive = true;
-      const startTime = Date.now();
-      let responded = false;
-
-      // Listen for ANY data response from the stream
-      const onData = (data: Buffer) => {
-        if (!responded) {
-          responded = true;
-          const latency = Date.now() - startTime;
-          session.latency = latency;
-          session.lastPingTime = Date.now();
-
-          // Send latency update to renderer
-          if (mainWindow && !mainWindow.isDestroyed()) {
-            mainWindow.webContents.send('ssh-latency', {
-              connectionId: session.connectionId,
-              latency: latency,
-            });
-          }
-
-          // Remove this listener after receiving the response
-          session.stream.removeListener('data', onData);
-          latencyMeasurementActive = false;
-        }
-      };
-
-      session.stream.on('data', onData);
-
-      // Send a space followed by backspace - invisible but triggers response
-      // This is more reliable than null byte for getting a server response
-      session.stream.write(' \b');
-
-      // Cleanup listener after timeout to avoid memory leaks
-      setTimeout(() => {
-        session.stream.removeListener('data', onData);
-        latencyMeasurementActive = false;
-      }, 2000);
-    }
-  });
-}, 3000);
+// let latencyMeasurementActive = false;
+// setInterval(() => {
+//   if (latencyMeasurementActive) return;
+//   sshSessions.forEach((session) => {
+//     if (session.stream && !session.stream.destroyed) {
+//       latencyMeasurementActive = true;
+//       const startTime = Date.now();
+//       let responded = false;
+//       const onData = (data: Buffer) => {
+//         if (!responded) {
+//           responded = true;
+//           const latency = Date.now() - startTime;
+//           session.latency = latency;
+//           session.lastPingTime = Date.now();
+//           if (mainWindow && !mainWindow.isDestroyed()) {
+//             mainWindow.webContents.send('ssh-latency', {
+//               connectionId: session.connectionId,
+//               latency: latency,
+//             });
+//           }
+//           session.stream.removeListener('data', onData);
+//           latencyMeasurementActive = false;
+//         }
+//       };
+//       session.stream.on('data', onData);
+//       session.stream.write(' \b');
+//       setTimeout(() => {
+//         session.stream.removeListener('data', onData);
+//         latencyMeasurementActive = false;
+//       }, 2000);
+//     }
+//   });
+// }, 3000);
 
 // Handle generic command execution (for browser, custom commands, etc.)
 ipcMain.handle('execute-command', async (event, { command }) => {

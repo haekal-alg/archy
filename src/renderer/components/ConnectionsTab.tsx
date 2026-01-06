@@ -4,10 +4,11 @@ import TerminalEmulator from './TerminalEmulator';
 import ConnectionContextMenu from './ConnectionContextMenu';
 
 const ConnectionsTab: React.FC = () => {
-  const { connections, activeConnectionId, setActiveConnectionId, disconnectConnection, removeConnection, retryConnection } = useTabContext();
+  const { connections, activeConnectionId, setActiveConnectionId, disconnectConnection, removeConnection, retryConnection, createLocalTerminal, renameConnection } = useTabContext();
   const [sidePanelCollapsed, setSidePanelCollapsed] = useState(false);
   const [, setForceUpdate] = useState(false);
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; connectionId: string } | null>(null);
+  const [renameModal, setRenameModal] = useState<{ connectionId: string; currentName: string } | null>(null);
 
   // Helper functions defined first
   const getConnectionZoom = (connectionId: string): number => {
@@ -49,12 +50,6 @@ const ConnectionsTab: React.FC = () => {
   };
 
   // Event handlers
-  const clearDisconnected = () => {
-    connections
-      .filter(c => c.status === 'disconnected' || c.status === 'error')
-      .forEach(c => removeConnection(c.id));
-  };
-
   const handleZoomChange = (connectionId: string, delta: number) => {
     const currentZoom = getConnectionZoom(connectionId);
     // Allow zoom from 0.5 (50%) to 2.0 (200%)
@@ -99,6 +94,26 @@ const ConnectionsTab: React.FC = () => {
     }
   };
 
+  const handleRename = () => {
+    if (contextMenu) {
+      const conn = connections.find(c => c.id === contextMenu.connectionId);
+      if (conn) {
+        setRenameModal({
+          connectionId: conn.id,
+          currentName: conn.customLabel || conn.nodeName,
+        });
+        closeContextMenu();
+      }
+    }
+  };
+
+  const handleRenameSubmit = (newLabel: string) => {
+    if (renameModal) {
+      renameConnection(renameModal.connectionId, newLabel);
+      setRenameModal(null);
+    }
+  };
+
   // Derived state
   const activeConnection = connections.find(c => c.id === activeConnectionId);
   const activeZoom = activeConnectionId ? getConnectionZoom(activeConnectionId) : 1.0;
@@ -131,11 +146,11 @@ const ConnectionsTab: React.FC = () => {
         {/* Side Panel Header */}
         <div style={{
           minWidth: '320px',
-          padding: '16px 20px',
+          padding: '12px 16px',
           borderBottom: '1px solid #3a4556',
           display: 'flex',
           flexDirection: 'column',
-          gap: '12px',
+          gap: '10px',
           background: '#151923',
           position: 'sticky',
           top: 0,
@@ -148,39 +163,47 @@ const ConnectionsTab: React.FC = () => {
           }}>
             <h3 style={{
               margin: 0,
-              fontSize: '14px',
+              fontSize: '13px',
               fontWeight: 600,
               color: '#e8ecf4',
             }}>
               Active Connections
             </h3>
           </div>
-          {connections.some(c => c.status === 'disconnected' || c.status === 'error') && (
-            <button
-              onClick={clearDisconnected}
-              style={{
-                padding: '8px 12px',
-                background: '#ff5c5c',
-                color: '#0a0e1a',
-                border: '1px solid #e84545',
-                borderRadius: '4px',
-                fontSize: '11px',
-                cursor: 'pointer',
-                fontWeight: 600,
-                letterSpacing: '0.5px',
-                transition: 'all 0.2s ease',
-                textTransform: 'uppercase',
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.background = '#e84545';
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.background = '#ff5c5c';
-              }}
-            >
-              Clear Disconnected
-            </button>
-          )}
+
+          {/* New Local Terminal Button */}
+          <button
+            onClick={createLocalTerminal}
+            style={{
+              padding: '6px 10px',
+              background: '#303948',
+              color: '#e8ecf4',
+              border: '1px solid #3a4556',
+              borderRadius: '4px',
+              fontSize: '11px',
+              cursor: 'pointer',
+              fontWeight: 600,
+              letterSpacing: '0.3px',
+              transition: 'all 0.2s ease',
+              textTransform: 'uppercase',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              width: 'fit-content',
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = '#3a4556';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = '#303948';
+            }}
+          >
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+              <rect x="1" y="2" width="12" height="10" rx="1" stroke="currentColor" strokeWidth="1.2" fill="none" />
+              <path d="M3 5L5 7L3 9M6 9H8" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+            Terminal
+          </button>
         </div>
 
         {/* Connections List */}
@@ -233,7 +256,7 @@ const ConnectionsTab: React.FC = () => {
                   }
                 }}
               >
-                {/* Node Name */}
+                {/* Node Name / Custom Label */}
                 <div style={{
                   display: 'flex',
                   alignItems: 'center',
@@ -250,7 +273,7 @@ const ConnectionsTab: React.FC = () => {
                     whiteSpace: 'nowrap',
                     flex: 1,
                   }}>
-                    {conn.nodeName}
+                    {conn.customLabel || conn.nodeName}
                   </span>
                 </div>
 
@@ -325,12 +348,12 @@ const ConnectionsTab: React.FC = () => {
                   </div>
                 )}
 
-                {/* Disconnect X Button */}
+                {/* Remove X Button */}
                 {conn.status === 'connected' && (
                   <button
                     onClick={(e) => {
                       e.stopPropagation();
-                      disconnectConnection(conn.id);
+                      removeConnection(conn.id);
                     }}
                     style={{
                       position: 'absolute',
@@ -352,7 +375,7 @@ const ConnectionsTab: React.FC = () => {
                       lineHeight: '1',
                       transition: 'all 0.2s ease',
                     }}
-                    title="Disconnect"
+                    title="Disconnect and Remove"
                     onMouseEnter={(e) => {
                       e.currentTarget.style.background = '#ff5c5c';
                       e.currentTarget.style.color = '#0a0e1a';
@@ -439,7 +462,7 @@ const ConnectionsTab: React.FC = () => {
                 color: '#e0e0e0',
                 fontFamily: 'Consolas, monospace',
               }}>
-                {activeConnection.username}@{activeConnection.host} — {activeConnection.nodeName}
+                {activeConnection.username}@{activeConnection.host} — {activeConnection.customLabel || activeConnection.nodeName}
               </div>
               <div style={{
                 display: 'flex',
@@ -651,10 +674,110 @@ const ConnectionsTab: React.FC = () => {
             onRetry={handleRetry}
             onDisconnect={handleDisconnect}
             onRemove={handleRemove}
+            onRename={handleRename}
             onClose={closeContextMenu}
           />
         );
       })()}
+
+      {/* Rename Modal */}
+      {renameModal && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: 'rgba(0, 0, 0, 0.7)',
+          backdropFilter: 'blur(4px)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 10000,
+        }}
+        onClick={() => setRenameModal(null)}
+        >
+          <div
+            style={{
+              background: '#1e2433',
+              border: '1px solid #3a4556',
+              borderRadius: '8px',
+              padding: '24px',
+              minWidth: '400px',
+              boxShadow: '0 8px 32px rgba(0, 0, 0, 0.5)',
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 style={{
+              margin: '0 0 16px 0',
+              fontSize: '16px',
+              fontWeight: 600,
+              color: '#e8ecf4',
+            }}>
+              Rename Connection
+            </h3>
+            <form onSubmit={(e) => {
+              e.preventDefault();
+              const input = e.currentTarget.elements.namedItem('newLabel') as HTMLInputElement;
+              if (input && input.value.trim()) {
+                handleRenameSubmit(input.value.trim());
+              }
+            }}>
+              <input
+                type="text"
+                name="newLabel"
+                defaultValue={renameModal.currentName}
+                autoFocus
+                style={{
+                  width: '100%',
+                  padding: '10px 12px',
+                  background: '#252d3f',
+                  border: '1px solid #3a4556',
+                  borderRadius: '4px',
+                  color: '#e8ecf4',
+                  fontSize: '14px',
+                  marginBottom: '16px',
+                  outline: 'none',
+                }}
+                onFocus={(e) => e.target.select()}
+              />
+              <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
+                <button
+                  type="button"
+                  onClick={() => setRenameModal(null)}
+                  style={{
+                    padding: '8px 16px',
+                    background: '#303948',
+                    color: '#e8ecf4',
+                    border: '1px solid #3a4556',
+                    borderRadius: '4px',
+                    fontSize: '13px',
+                    cursor: 'pointer',
+                    fontWeight: 500,
+                  }}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  style={{
+                    padding: '8px 16px',
+                    background: '#4d7cfe',
+                    color: '#e8ecf4',
+                    border: '1px solid #3461e8',
+                    borderRadius: '4px',
+                    fontSize: '13px',
+                    cursor: 'pointer',
+                    fontWeight: 500,
+                  }}
+                >
+                  Rename
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
       {/* CSS Animations */}
       <style>{`

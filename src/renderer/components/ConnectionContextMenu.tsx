@@ -8,6 +8,7 @@ interface ConnectionContextMenuProps {
   onRetry?: () => void;
   onDisconnect?: () => void;
   onRemove?: () => void;
+  onRename?: () => void;
   onClose: () => void;
 }
 
@@ -28,6 +29,12 @@ const DisconnectIcon = () => (
 const RemoveIcon = () => (
   <svg width="14" height="14" viewBox="0 0 14 14" fill="none" style={{ marginRight: '8px' }}>
     <path d="M10.5 3.5L3.5 10.5M3.5 3.5L10.5 10.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+  </svg>
+);
+
+const RenameIcon = () => (
+  <svg width="14" height="14" viewBox="0 0 14 14" fill="none" style={{ marginRight: '8px' }}>
+    <path d="M8.5 2L12 5.5M2 12L5 11.5L11.5 5C12 4.5 12 3.5 11.5 3L11 2.5C10.5 2 9.5 2 9 2.5L2.5 9L2 12Z" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
   </svg>
 );
 
@@ -71,6 +78,7 @@ const ConnectionContextMenu: React.FC<ConnectionContextMenuProps> = ({
   onRetry,
   onDisconnect,
   onRemove,
+  onRename,
   onClose,
 }) => {
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
@@ -160,6 +168,28 @@ const ConnectionContextMenu: React.FC<ConnectionContextMenuProps> = ({
           );
         })()}
 
+        {/* Rename */}
+        {onRename && (() => {
+          const renameIndex = 2;
+          const isHovered = hoveredIndex === renameIndex;
+          return (
+            <button
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                onRename();
+                onClose();
+              }}
+              onMouseEnter={() => setHoveredIndex(renameIndex)}
+              onMouseLeave={() => setHoveredIndex(null)}
+              style={getMenuItemStyle(isHovered)}
+            >
+              <RenameIcon />
+              Rename
+            </button>
+          );
+        })()}
+
         {/* Separator */}
         <div style={{
           borderTop: '1px solid rgba(255, 255, 255, 0.15)',
@@ -168,7 +198,7 @@ const ConnectionContextMenu: React.FC<ConnectionContextMenuProps> = ({
 
         {/* Remove */}
         {onRemove && (() => {
-          const removeIndex = 2;
+          const removeIndex = 3;
           const isHovered = hoveredIndex === removeIndex;
           return (
             <button

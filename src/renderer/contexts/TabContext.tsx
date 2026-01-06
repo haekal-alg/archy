@@ -43,6 +43,7 @@ export const TabProvider: React.FC<TabProviderProps> = ({ children }) => {
       lastActivity: new Date(),
       password: config.password,
       privateKeyPath: config.privateKeyPath,
+      connectionType: 'ssh',
     };
 
     setConnections(prev => [...prev, newConnection]);
@@ -75,6 +76,57 @@ export const TabProvider: React.FC<TabProviderProps> = ({ children }) => {
         )
       );
     }
+  }, []);
+
+  const createLocalTerminal = useCallback(async () => {
+    const connectionId = `local-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+    const terminalNumber = connections.filter(c => c.connectionType === 'local').length + 1;
+
+    const newConnection: SSHConnection = {
+      id: connectionId,
+      nodeName: `Local Terminal ${terminalNumber}`,
+      nodeType: 'local',
+      host: 'localhost',
+      port: 0,
+      username: 'local',
+      status: 'connecting',
+      lastActivity: new Date(),
+      connectionType: 'local',
+    };
+
+    setConnections(prev => [...prev, newConnection]);
+    setActiveConnectionId(connectionId);
+    setActiveTab('connections');
+
+    try {
+      await window.electron.createLocalTerminal({ connectionId });
+
+      setConnections(prev =>
+        prev.map(conn =>
+          conn.id === connectionId
+            ? { ...conn, status: 'connected', lastActivity: new Date() }
+            : conn
+        )
+      );
+    } catch (error) {
+      setConnections(prev =>
+        prev.map(conn =>
+          conn.id === connectionId
+            ? { ...conn, status: 'error', error: error instanceof Error ? error.message : 'Failed to create terminal', lastActivity: new Date() }
+            : conn
+        )
+      );
+    }
+  }, [connections]);
+
+  const renameConnection = useCallback((id: string, newLabel: string) => {
+    setConnections(prev =>
+      prev.map(conn =>
+        conn.id === id
+          ? { ...conn, customLabel: newLabel, lastActivity: new Date() }
+          : conn
+      )
+    );
   }, []);
 
   const disconnectConnection = useCallback((id: string) => {
@@ -184,6 +236,8 @@ export const TabProvider: React.FC<TabProviderProps> = ({ children }) => {
     activeConnectionId,
     setActiveConnectionId,
     createConnection,
+    createLocalTerminal,
+    renameConnection,
     disconnectConnection,
     removeConnection,
     retryConnection,

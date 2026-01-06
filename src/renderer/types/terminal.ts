@@ -12,6 +12,8 @@ export interface SSHConnection {
   error?: string;
   zoom?: number; // Terminal zoom level (default 1.0)
   latency?: number; // Connection latency in milliseconds
+  connectionType?: 'ssh' | 'local'; // Type of connection (default: ssh)
+  customLabel?: string; // User-defined label for the connection
   // Store credentials for retry functionality
   password?: string;
   privateKeyPath?: string;
@@ -37,6 +39,8 @@ export interface TabContextType {
     password: string;
     privateKeyPath?: string;
   }) => Promise<void>;
+  createLocalTerminal: () => Promise<void>;
+  renameConnection: (id: string, newLabel: string) => void;
   disconnectConnection: (id: string) => void;
   removeConnection: (id: string) => void;
   retryConnection: (id: string) => Promise<void>;

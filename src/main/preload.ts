@@ -38,6 +38,10 @@ contextBridge.exposeInMainWorld('electron', {
   createSSHSession: (config: { connectionId: string; host: string; port: number; username: string; password: string; privateKeyPath?: string }) =>
     ipcRenderer.invoke('create-ssh-session', config),
 
+  // Local Terminal Management
+  createLocalTerminal: (config: { connectionId: string }) =>
+    ipcRenderer.invoke('create-local-terminal', config),
+
   sendSSHData: (connectionId: string, data: string) => {
     ipcRenderer.send('send-ssh-data', { connectionId, data });
   },
