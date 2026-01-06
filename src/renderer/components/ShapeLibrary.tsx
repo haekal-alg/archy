@@ -11,7 +11,8 @@ import {
   DatabaseIcon,
   LaptopIcon,
   AttackIcon,
-  GenericIcon
+  GenericIcon,
+  MobileIcon
 } from './NetworkIcons';
 import theme from '../../theme';
 
@@ -31,6 +32,7 @@ const ShapeLibrary: React.FC<ShapeLibraryProps> = ({ onAddNode, onAddGroup, onAd
       { type: 'windows', icon: DesktopIcon, label: 'Windows', color: theme.device.windows },
       { type: 'linux', icon: LinuxIcon, label: 'Linux', color: theme.device.linux },
       { type: 'laptop', icon: LaptopIcon, label: 'Laptop', color: theme.device.laptop },
+      { type: 'mobile', icon: MobileIcon, label: 'Mobile', color: theme.device.mobile },
       { type: 'generic', icon: GenericIcon, label: 'Generic', color: theme.text.tertiary },
     ],
     network: [
@@ -184,6 +186,11 @@ const ShapeLibrary: React.FC<ShapeLibraryProps> = ({ onAddNode, onAddGroup, onAd
         gap: theme.spacing.md
       }}>
         <button
+          draggable
+          onDragStart={(e) => {
+            e.dataTransfer.setData('application/reactflow', 'group');
+            e.dataTransfer.effectAllowed = 'move';
+          }}
           onClick={onAddGroup}
           style={{
             width: '100%',
@@ -192,7 +199,7 @@ const ShapeLibrary: React.FC<ShapeLibraryProps> = ({ onAddNode, onAddGroup, onAd
             borderRadius: theme.radius.sm,
             background: theme.background.tertiary,
             color: theme.text.primary,
-            cursor: 'pointer',
+            cursor: 'grab',
             fontSize: theme.fontSize.md,
             fontWeight: theme.fontWeight.medium,
             transition: theme.transition.normal
@@ -210,6 +217,11 @@ const ShapeLibrary: React.FC<ShapeLibraryProps> = ({ onAddNode, onAddGroup, onAd
         </button>
         {onAddText && (
           <button
+            draggable
+            onDragStart={(e) => {
+              e.dataTransfer.setData('application/reactflow', 'text');
+              e.dataTransfer.effectAllowed = 'move';
+            }}
             onClick={onAddText}
             style={{
               width: '100%',
@@ -218,7 +230,7 @@ const ShapeLibrary: React.FC<ShapeLibraryProps> = ({ onAddNode, onAddGroup, onAd
               borderRadius: theme.radius.sm,
               background: theme.background.tertiary,
               color: theme.text.primary,
-              cursor: 'pointer',
+              cursor: 'grab',
               fontSize: theme.fontSize.md,
               fontWeight: theme.fontWeight.medium,
               transition: theme.transition.normal

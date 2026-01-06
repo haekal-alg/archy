@@ -148,3 +148,16 @@ export const CloudIcon2: React.FC<{ color?: string }> = ({ color = '#5c9ded' }) 
     <circle cx="30" cy="26" r="1.5" fill="white" opacity="0.4" />
   </svg>
 );
+
+// Mobile/Android Icon
+export const MobileIcon: React.FC<{ color?: string }> = ({ color = '#3ddc84' }) => (
+  <svg width="48" height="48" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <rect x="14" y="6" width="20" height="36" rx="3" fill={color} />
+    <rect x="16" y="10" width="16" height="26" rx="1" fill="white" opacity="0.9" />
+    <circle cx="24" cy="39" r="1.5" fill="white" />
+    <rect x="22" y="7" width="4" height="1.5" rx="0.75" fill="white" opacity="0.5" />
+    <path d="M20 14 L20 18 L22 16 L20 14Z" fill={color} opacity="0.3" />
+    <path d="M20 20 L28 20" stroke={color} strokeWidth="1" opacity="0.3" />
+    <path d="M20 22 L26 22" stroke={color} strokeWidth="1" opacity="0.3" />
+  </svg>
+);

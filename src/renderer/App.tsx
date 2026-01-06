@@ -622,8 +622,10 @@ const AppContent: React.FC = () => {
       linux: 'Linux Server',
       switch: 'Network Switch',
       cloud: 'Cloud',
+      cloud2: 'Cloud 2',
       database: 'Database',
       laptop: 'Laptop',
+      mobile: 'Mobile Device',
       attacker: 'Attacker',
       generic: 'Device'
     };
@@ -1122,6 +1124,83 @@ const AppContent: React.FC = () => {
                 y: event.clientY,
               });
 
+              // Handle group (Network Zone) drop
+              if (type === 'group') {
+                const colors = [
+                  { bg: '#ffb3ba40', border: '#ff6b6b' },
+                  { bg: '#bae1ff40', border: '#4dabf7' },
+                  { bg: '#baffc940', border: '#51cf66' },
+                  { bg: '#ffdfba40', border: '#ffa94d' },
+                  { bg: '#e3baff40', border: '#cc5de8' }
+                ];
+                const randomColor = colors[Math.floor(Math.random() * colors.length)];
+
+                const newNode: Node = {
+                  id: `group-${Date.now()}`,
+                  type: 'group',
+                  position: position,
+                  style: {
+                    width: 400,
+                    height: 300,
+                    zIndex: -1
+                  },
+                  data: {
+                    label: 'Network Zone',
+                    backgroundColor: randomColor.bg,
+                    borderColor: randomColor.border,
+                    borderStyle: 'solid',
+                    description: ''
+                  },
+                  className: 'node-entrance',
+                };
+
+                setNodes((nds: Node[]) => [...nds, newNode]);
+
+                // Remove entrance animation class after animation completes
+                setTimeout(() => {
+                  setNodes((nds: Node[]) =>
+                    nds.map((n) => (n.id === newNode.id ? { ...n, className: '' } : n))
+                  );
+                }, 350);
+
+                // Save to history after adding group
+                setTimeout(() => saveToHistory(), 0);
+                return;
+              }
+
+              // Handle text label drop
+              if (type === 'text') {
+                const newNode: Node = {
+                  id: `text-${Date.now()}`,
+                  type: 'text',
+                  position: position,
+                  data: {
+                    label: 'Text',
+                    fontSize: 14,
+                    fontColor: '#000000',
+                    backgroundColor: 'transparent',
+                    borderColor: '#000000',
+                    borderStyle: 'none',
+                    borderWidth: 1
+                  },
+                  className: 'node-entrance',
+                };
+
+                setNodes((nds: Node[]) => [...nds, newNode]);
+
+                // Remove entrance animation class after animation completes
+                setTimeout(() => {
+                  setNodes((nds: Node[]) =>
+                    nds.map((n) => (n.id === newNode.id ? { ...n, className: '' } : n))
+                  );
+                }, 350);
+
+                // Save to history after adding text
+                setTimeout(() => saveToHistory(), 0);
+                return;
+              }
+
+              // Handle device drops
               const typeMap: Record<string, string> = {
                 router: 'Router',
                 server: 'Server',
@@ -1133,6 +1212,7 @@ const AppContent: React.FC = () => {
                 cloud2: 'Cloud 2',
                 database: 'Database',
                 laptop: 'Laptop',
+                mobile: 'Mobile Device',
                 attacker: 'Attacker',
                 generic: 'Device'
               };

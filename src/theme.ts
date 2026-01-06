@@ -63,6 +63,7 @@ export const darkTheme = {
     cloud: '#6b96ff',            // Light blue
     database: '#9d5cff',         // Purple
     laptop: '#8892a6',           // Gray
+    mobile: '#3ddc84',           // Android green
     attacker: '#ff5c9d',         // Pink
     endpoint: '#3dd6d6',         // Teal
   },

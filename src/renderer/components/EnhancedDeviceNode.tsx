@@ -14,7 +14,8 @@ import {
   DatabaseIcon,
   GenericIcon,
   LaptopIcon,
-  AttackIcon
+  AttackIcon,
+  MobileIcon
 } from './NetworkIcons';
 
 export interface ConnectionConfig {
@@ -31,7 +32,7 @@ export interface ConnectionConfig {
 
 export interface EnhancedDeviceData {
   label: string;
-  type: 'router' | 'server' | 'firewall' | 'windows' | 'linux' | 'switch' | 'cloud' | 'cloud2' | 'database' | 'laptop' | 'attacker' | 'generic';
+  type: 'router' | 'server' | 'firewall' | 'windows' | 'linux' | 'switch' | 'cloud' | 'cloud2' | 'database' | 'laptop' | 'mobile' | 'attacker' | 'generic';
   host?: string;
   port?: number;
   username?: string;
@@ -72,6 +73,8 @@ const EnhancedDeviceNode: React.FC<NodeProps> = ({ data, selected }) => {
         return <DatabaseIcon color={color} />;
       case 'laptop':
         return <LaptopIcon color={color} />;
+      case 'mobile':
+        return <MobileIcon color={color} />;
       case 'attacker':
         return <AttackIcon color={color} />;
       default:
