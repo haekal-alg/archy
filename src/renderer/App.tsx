@@ -721,9 +721,9 @@ const AppContent: React.FC = () => {
       data: {
         label: 'Text',
         fontSize: 14,
-        fontColor: '#000000',
+        fontColor: '#e8ecf4',
         backgroundColor: 'transparent',
-        borderColor: '#000000',
+        borderColor: '#e8ecf4',
         borderStyle: 'none',
         borderWidth: 1
       },
@@ -1177,9 +1177,9 @@ const AppContent: React.FC = () => {
                   data: {
                     label: 'Text',
                     fontSize: 14,
-                    fontColor: '#000000',
+                    fontColor: '#e8ecf4',
                     backgroundColor: 'transparent',
-                    borderColor: '#000000',
+                    borderColor: '#e8ecf4',
                     borderStyle: 'none',
                     borderWidth: 1
                   },
