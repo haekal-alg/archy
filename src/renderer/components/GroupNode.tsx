@@ -54,7 +54,10 @@ const GroupNode: React.FC<NodeProps> = ({ data, selected }) => {
           background: borderColor,
           width: `${CONFIG.handles.size}px`,
           height: `${CONFIG.handles.size}px`,
-          border: `${CONFIG.handles.borderWidth}px solid ${CONFIG.handles.borderColor}`
+          border: `${CONFIG.handles.borderWidth}px solid ${CONFIG.handles.borderColor}`,
+          opacity: isHovered ? 1 : 0,
+          transition: 'opacity 0.2s ease-in-out',
+          top: 0
         }}
       />
       <Handle
@@ -65,7 +68,10 @@ const GroupNode: React.FC<NodeProps> = ({ data, selected }) => {
           background: borderColor,
           width: `${CONFIG.handles.size}px`,
           height: `${CONFIG.handles.size}px`,
-          border: `${CONFIG.handles.borderWidth}px solid ${CONFIG.handles.borderColor}`
+          border: `${CONFIG.handles.borderWidth}px solid ${CONFIG.handles.borderColor}`,
+          opacity: isHovered ? 1 : 0,
+          transition: 'opacity 0.2s ease-in-out',
+          top: 0
         }}
       />
       <Handle
@@ -76,7 +82,10 @@ const GroupNode: React.FC<NodeProps> = ({ data, selected }) => {
           background: borderColor,
           width: `${CONFIG.handles.size}px`,
           height: `${CONFIG.handles.size}px`,
-          border: `${CONFIG.handles.borderWidth}px solid ${CONFIG.handles.borderColor}`
+          border: `${CONFIG.handles.borderWidth}px solid ${CONFIG.handles.borderColor}`,
+          opacity: isHovered ? 1 : 0,
+          transition: 'opacity 0.2s ease-in-out',
+          right: 0
         }}
       />
       <Handle
@@ -87,7 +96,10 @@ const GroupNode: React.FC<NodeProps> = ({ data, selected }) => {
           background: borderColor,
           width: `${CONFIG.handles.size}px`,
           height: `${CONFIG.handles.size}px`,
-          border: `${CONFIG.handles.borderWidth}px solid ${CONFIG.handles.borderColor}`
+          border: `${CONFIG.handles.borderWidth}px solid ${CONFIG.handles.borderColor}`,
+          opacity: isHovered ? 1 : 0,
+          transition: 'opacity 0.2s ease-in-out',
+          right: 0
         }}
       />
       <Handle
@@ -98,7 +110,10 @@ const GroupNode: React.FC<NodeProps> = ({ data, selected }) => {
           background: borderColor,
           width: `${CONFIG.handles.size}px`,
           height: `${CONFIG.handles.size}px`,
-          border: `${CONFIG.handles.borderWidth}px solid ${CONFIG.handles.borderColor}`
+          border: `${CONFIG.handles.borderWidth}px solid ${CONFIG.handles.borderColor}`,
+          opacity: isHovered ? 1 : 0,
+          transition: 'opacity 0.2s ease-in-out',
+          bottom: 0
         }}
       />
       <Handle
@@ -109,7 +124,10 @@ const GroupNode: React.FC<NodeProps> = ({ data, selected }) => {
           background: borderColor,
           width: `${CONFIG.handles.size}px`,
           height: `${CONFIG.handles.size}px`,
-          border: `${CONFIG.handles.borderWidth}px solid ${CONFIG.handles.borderColor}`
+          border: `${CONFIG.handles.borderWidth}px solid ${CONFIG.handles.borderColor}`,
+          opacity: isHovered ? 1 : 0,
+          transition: 'opacity 0.2s ease-in-out',
+          bottom: 0
         }}
       />
       <Handle
@@ -120,7 +138,10 @@ const GroupNode: React.FC<NodeProps> = ({ data, selected }) => {
           background: borderColor,
           width: `${CONFIG.handles.size}px`,
           height: `${CONFIG.handles.size}px`,
-          border: `${CONFIG.handles.borderWidth}px solid ${CONFIG.handles.borderColor}`
+          border: `${CONFIG.handles.borderWidth}px solid ${CONFIG.handles.borderColor}`,
+          opacity: isHovered ? 1 : 0,
+          transition: 'opacity 0.2s ease-in-out',
+          left: 0
         }}
       />
       <Handle
@@ -131,7 +152,10 @@ const GroupNode: React.FC<NodeProps> = ({ data, selected }) => {
           background: borderColor,
           width: `${CONFIG.handles.size}px`,
           height: `${CONFIG.handles.size}px`,
-          border: `${CONFIG.handles.borderWidth}px solid ${CONFIG.handles.borderColor}`
+          border: `${CONFIG.handles.borderWidth}px solid ${CONFIG.handles.borderColor}`,
+          opacity: isHovered ? 1 : 0,
+          transition: 'opacity 0.2s ease-in-out',
+          left: 0
         }}
       />
 
@@ -140,13 +164,13 @@ const GroupNode: React.FC<NodeProps> = ({ data, selected }) => {
           width: '100%',
           height: '100%',
           background: backgroundColor,
-          border: selected ? `3px ${borderStyle} ${borderColor}` : `3px ${borderStyle} ${borderColor}`,
+          border: `3px ${borderStyle} ${borderColor}`,
           borderRadius: theme.radius.xl,
           padding: theme.spacing.xl,
           position: 'relative',
           boxShadow: selected
-            ? `${isHovered ? theme.shadow.md : 'none'}, 0 0 0 3px #9ca3af`
-            : isHovered ? theme.shadow.md : 'none',
+            ? `0 0 0 3px #9ca3af`
+            : 'none',
           cursor: 'pointer',
         }}
         onMouseEnter={() => setIsHovered(true)}

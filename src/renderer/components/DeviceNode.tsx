@@ -36,16 +36,15 @@ const DeviceNode: React.FC<NodeProps> = ({ data, selected }) => {
       style={{
         padding: theme.spacing.lg,
         borderRadius: theme.radius.xl,
-        border: selected ? `2px solid ${borderColor}` : `2px solid ${borderColor}`,
+        border: `2px solid ${borderColor}`,
         background: isHovered ? theme.gradient.nodeHover : theme.gradient.nodeDefault,
         minWidth: '140px',
         maxWidth: '200px',
         boxShadow: selected
-          ? `${theme.shadow.lg}, 0 0 0 3px #9ca3af`
-          : isHovered
-            ? theme.shadow.lg
-            : theme.shadow.md,
+          ? `0 0 0 3px #9ca3af`
+          : 'none',
         cursor: 'pointer',
+        position: 'relative',
       }}
       className="device-node"
       onMouseEnter={() => setIsHovered(true)}

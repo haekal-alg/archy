@@ -107,15 +107,13 @@ const EnhancedDeviceNode: React.FC<NodeProps> = ({ data, selected }) => {
       style={{
         padding: theme.spacing.lg,
         borderRadius: theme.radius.xl,
-        border: selected ? `2px solid ${borderColor}` : `2px solid ${borderColor}`,
+        border: `2px solid ${borderColor}`,
         background: isHovered ? theme.gradient.nodeHover : theme.gradient.nodeDefault,
         minWidth: '140px',
         maxWidth: '200px',
         boxShadow: selected
-          ? `${theme.shadow.lg}, 0 0 0 3px #9ca3af`
-          : isHovered
-            ? theme.shadow.lg
-            : theme.shadow.md,
+          ? `0 0 0 3px #9ca3af`
+          : 'none',
         cursor: 'pointer',
         position: 'relative',
       }}
@@ -132,7 +130,10 @@ const EnhancedDeviceNode: React.FC<NodeProps> = ({ data, selected }) => {
           background: borderColor,
           width: `${CONFIG.handles.size}px`,
           height: `${CONFIG.handles.size}px`,
-          border: `${CONFIG.handles.borderWidth}px solid ${CONFIG.handles.borderColor}`
+          border: `${CONFIG.handles.borderWidth}px solid ${CONFIG.handles.borderColor}`,
+          opacity: isHovered ? 1 : 0,
+          transition: 'opacity 0.2s ease-in-out',
+          top: 0
         }}
       />
       <Handle
@@ -143,7 +144,10 @@ const EnhancedDeviceNode: React.FC<NodeProps> = ({ data, selected }) => {
           background: borderColor,
           width: `${CONFIG.handles.size}px`,
           height: `${CONFIG.handles.size}px`,
-          border: `${CONFIG.handles.borderWidth}px solid ${CONFIG.handles.borderColor}`
+          border: `${CONFIG.handles.borderWidth}px solid ${CONFIG.handles.borderColor}`,
+          opacity: isHovered ? 1 : 0,
+          transition: 'opacity 0.2s ease-in-out',
+          top: 0
         }}
       />
       <Handle
@@ -154,7 +158,10 @@ const EnhancedDeviceNode: React.FC<NodeProps> = ({ data, selected }) => {
           background: borderColor,
           width: `${CONFIG.handles.size}px`,
           height: `${CONFIG.handles.size}px`,
-          border: `${CONFIG.handles.borderWidth}px solid ${CONFIG.handles.borderColor}`
+          border: `${CONFIG.handles.borderWidth}px solid ${CONFIG.handles.borderColor}`,
+          opacity: isHovered ? 1 : 0,
+          transition: 'opacity 0.2s ease-in-out',
+          right: 0
         }}
       />
       <Handle
@@ -165,7 +172,10 @@ const EnhancedDeviceNode: React.FC<NodeProps> = ({ data, selected }) => {
           background: borderColor,
           width: `${CONFIG.handles.size}px`,
           height: `${CONFIG.handles.size}px`,
-          border: `${CONFIG.handles.borderWidth}px solid ${CONFIG.handles.borderColor}`
+          border: `${CONFIG.handles.borderWidth}px solid ${CONFIG.handles.borderColor}`,
+          opacity: isHovered ? 1 : 0,
+          transition: 'opacity 0.2s ease-in-out',
+          right: 0
         }}
       />
       <Handle
@@ -176,7 +186,10 @@ const EnhancedDeviceNode: React.FC<NodeProps> = ({ data, selected }) => {
           background: borderColor,
           width: `${CONFIG.handles.size}px`,
           height: `${CONFIG.handles.size}px`,
-          border: `${CONFIG.handles.borderWidth}px solid ${CONFIG.handles.borderColor}`
+          border: `${CONFIG.handles.borderWidth}px solid ${CONFIG.handles.borderColor}`,
+          opacity: isHovered ? 1 : 0,
+          transition: 'opacity 0.2s ease-in-out',
+          bottom: 0
         }}
       />
       <Handle
@@ -187,7 +200,10 @@ const EnhancedDeviceNode: React.FC<NodeProps> = ({ data, selected }) => {
           background: borderColor,
           width: `${CONFIG.handles.size}px`,
           height: `${CONFIG.handles.size}px`,
-          border: `${CONFIG.handles.borderWidth}px solid ${CONFIG.handles.borderColor}`
+          border: `${CONFIG.handles.borderWidth}px solid ${CONFIG.handles.borderColor}`,
+          opacity: isHovered ? 1 : 0,
+          transition: 'opacity 0.2s ease-in-out',
+          bottom: 0
         }}
       />
       <Handle
@@ -198,7 +214,10 @@ const EnhancedDeviceNode: React.FC<NodeProps> = ({ data, selected }) => {
           background: borderColor,
           width: `${CONFIG.handles.size}px`,
           height: `${CONFIG.handles.size}px`,
-          border: `${CONFIG.handles.borderWidth}px solid ${CONFIG.handles.borderColor}`
+          border: `${CONFIG.handles.borderWidth}px solid ${CONFIG.handles.borderColor}`,
+          opacity: isHovered ? 1 : 0,
+          transition: 'opacity 0.2s ease-in-out',
+          left: 0
         }}
       />
       <Handle
@@ -209,7 +228,10 @@ const EnhancedDeviceNode: React.FC<NodeProps> = ({ data, selected }) => {
           background: borderColor,
           width: `${CONFIG.handles.size}px`,
           height: `${CONFIG.handles.size}px`,
-          border: `${CONFIG.handles.borderWidth}px solid ${CONFIG.handles.borderColor}`
+          border: `${CONFIG.handles.borderWidth}px solid ${CONFIG.handles.borderColor}`,
+          opacity: isHovered ? 1 : 0,
+          transition: 'opacity 0.2s ease-in-out',
+          left: 0
         }}
       />
 
