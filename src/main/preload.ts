@@ -42,6 +42,10 @@ contextBridge.exposeInMainWorld('electron', {
   createLocalTerminal: (config: { connectionId: string }) =>
     ipcRenderer.invoke('create-local-terminal', config),
 
+  // Open native terminal (external window)
+  openNativeTerminal: (config: { host: string; port?: number; username: string; password?: string; privateKeyPath?: string; label?: string }) =>
+    ipcRenderer.invoke('open-native-terminal', config),
+
   sendSSHData: (connectionId: string, data: string) => {
     ipcRenderer.send('send-ssh-data', { connectionId, data });
   },

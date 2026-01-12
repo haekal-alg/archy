@@ -26,6 +26,16 @@ export interface ElectronAPI {
   // Local Terminal Management
   createLocalTerminal: (config: { connectionId: string }) => Promise<{ success: boolean; error?: string }>;
 
+  // Open native terminal (external window)
+  openNativeTerminal: (config: {
+    host: string;
+    port?: number;
+    username: string;
+    password?: string;
+    privateKeyPath?: string;
+    label?: string;
+  }) => Promise<{ success: boolean; method: string }>;
+
   sendSSHData: (connectionId: string, data: string) => void;
   resizeSSHTerminal: (connectionId: string, cols: number, rows: number) => void;
   closeSSHSession: (connectionId: string) => void;

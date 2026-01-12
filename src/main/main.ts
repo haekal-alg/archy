@@ -2,7 +2,6 @@ import { app, BrowserWindow, ipcMain, Menu, dialog, clipboard, session } from 'e
 import * as path from 'path';
 import * as fs from 'fs';
 import { exec } from 'child_process';
-import { Client, ClientChannel } from 'ssh2';
 import * as pty from 'node-pty';
 
 const Store = require('electron-store');
@@ -27,13 +26,12 @@ if (!app.isPackaged) {
 
 // Store active SSH sessions
 interface SSHSession {
-  client: Client;
-  stream: ClientChannel;
+  ptyProcess: pty.IPty;
   connectionId: string;
-  latency?: number;
-  lastPingTime?: number;
   isPaused: boolean;     // Flow control: track if stream is paused
   queuedBytes: number;   // Flow control: track bytes queued for renderer
+  password?: string;     // Store password for auto-typing when prompted
+  passwordSent: boolean; // Track if password has been sent
 }
 
 const sshSessions = new Map<string, SSHSession>();
@@ -83,16 +81,26 @@ function flushBuffer(connectionId: string) {
     });
   }
 
-  // Track queued bytes for flow control
+  // Track queued bytes for flow control (monitoring only - node-pty doesn't support pause/resume)
   const session = sshSessions.get(connectionId);
   if (session) {
     session.queuedBytes += bytesSent;
 
-    // Pause stream if queue exceeds threshold to prevent overwhelming renderer
+    // Log warning if queue exceeds threshold
     if (session.queuedBytes >= MAX_QUEUED_BYTES && !session.isPaused) {
-      session.stream.pause();
       session.isPaused = true;
-      console.log(`[${connectionId}] Stream paused: queue size ${session.queuedBytes} bytes`);
+      console.warn(`[${connectionId}] Queue exceeded threshold: ${session.queuedBytes} bytes (note: node-pty doesn't support backpressure)`);
+    }
+  }
+
+  // Also track for local sessions
+  const localSession = localSessions.get(connectionId);
+  if (localSession) {
+    localSession.queuedBytes += bytesSent;
+
+    if (localSession.queuedBytes >= MAX_QUEUED_BYTES && !localSession.isPaused) {
+      localSession.isPaused = true;
+      console.warn(`[${connectionId}] Local queue exceeded threshold: ${localSession.queuedBytes} bytes`);
     }
   }
 
@@ -305,214 +313,175 @@ kdcproxyname:s:`;
   });
 });
 
-// Handle SSH connections (legacy - for backward compatibility)
-ipcMain.handle('connect-ssh', async (event, { host, port = 22, username, password }) => {
-  return new Promise((resolve, reject) => {
-    const conn = new Client();
-
-    conn.on('ready', () => {
-      conn.shell((err, stream) => {
-        if (err) {
-          reject(err);
-          return;
-        }
-
-        let command;
-        if (process.platform === 'win32') {
-          command = `start cmd /k "echo Connected to ${host} && plink -ssh ${username}@${host} -P ${port} -pw ${password}"`;
-        } else if (process.platform === 'darwin') {
-          command = `osascript -e 'tell app "Terminal" to do script "sshpass -p '${password}' ssh -p ${port} ${username}@${host}"'`;
-        } else {
-          command = `gnome-terminal -- bash -c "sshpass -p '${password}' ssh -p ${port} ${username}@${host}; exec bash"`;
-        }
-
-        exec(command, (error) => {
-          if (error) {
-            reject(error);
-          } else {
-            resolve({ success: true });
-          }
-        });
-
-        conn.end();
-      });
-    });
-
-    conn.on('error', (err) => {
-      reject(err);
-    });
-
-    conn.connect({
-      host,
-      port,
-      username,
-      password,
-    });
-  });
-});
-
-// Create persistent SSH session with xterm.js
+// Create persistent SSH session using native SSH client via node-pty
+// This provides better performance than ssh2 library (native crypto, direct PTY)
 ipcMain.handle('create-ssh-session', async (event, { connectionId, host, port = 22, username, password, privateKeyPath }) => {
   return new Promise((resolve, reject) => {
-    const client = new Client();
+    try {
+      // Build SSH command arguments
+      const args = [
+        '-p', String(port),
+        '-o', 'StrictHostKeyChecking=no', // Auto-accept host keys (lab environment)
+        '-o', 'UserKnownHostsFile=/dev/null', // Don't store host keys
+        '-o', 'ServerAliveInterval=10', // Keep connection alive
+        '-o', 'ServerAliveCountMax=3',
+      ];
 
-    client.on('ready', () => {
-      client.shell({
-        term: 'xterm-256color',
+      // Add private key if provided
+      if (privateKeyPath && privateKeyPath.trim() !== '') {
+        args.push('-i', privateKeyPath);
+      }
+
+      // Add user@host
+      args.push(`${username}@${host}`);
+
+      // Spawn SSH process
+      const shell = process.platform === 'win32' ? 'ssh.exe' : 'ssh';
+      const ptyProcess = pty.spawn(shell, args, {
+        name: 'xterm-256color',
         cols: 80,
         rows: 24,
-      }, (err, stream) => {
-        if (err) {
-          client.end();
-          reject(err);
+        cwd: process.env.HOME || process.env.USERPROFILE || process.cwd(),
+        env: process.env as { [key: string]: string },
+      });
+
+      console.log(`[${connectionId}] SSH spawned: ${shell} ${args.join(' ')}`);
+
+      let connectionEstablished = false;
+      let outputBuffer = ''; // Accumulate output for prompt detection
+
+      // Store the session
+      sshSessions.set(connectionId, {
+        ptyProcess,
+        connectionId,
+        isPaused: false,
+        queuedBytes: 0,
+        password: password,
+        passwordSent: false,
+      });
+
+      // Handle PTY data (both stdout and stderr combined)
+      ptyProcess.onData((data: string) => {
+        const session = sshSessions.get(connectionId);
+        if (!session) return;
+
+        // Accumulate output for password prompt detection
+        outputBuffer += data;
+
+        // Keep only last 500 chars to avoid memory issues
+        if (outputBuffer.length > 500) {
+          outputBuffer = outputBuffer.slice(-500);
+        }
+
+        // Detect password prompt and auto-type password
+        // Common prompts: "password:", "Password:", "password for", "passphrase"
+        const passwordPromptRegex = /(password|passphrase).*:\s*$/i;
+        if (!session.passwordSent && session.password && passwordPromptRegex.test(outputBuffer.toLowerCase())) {
+          console.log(`[${connectionId}] Password prompt detected, auto-typing password`);
+          session.passwordSent = true;
+          ptyProcess.write(session.password + '\r');
+          // Don't send the password prompt to the UI
           return;
         }
 
-        // Store the session with flow control state initialized
-        sshSessions.set(connectionId, {
-          client,
-          stream,
-          connectionId,
-          isPaused: false,
-          queuedBytes: 0,
-        });
+        // Detect successful connection (shell prompt or welcome message)
+        if (!connectionEstablished) {
+          // Look for common shell prompts: $, #, >, or typical welcome messages
+          const successIndicators = [
+            /[$#>]\s*$/,           // Shell prompt
+            /welcome/i,             // Welcome message
+            /last login/i,          // Last login message
+            /\[.*@.*\]/,           // [user@host] format
+          ];
 
-        // Forward stream data to renderer with buffering for better performance
-        stream.on('data', (data: Buffer) => {
-          let bufferState = dataBuffers.get(connectionId);
-
-          if (!bufferState) {
-            bufferState = { buffer: [], timer: null, lastFlush: Date.now() };
-            dataBuffers.set(connectionId, bufferState);
+          if (successIndicators.some(pattern => pattern.test(outputBuffer))) {
+            connectionEstablished = true;
+            console.log(`[${connectionId}] SSH connection established`);
+            resolve({ success: true });
           }
-
-          bufferState.buffer.push(data);
-
-          // Calculate current buffer size
-          const totalSize = bufferState.buffer.reduce((sum, buf) => sum + buf.length, 0);
-
-          // Force flush if buffer is too large (prevents excessive memory usage)
-          if (totalSize >= BUFFER_SIZE_BYTES) {
-            if (bufferState.timer) {
-              clearTimeout(bufferState.timer);
-            }
-            flushBuffer(connectionId);
-            return;
-          }
-
-          // Schedule flush if not already scheduled
-          if (!bufferState.timer) {
-            // Respect minimum flush interval to prevent excessive IPC
-            const timeSinceLastFlush = Date.now() - bufferState.lastFlush;
-            const delay = Math.max(0, MIN_FLUSH_INTERVAL_MS - timeSinceLastFlush);
-
-            bufferState.timer = setTimeout(() => {
-              flushBuffer(connectionId);
-            }, Math.max(delay, BUFFER_TIME_MS));
-          }
-        });
-
-        // Send a newline to trigger the prompt - delay increased to ensure terminal is ready
-        setTimeout(() => {
-          if (sshSessions.has(connectionId)) {
-            stream.write('\n');
-          }
-        }, 300);
-
-        stream.on('close', () => {
-          // Cleanup buffer state
-          const bufferState = dataBuffers.get(connectionId);
-          if (bufferState) {
-            if (bufferState.timer) clearTimeout(bufferState.timer);
-            flushBuffer(connectionId); // Flush any remaining data
-            dataBuffers.delete(connectionId);
-          }
-
-          sshSessions.delete(connectionId);
-          if (mainWindow && !mainWindow.isDestroyed()) {
-            mainWindow.webContents.send('ssh-closed', { connectionId });
-          }
-          client.end();
-        });
-
-        stream.stderr.on('data', (data: Buffer) => {
-          // Buffer stderr data same as stdout for consistency
-          let bufferState = dataBuffers.get(connectionId);
-
-          if (!bufferState) {
-            bufferState = { buffer: [], timer: null, lastFlush: Date.now() };
-            dataBuffers.set(connectionId, bufferState);
-          }
-
-          bufferState.buffer.push(data);
-
-          const totalSize = bufferState.buffer.reduce((sum, buf) => sum + buf.length, 0);
-
-          if (totalSize >= BUFFER_SIZE_BYTES) {
-            if (bufferState.timer) clearTimeout(bufferState.timer);
-            flushBuffer(connectionId);
-            return;
-          }
-
-          if (!bufferState.timer) {
-            const timeSinceLastFlush = Date.now() - bufferState.lastFlush;
-            const delay = Math.max(0, MIN_FLUSH_INTERVAL_MS - timeSinceLastFlush);
-
-            bufferState.timer = setTimeout(() => {
-              flushBuffer(connectionId);
-            }, Math.max(delay, BUFFER_TIME_MS));
-          }
-        });
-
-        resolve({ success: true });
-      });
-    });
-
-    client.on('error', (err) => {
-      sshSessions.delete(connectionId);
-      reject(err);
-    });
-
-    // Prepare connection config
-    const connectConfig: any = {
-      host,
-      port,
-      username,
-      keepaliveInterval: 10000,
-      keepaliveCountMax: 3,
-      // Optimize for low-latency: use fast ciphers and no compression
-      algorithms: {
-        cipher: [
-          'aes128-gcm@openssh.com',
-          'aes128-ctr',
-          'aes192-ctr',
-          'aes256-ctr',
-        ],
-        compress: ['none', 'zlib@openssh.com'],
-      },
-      // Reduce initial connection timeout for faster failure detection
-      readyTimeout: 20000,
-    };
-
-    // Use private key if provided, otherwise use password
-    if (privateKeyPath && privateKeyPath.trim() !== '') {
-      try {
-        const privateKey = fs.readFileSync(privateKeyPath, 'utf8');
-        connectConfig.privateKey = privateKey;
-
-        // If password is also provided, use it as passphrase for encrypted keys
-        if (password && password.trim() !== '') {
-          connectConfig.passphrase = password;
         }
-      } catch (error) {
-        reject(new Error(`Failed to read private key file: ${error}`));
-        return;
-      }
-    } else if (password) {
-      connectConfig.password = password;
-    }
 
-    client.connect(connectConfig);
+        // Detect authentication failure
+        const authFailureRegex = /(permission denied|authentication failed|access denied)/i;
+        if (authFailureRegex.test(outputBuffer)) {
+          console.error(`[${connectionId}] Authentication failed`);
+          ptyProcess.kill();
+          sshSessions.delete(connectionId);
+          reject(new Error('Authentication failed'));
+          return;
+        }
+
+        // Buffer and forward data to renderer
+        let bufferState = dataBuffers.get(connectionId);
+
+        if (!bufferState) {
+          bufferState = { buffer: [], timer: null, lastFlush: Date.now() };
+          dataBuffers.set(connectionId, bufferState);
+        }
+
+        bufferState.buffer.push(Buffer.from(data, 'utf-8'));
+
+        // Calculate current buffer size
+        const totalSize = bufferState.buffer.reduce((sum, buf) => sum + buf.length, 0);
+
+        // Force flush if buffer is too large
+        if (totalSize >= BUFFER_SIZE_BYTES) {
+          if (bufferState.timer) {
+            clearTimeout(bufferState.timer);
+          }
+          flushBuffer(connectionId);
+          return;
+        }
+
+        // Schedule flush if not already scheduled
+        if (!bufferState.timer) {
+          const timeSinceLastFlush = Date.now() - bufferState.lastFlush;
+          const delay = Math.max(0, MIN_FLUSH_INTERVAL_MS - timeSinceLastFlush);
+
+          bufferState.timer = setTimeout(() => {
+            flushBuffer(connectionId);
+          }, Math.max(delay, BUFFER_TIME_MS));
+        }
+      });
+
+      // Handle process exit
+      ptyProcess.onExit(({ exitCode, signal }) => {
+        console.log(`[${connectionId}] SSH process exited: code=${exitCode}, signal=${signal}`);
+
+        // Cleanup buffer state
+        const bufferState = dataBuffers.get(connectionId);
+        if (bufferState) {
+          if (bufferState.timer) clearTimeout(bufferState.timer);
+          flushBuffer(connectionId); // Flush any remaining data
+          dataBuffers.delete(connectionId);
+        }
+
+        sshSessions.delete(connectionId);
+        if (mainWindow && !mainWindow.isDestroyed()) {
+          mainWindow.webContents.send('ssh-closed', { connectionId });
+        }
+
+        // If connection was never established, reject
+        if (!connectionEstablished) {
+          reject(new Error(`SSH connection failed: exit code ${exitCode}`));
+        }
+      });
+
+      // Timeout if connection doesn't establish in 20 seconds
+      setTimeout(() => {
+        if (!connectionEstablished) {
+          console.error(`[${connectionId}] SSH connection timeout`);
+          ptyProcess.kill();
+          sshSessions.delete(connectionId);
+          reject(new Error('SSH connection timeout'));
+        }
+      }, 20000);
+
+    } catch (error: any) {
+      console.error(`[${connectionId}] Failed to create SSH session:`, error);
+      sshSessions.delete(connectionId);
+      reject(new Error(`Failed to create SSH session: ${error.message}`));
+    }
   });
 });
 
@@ -599,8 +568,8 @@ ipcMain.handle('create-local-terminal', async (event, { connectionId }) => {
 // Send data to SSH or local terminal session (fire-and-forget for low latency)
 ipcMain.on('send-ssh-data', (event, { connectionId, data }) => {
   const sshSession = sshSessions.get(connectionId);
-  if (sshSession && sshSession.stream) {
-    sshSession.stream.write(data);
+  if (sshSession && sshSession.ptyProcess) {
+    sshSession.ptyProcess.write(data);
     return;
   }
 
@@ -613,8 +582,8 @@ ipcMain.on('send-ssh-data', (event, { connectionId, data }) => {
 // Resize SSH or local terminal (fire-and-forget)
 ipcMain.on('resize-ssh-terminal', (event, { connectionId, cols, rows }) => {
   const sshSession = sshSessions.get(connectionId);
-  if (sshSession && sshSession.stream) {
-    sshSession.stream.setWindow(rows, cols, 0, 0);
+  if (sshSession && sshSession.ptyProcess) {
+    sshSession.ptyProcess.resize(cols, rows);
     return;
   }
 
@@ -628,8 +597,7 @@ ipcMain.on('resize-ssh-terminal', (event, { connectionId, cols, rows }) => {
 ipcMain.on('close-ssh-session', (event, { connectionId }) => {
   const sshSession = sshSessions.get(connectionId);
   if (sshSession) {
-    sshSession.stream.end();
-    sshSession.client.end();
+    sshSession.ptyProcess.kill();
     sshSessions.delete(connectionId);
     return;
   }
@@ -648,11 +616,10 @@ ipcMain.on('ssh-data-consumed', (event, { connectionId, bytesConsumed }) => {
     // Decrement queued bytes counter
     sshSession.queuedBytes = Math.max(0, sshSession.queuedBytes - bytesConsumed);
 
-    // Resume stream if queue is below threshold and currently paused
+    // Note: node-pty doesn't support pause/resume, but we track queue size for monitoring
     if (sshSession.queuedBytes < RESUME_THRESHOLD_BYTES && sshSession.isPaused) {
-      sshSession.stream.resume();
       sshSession.isPaused = false;
-      console.log(`[${connectionId}] SSH stream resumed: queue size ${sshSession.queuedBytes} bytes`);
+      console.log(`[${connectionId}] SSH queue resumed: queue size ${sshSession.queuedBytes} bytes`);
     }
     return;
   }
@@ -721,6 +688,102 @@ ipcMain.handle('execute-command', async (event, { command }) => {
         resolve({ success: true, stdout, stderr });
       }
     });
+  });
+});
+
+// Open native terminal with SSH connection
+// NOTE: This provides faster terminal performance but reduced security
+// Passwords may be visible in process list on some platforms
+ipcMain.handle('open-native-terminal', async (event, { host, port = 22, username, password, privateKeyPath, label }) => {
+  return new Promise((resolve, reject) => {
+    try {
+      let command: string;
+      const displayLabel = label || `${username}@${host}:${port}`;
+
+      if (process.platform === 'win32') {
+        // Windows: Use Windows Terminal if available, otherwise cmd with ssh
+        // Check if Windows Terminal is available
+        const wtCommand = privateKeyPath
+          ? `wt.exe new-tab --title "${displayLabel}" ssh -i "${privateKeyPath}" -p ${port} ${username}@${host}`
+          : password
+          ? `wt.exe new-tab --title "${displayLabel}" cmd /k "echo Connecting to ${displayLabel}... && ssh -p ${port} ${username}@${host}"`
+          : `wt.exe new-tab --title "${displayLabel}" ssh -p ${port} ${username}@${host}`;
+
+        // Try Windows Terminal first, fallback to cmd
+        exec(wtCommand, (error) => {
+          if (error) {
+            // Fallback to cmd if Windows Terminal not available
+            const fallbackCommand = privateKeyPath
+              ? `start "SSH: ${displayLabel}" cmd /k "ssh -i "${privateKeyPath}" -p ${port} ${username}@${host}"`
+              : `start "SSH: ${displayLabel}" cmd /k "ssh -p ${port} ${username}@${host}"`;
+
+            exec(fallbackCommand, (fallbackError) => {
+              if (fallbackError) {
+                reject(new Error(`Failed to open terminal: ${fallbackError.message}`));
+              } else {
+                resolve({ success: true, method: 'cmd' });
+              }
+            });
+          } else {
+            resolve({ success: true, method: 'windows-terminal' });
+          }
+        });
+
+      } else if (process.platform === 'darwin') {
+        // macOS: Use Terminal.app or iTerm2
+        // Note: Password authentication will prompt interactively in the terminal
+        const sshCommand = privateKeyPath
+          ? `ssh -i '${privateKeyPath}' -p ${port} ${username}@${host}`
+          : `ssh -p ${port} ${username}@${host}`;
+
+        // AppleScript to open Terminal.app with the SSH command
+        command = `osascript -e 'tell app "Terminal" to do script "${sshCommand}"'`;
+
+        exec(command, (error) => {
+          if (error) {
+            reject(new Error(`Failed to open terminal: ${error.message}`));
+          } else {
+            resolve({ success: true, method: 'terminal-app' });
+          }
+        });
+
+      } else {
+        // Linux: Try gnome-terminal (most common), fallback to others
+        const sshCommand = privateKeyPath
+          ? `ssh -i '${privateKeyPath}' -p ${port} ${username}@${host}`
+          : `ssh -p ${port} ${username}@${host}`;
+
+        // Try gnome-terminal first
+        command = `gnome-terminal -- bash -c "${sshCommand}; exec bash"`;
+
+        exec(command, (error) => {
+          if (error) {
+            // Try konsole as fallback
+            const konsoleCmd = `konsole -e bash -c "${sshCommand}; exec bash"`;
+            exec(konsoleCmd, (konsoleError) => {
+              if (konsoleError) {
+                // Try xterm as last resort
+                const xtermCmd = `xterm -e bash -c "${sshCommand}; exec bash"`;
+                exec(xtermCmd, (xtermError) => {
+                  if (xtermError) {
+                    reject(new Error('No suitable terminal emulator found. Please install gnome-terminal, konsole, or xterm.'));
+                  } else {
+                    resolve({ success: true, method: 'xterm' });
+                  }
+                });
+              } else {
+                resolve({ success: true, method: 'konsole' });
+              }
+            });
+          } else {
+            resolve({ success: true, method: 'gnome-terminal' });
+          }
+        });
+      }
+
+    } catch (error: any) {
+      reject(new Error(`Failed to open native terminal: ${error.message}`));
+    }
   });
 });
 

@@ -114,6 +114,30 @@ const ConnectionsTab: React.FC = () => {
     }
   };
 
+  const handleOpenNative = async () => {
+    if (contextMenu) {
+      const conn = connections.find(c => c.id === contextMenu.connectionId);
+      if (conn && conn.connectionType === 'ssh') {
+        try {
+          await window.electron.openNativeTerminal({
+            host: conn.host,
+            port: conn.port,
+            username: conn.username,
+            password: conn.password,
+            privateKeyPath: conn.privateKeyPath,
+            label: conn.customLabel || conn.nodeName || `${conn.username}@${conn.host}:${conn.port}`,
+          });
+          closeContextMenu();
+        } catch (error: any) {
+          console.error('Failed to open native terminal:', error);
+          alert(`Failed to open native terminal: ${error.message || 'Unknown error'}`);
+        }
+      } else if (conn && conn.connectionType === 'local') {
+        alert('Local terminals cannot be opened in native terminal (they are already local).');
+      }
+    }
+  };
+
   // Derived state
   const activeConnection = connections.find(c => c.id === activeConnectionId);
   const activeZoom = activeConnectionId ? getConnectionZoom(activeConnectionId) : 1.0;
@@ -675,6 +699,7 @@ const ConnectionsTab: React.FC = () => {
             onDisconnect={handleDisconnect}
             onRemove={handleRemove}
             onRename={handleRename}
+            onOpenNative={conn.connectionType === 'ssh' ? handleOpenNative : undefined}
             onClose={closeContextMenu}
           />
         );
