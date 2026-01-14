@@ -9,7 +9,6 @@ interface ConnectionContextMenuProps {
   onDisconnect?: () => void;
   onRemove?: () => void;
   onRename?: () => void;
-  onOpenNative?: () => void;
   onClose: () => void;
 }
 
@@ -36,14 +35,6 @@ const RemoveIcon = () => (
 const RenameIcon = () => (
   <svg width="14" height="14" viewBox="0 0 14 14" fill="none" style={{ marginRight: '8px' }}>
     <path d="M8.5 2L12 5.5M2 12L5 11.5L11.5 5C12 4.5 12 3.5 11.5 3L11 2.5C10.5 2 9.5 2 9 2.5L2.5 9L2 12Z" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-  </svg>
-);
-
-const NativeTerminalIcon = () => (
-  <svg width="14" height="14" viewBox="0 0 14 14" fill="none" style={{ marginRight: '8px' }}>
-    <rect x="1.5" y="2.5" width="11" height="9" rx="1" stroke="currentColor" strokeWidth="1.5" fill="none" />
-    <path d="M3.5 5.5L5.5 7L3.5 8.5M7 9H9.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-    <path d="M10.5 1L13 3.5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
   </svg>
 );
 
@@ -88,7 +79,6 @@ const ConnectionContextMenu: React.FC<ConnectionContextMenuProps> = ({
   onDisconnect,
   onRemove,
   onRename,
-  onOpenNative,
   onClose,
 }) => {
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
@@ -178,31 +168,9 @@ const ConnectionContextMenu: React.FC<ConnectionContextMenuProps> = ({
           );
         })()}
 
-        {/* Open in Native Terminal */}
-        {onOpenNative && connectionStatus === 'connected' && (() => {
-          const nativeIndex = 2;
-          const isHovered = hoveredIndex === nativeIndex;
-          return (
-            <button
-              onClick={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                onOpenNative();
-                onClose();
-              }}
-              onMouseEnter={() => setHoveredIndex(nativeIndex)}
-              onMouseLeave={() => setHoveredIndex(null)}
-              style={getMenuItemStyle(isHovered)}
-            >
-              <NativeTerminalIcon />
-              Open in Native Terminal
-            </button>
-          );
-        })()}
-
         {/* Rename */}
         {onRename && (() => {
-          const renameIndex = 3;
+          const renameIndex = 2;
           const isHovered = hoveredIndex === renameIndex;
           return (
             <button
@@ -230,7 +198,7 @@ const ConnectionContextMenu: React.FC<ConnectionContextMenuProps> = ({
 
         {/* Remove */}
         {onRemove && (() => {
-          const removeIndex = 4;
+          const removeIndex = 3;
           const isHovered = hoveredIndex === removeIndex;
           return (
             <button

@@ -26,16 +26,6 @@ export interface ElectronAPI {
   // Local Terminal Management
   createLocalTerminal: (config: { connectionId: string }) => Promise<{ success: boolean; error?: string }>;
 
-  // Open native terminal (external window)
-  openNativeTerminal: (config: {
-    host: string;
-    port?: number;
-    username: string;
-    password?: string;
-    privateKeyPath?: string;
-    label?: string;
-  }) => Promise<{ success: boolean; method: string }>;
-
   sendSSHData: (connectionId: string, data: string) => void;
   resizeSSHTerminal: (connectionId: string, cols: number, rows: number) => void;
   closeSSHSession: (connectionId: string) => void;
@@ -55,6 +45,44 @@ export interface ElectronAPI {
     writeText: (text: string) => Promise<{ success: boolean }>;
     readText: () => Promise<string>;
   };
+
+  // SFTP File Transfer
+  getHomeDirectory: () => Promise<string>;
+
+  listLocalFiles: (path: string) => Promise<Array<{
+    name: string;
+    type: 'file' | 'directory';
+    size: number;
+    modifiedTime: string;
+    path: string;
+  }>>;
+
+  listRemoteFiles: (config: {
+    connectionId: string;
+    path: string;
+  }) => Promise<Array<{
+    name: string;
+    type: 'file' | 'directory';
+    size: number;
+    modifiedTime: string;
+    path: string;
+  }>>;
+
+  closeSFTPConnection: (connectionId: string) => Promise<void>;
+
+  uploadFile: (config: {
+    connectionId: string;
+    localPath: string;
+    remotePath: string;
+    fileName: string;
+  }) => Promise<{ success: boolean }>;
+
+  downloadFile: (config: {
+    connectionId: string;
+    remotePath: string;
+    localPath: string;
+    fileName: string;
+  }) => Promise<{ success: boolean }>;
 }
 
 declare global {

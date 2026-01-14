@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useTabContext } from '../contexts/TabContext';
 import TerminalEmulator from './TerminalEmulator';
 import ConnectionContextMenu from './ConnectionContextMenu';
+import SFTPModal from './SFTPModal';
 
 const ConnectionsTab: React.FC = () => {
   const { connections, activeConnectionId, setActiveConnectionId, disconnectConnection, removeConnection, retryConnection, createLocalTerminal, renameConnection } = useTabContext();
@@ -9,6 +10,7 @@ const ConnectionsTab: React.FC = () => {
   const [, setForceUpdate] = useState(false);
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; connectionId: string } | null>(null);
   const [renameModal, setRenameModal] = useState<{ connectionId: string; currentName: string } | null>(null);
+  const [sftpModalOpen, setSftpModalOpen] = useState(false);
 
   // Helper functions defined first
   const getConnectionZoom = (connectionId: string): number => {
@@ -114,30 +116,6 @@ const ConnectionsTab: React.FC = () => {
     }
   };
 
-  const handleOpenNative = async () => {
-    if (contextMenu) {
-      const conn = connections.find(c => c.id === contextMenu.connectionId);
-      if (conn && conn.connectionType === 'ssh') {
-        try {
-          await window.electron.openNativeTerminal({
-            host: conn.host,
-            port: conn.port,
-            username: conn.username,
-            password: conn.password,
-            privateKeyPath: conn.privateKeyPath,
-            label: conn.customLabel || conn.nodeName || `${conn.username}@${conn.host}:${conn.port}`,
-          });
-          closeContextMenu();
-        } catch (error: any) {
-          console.error('Failed to open native terminal:', error);
-          alert(`Failed to open native terminal: ${error.message || 'Unknown error'}`);
-        }
-      } else if (conn && conn.connectionType === 'local') {
-        alert('Local terminals cannot be opened in native terminal (they are already local).');
-      }
-    }
-  };
-
   // Derived state
   const activeConnection = connections.find(c => c.id === activeConnectionId);
   const activeZoom = activeConnectionId ? getConnectionZoom(activeConnectionId) : 1.0;
@@ -195,39 +173,77 @@ const ConnectionsTab: React.FC = () => {
             </h3>
           </div>
 
-          {/* New Local Terminal Button */}
-          <button
-            onClick={createLocalTerminal}
-            style={{
-              padding: '6px 10px',
-              background: '#303948',
-              color: '#e8ecf4',
-              border: '1px solid #3a4556',
-              borderRadius: '4px',
-              fontSize: '11px',
-              cursor: 'pointer',
-              fontWeight: 600,
-              letterSpacing: '0.3px',
-              transition: 'all 0.2s ease',
-              textTransform: 'uppercase',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '6px',
-              width: 'fit-content',
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.background = '#3a4556';
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.background = '#303948';
-            }}
-          >
-            <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-              <rect x="1" y="2" width="12" height="10" rx="1" stroke="currentColor" strokeWidth="1.2" fill="none" />
-              <path d="M3 5L5 7L3 9M6 9H8" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
-            Terminal
-          </button>
+          {/* Action Buttons Container */}
+          <div style={{ display: 'flex', gap: '8px' }}>
+            {/* New Local Terminal Button */}
+            <button
+              onClick={createLocalTerminal}
+              style={{
+                padding: '6px 10px',
+                background: '#303948',
+                color: '#e8ecf4',
+                border: '1px solid #3a4556',
+                borderRadius: '4px',
+                fontSize: '11px',
+                cursor: 'pointer',
+                fontWeight: 600,
+                letterSpacing: '0.3px',
+                transition: 'all 0.2s ease',
+                textTransform: 'uppercase',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                width: 'fit-content',
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = '#3a4556';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = '#303948';
+              }}
+            >
+              <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                <rect x="1" y="2" width="12" height="10" rx="1" stroke="currentColor" strokeWidth="1.2" fill="none" />
+                <path d="M3 5L5 7L3 9M6 9H8" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+              Terminal
+            </button>
+
+            {/* SFTP Button */}
+            <button
+              onClick={() => setSftpModalOpen(true)}
+              style={{
+                padding: '6px 10px',
+                background: '#303948',
+                color: '#e8ecf4',
+                border: '1px solid #3a4556',
+                borderRadius: '4px',
+                fontSize: '11px',
+                cursor: 'pointer',
+                fontWeight: 600,
+                letterSpacing: '0.3px',
+                transition: 'all 0.2s ease',
+                textTransform: 'uppercase',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                width: 'fit-content',
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = '#3a4556';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = '#303948';
+              }}
+            >
+              <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                <path d="M7 1L10 4M7 1L4 4M7 1V9" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
+                <path d="M2 7V12C2 12.5523 2.44772 13 3 13H11C11.5523 13 12 12.5523 12 12V7" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
+                <path d="M7 5L10 8M7 5L4 8M7 5V13" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" opacity="0.5" />
+              </svg>
+              SFTP
+            </button>
+          </div>
         </div>
 
         {/* Connections List */}
@@ -699,7 +715,6 @@ const ConnectionsTab: React.FC = () => {
             onDisconnect={handleDisconnect}
             onRemove={handleRemove}
             onRename={handleRename}
-            onOpenNative={conn.connectionType === 'ssh' ? handleOpenNative : undefined}
             onClose={closeContextMenu}
           />
         );
@@ -803,6 +818,9 @@ const ConnectionsTab: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* SFTP Modal */}
+      <SFTPModal isOpen={sftpModalOpen} onClose={() => setSftpModalOpen(false)} />
 
       {/* CSS Animations */}
       <style>{`

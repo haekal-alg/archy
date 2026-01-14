@@ -3,6 +3,7 @@ import * as path from 'path';
 import * as fs from 'fs';
 import { exec } from 'child_process';
 import * as pty from 'node-pty';
+const SftpClient = require('ssh2-sftp-client');
 
 const Store = require('electron-store');
 const store = new Store.default();
@@ -32,9 +33,17 @@ interface SSHSession {
   queuedBytes: number;   // Flow control: track bytes queued for renderer
   password?: string;     // Store password for auto-typing when prompted
   passwordSent: boolean; // Track if password has been sent
+  // Connection details for SFTP
+  host: string;
+  port: number;
+  username: string;
+  privateKeyPath?: string;
 }
 
 const sshSessions = new Map<string, SSHSession>();
+
+// Store active SFTP connections (persistent while modal is open)
+const sftpClients = new Map<string, any>();
 
 // Store active local terminal sessions
 interface LocalSession {
@@ -350,7 +359,7 @@ ipcMain.handle('create-ssh-session', async (event, { connectionId, host, port = 
       let connectionEstablished = false;
       let outputBuffer = ''; // Accumulate output for prompt detection
 
-      // Store the session
+      // Store the session with connection details for SFTP
       sshSessions.set(connectionId, {
         ptyProcess,
         connectionId,
@@ -358,6 +367,10 @@ ipcMain.handle('create-ssh-session', async (event, { connectionId, host, port = 
         queuedBytes: 0,
         password: password,
         passwordSent: false,
+        host,
+        port,
+        username,
+        privateKeyPath,
       });
 
       // Handle PTY data (both stdout and stderr combined)
@@ -691,102 +704,6 @@ ipcMain.handle('execute-command', async (event, { command }) => {
   });
 });
 
-// Open native terminal with SSH connection
-// NOTE: This provides faster terminal performance but reduced security
-// Passwords may be visible in process list on some platforms
-ipcMain.handle('open-native-terminal', async (event, { host, port = 22, username, password, privateKeyPath, label }) => {
-  return new Promise((resolve, reject) => {
-    try {
-      let command: string;
-      const displayLabel = label || `${username}@${host}:${port}`;
-
-      if (process.platform === 'win32') {
-        // Windows: Use Windows Terminal if available, otherwise cmd with ssh
-        // Check if Windows Terminal is available
-        const wtCommand = privateKeyPath
-          ? `wt.exe new-tab --title "${displayLabel}" ssh -i "${privateKeyPath}" -p ${port} ${username}@${host}`
-          : password
-          ? `wt.exe new-tab --title "${displayLabel}" cmd /k "echo Connecting to ${displayLabel}... && ssh -p ${port} ${username}@${host}"`
-          : `wt.exe new-tab --title "${displayLabel}" ssh -p ${port} ${username}@${host}`;
-
-        // Try Windows Terminal first, fallback to cmd
-        exec(wtCommand, (error) => {
-          if (error) {
-            // Fallback to cmd if Windows Terminal not available
-            const fallbackCommand = privateKeyPath
-              ? `start "SSH: ${displayLabel}" cmd /k "ssh -i "${privateKeyPath}" -p ${port} ${username}@${host}"`
-              : `start "SSH: ${displayLabel}" cmd /k "ssh -p ${port} ${username}@${host}"`;
-
-            exec(fallbackCommand, (fallbackError) => {
-              if (fallbackError) {
-                reject(new Error(`Failed to open terminal: ${fallbackError.message}`));
-              } else {
-                resolve({ success: true, method: 'cmd' });
-              }
-            });
-          } else {
-            resolve({ success: true, method: 'windows-terminal' });
-          }
-        });
-
-      } else if (process.platform === 'darwin') {
-        // macOS: Use Terminal.app or iTerm2
-        // Note: Password authentication will prompt interactively in the terminal
-        const sshCommand = privateKeyPath
-          ? `ssh -i '${privateKeyPath}' -p ${port} ${username}@${host}`
-          : `ssh -p ${port} ${username}@${host}`;
-
-        // AppleScript to open Terminal.app with the SSH command
-        command = `osascript -e 'tell app "Terminal" to do script "${sshCommand}"'`;
-
-        exec(command, (error) => {
-          if (error) {
-            reject(new Error(`Failed to open terminal: ${error.message}`));
-          } else {
-            resolve({ success: true, method: 'terminal-app' });
-          }
-        });
-
-      } else {
-        // Linux: Try gnome-terminal (most common), fallback to others
-        const sshCommand = privateKeyPath
-          ? `ssh -i '${privateKeyPath}' -p ${port} ${username}@${host}`
-          : `ssh -p ${port} ${username}@${host}`;
-
-        // Try gnome-terminal first
-        command = `gnome-terminal -- bash -c "${sshCommand}; exec bash"`;
-
-        exec(command, (error) => {
-          if (error) {
-            // Try konsole as fallback
-            const konsoleCmd = `konsole -e bash -c "${sshCommand}; exec bash"`;
-            exec(konsoleCmd, (konsoleError) => {
-              if (konsoleError) {
-                // Try xterm as last resort
-                const xtermCmd = `xterm -e bash -c "${sshCommand}; exec bash"`;
-                exec(xtermCmd, (xtermError) => {
-                  if (xtermError) {
-                    reject(new Error('No suitable terminal emulator found. Please install gnome-terminal, konsole, or xterm.'));
-                  } else {
-                    resolve({ success: true, method: 'xterm' });
-                  }
-                });
-              } else {
-                resolve({ success: true, method: 'konsole' });
-              }
-            });
-          } else {
-            resolve({ success: true, method: 'gnome-terminal' });
-          }
-        });
-      }
-
-    } catch (error: any) {
-      reject(new Error(`Failed to open native terminal: ${error.message}`));
-    }
-  });
-});
-
 // Show open dialog for file selection
 ipcMain.handle('show-open-dialog', async (event, options) => {
   try {
@@ -948,4 +865,234 @@ ipcMain.handle('clipboard-write-text', async (event, text: string) => {
 
 ipcMain.handle('clipboard-read-text', async () => {
   return clipboard.readText();
+});
+
+// SFTP File Transfer - Get home directory
+ipcMain.handle('get-home-directory', async () => {
+  return process.env.HOME || process.env.USERPROFILE || '';
+});
+
+// SFTP File Transfer - List local files
+ipcMain.handle('list-local-files', async (event, dirPath: string) => {
+  return new Promise((resolve, reject) => {
+    fs.readdir(dirPath, { withFileTypes: true }, (err, entries) => {
+      if (err) {
+        reject(new Error(`Failed to read directory: ${err.message}`));
+        return;
+      }
+
+      const files = entries.map(entry => {
+        const fullPath = path.join(dirPath, entry.name);
+        let stats;
+        try {
+          stats = fs.statSync(fullPath);
+        } catch (e) {
+          // If we can't stat the file, skip it
+          return null;
+        }
+
+        return {
+          name: entry.name,
+          type: entry.isDirectory() ? 'directory' : 'file',
+          size: stats.size,
+          modifiedTime: stats.mtime.toISOString(),
+          path: fullPath,
+        };
+      }).filter(f => f !== null);
+
+      // Add parent directory entry (..) if not at root
+      const parentPath = path.dirname(dirPath);
+      if (parentPath !== dirPath) {
+        files.unshift({
+          name: '..',
+          type: 'directory' as const,
+          size: 0,
+          modifiedTime: '',
+          path: parentPath,
+        });
+      }
+
+      resolve(files);
+    });
+  });
+});
+
+// SFTP File Transfer - List remote files via SFTP protocol
+ipcMain.handle('list-remote-files', async (event, { connectionId, path: remotePath }) => {
+  console.log(`[SFTP] Listing remote files for connection ${connectionId}, path: ${remotePath}`);
+
+  // Get the SSH session connection details
+  const session = sshSessions.get(connectionId);
+  if (!session) {
+    console.error('[SFTP] SSH session not found for connectionId:', connectionId);
+    console.log('[SFTP] Available sessions:', Array.from(sshSessions.keys()));
+    throw new Error('SSH session not found. Please connect first.');
+  }
+
+  console.log(`[SFTP] Found session - host: ${session.host}, port: ${session.port}, username: ${session.username}`);
+
+  // Check if we already have an active SFTP connection for this connectionId
+  let sftp = sftpClients.get(connectionId);
+
+  if (!sftp) {
+    console.log('[SFTP] No existing connection, creating new SFTP client');
+    sftp = new SftpClient();
+
+    // Create SFTP connection config
+    const config: any = {
+      host: session.host,
+      port: session.port,
+      username: session.username,
+      readyTimeout: 20000,
+      retries: 3,
+      retry_minTimeout: 2000,
+    };
+
+    // Add authentication (password or private key)
+    if (session.privateKeyPath && session.privateKeyPath.trim() !== '') {
+      console.log(`[SFTP] Using private key authentication: ${session.privateKeyPath}`);
+      try {
+        const privateKey = fs.readFileSync(session.privateKeyPath, 'utf8');
+        config.privateKey = privateKey;
+        // If password is also provided, use it as passphrase for encrypted keys
+        if (session.password) {
+          config.passphrase = session.password;
+        }
+      } catch (error: any) {
+        console.error('[SFTP] Failed to read private key:', error.message);
+        throw new Error(`Failed to read private key file: ${error.message}`);
+      }
+    } else if (session.password) {
+      console.log('[SFTP] Using password authentication');
+      config.password = session.password;
+    } else {
+      console.error('[SFTP] No authentication method available');
+      throw new Error('No authentication credentials found');
+    }
+
+    try {
+      console.log('[SFTP] Connecting to SFTP server...');
+      await sftp.connect(config);
+      console.log('[SFTP] Connected successfully');
+
+      // Store the connection for reuse
+      sftpClients.set(connectionId, sftp);
+      console.log('[SFTP] Connection stored for reuse');
+    } catch (error: any) {
+      console.error('[SFTP] Connection failed:', error.message);
+      throw new Error(`Failed to connect to SFTP server: ${error.message}`);
+    }
+  } else {
+    console.log('[SFTP] Reusing existing SFTP connection');
+  }
+
+  try {
+    console.log(`[SFTP] Listing directory: ${remotePath}`);
+    const fileList = await sftp.list(remotePath);
+    console.log(`[SFTP] Number of items: ${fileList.length}`);
+
+    // Convert to our format
+    const files = fileList.map((file: any) => ({
+      name: file.name,
+      type: file.type === 'd' ? 'directory' : 'file',
+      size: file.size,
+      modifiedTime: new Date(file.modifyTime).toISOString(),
+      path: path.posix.join(remotePath, file.name),
+    }));
+
+    // Add parent directory entry if not at root
+    const parentPath = path.posix.dirname(remotePath);
+    if (parentPath !== remotePath) {
+      files.unshift({
+        name: '..',
+        type: 'directory' as const,
+        size: 0,
+        modifiedTime: '',
+        path: parentPath,
+      });
+    }
+
+    console.log(`[SFTP] Returning ${files.length} files`);
+    return files;
+  } catch (error: any) {
+    console.error('[SFTP] Error listing files:', error.message);
+    // If connection failed, remove it from cache so next request creates new one
+    sftpClients.delete(connectionId);
+    try {
+      await sftp.end();
+    } catch (e) {
+      // Ignore cleanup errors
+    }
+    throw new Error(`Failed to list remote files: ${error.message}`);
+  }
+});
+
+// Close SFTP connection
+ipcMain.handle('close-sftp-connection', async (event, connectionId: string) => {
+  console.log(`[SFTP] Closing connection for ${connectionId}`);
+
+  const sftp = sftpClients.get(connectionId);
+  if (sftp) {
+    try {
+      await sftp.end();
+      sftpClients.delete(connectionId);
+      console.log(`[SFTP] Connection closed and removed from cache`);
+    } catch (error: any) {
+      console.error('[SFTP] Error closing connection:', error.message);
+      // Remove from cache even if close failed
+      sftpClients.delete(connectionId);
+    }
+  } else {
+    console.log(`[SFTP] No active connection found for ${connectionId}`);
+  }
+});
+
+// Upload file from local to remote
+ipcMain.handle('upload-file', async (event, { connectionId, localPath, remotePath, fileName }) => {
+  console.log(`[SFTP] Upload file request:`, { connectionId, localPath, remotePath, fileName });
+
+  const sftp = sftpClients.get(connectionId);
+  if (!sftp) {
+    console.error('[SFTP] No active SFTP connection for upload');
+    throw new Error('No active SFTP connection. Please ensure connection is established.');
+  }
+
+  try {
+    const remoteFilePath = path.posix.join(remotePath, fileName);
+    console.log(`[SFTP] Uploading from ${localPath} to ${remoteFilePath}`);
+
+    await sftp.put(localPath, remoteFilePath);
+
+    console.log(`[SFTP] Upload successful: ${fileName}`);
+    return { success: true };
+  } catch (error: any) {
+    console.error('[SFTP] Upload error:', error.message);
+    console.error('[SFTP] Full error:', error);
+    throw new Error(`Failed to upload file: ${error.message}`);
+  }
+});
+
+// Download file from remote to local
+ipcMain.handle('download-file', async (event, { connectionId, remotePath, localPath, fileName }) => {
+  console.log(`[SFTP] Download file request:`, { connectionId, remotePath, localPath, fileName });
+
+  const sftp = sftpClients.get(connectionId);
+  if (!sftp) {
+    console.error('[SFTP] No active SFTP connection for download');
+    throw new Error('No active SFTP connection. Please ensure connection is established.');
+  }
+
+  try {
+    const localFilePath = path.join(localPath, fileName);
+    console.log(`[SFTP] Downloading from ${remotePath} to ${localFilePath}`);
+
+    await sftp.get(remotePath, localFilePath);
+
+    console.log(`[SFTP] Download successful: ${fileName}`);
+    return { success: true };
+  } catch (error: any) {
+    console.error('[SFTP] Download error:', error.message);
+    console.error('[SFTP] Full error:', error);
+    throw new Error(`Failed to download file: ${error.message}`);
+  }
 });

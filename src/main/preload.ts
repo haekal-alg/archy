@@ -42,10 +42,6 @@ contextBridge.exposeInMainWorld('electron', {
   createLocalTerminal: (config: { connectionId: string }) =>
     ipcRenderer.invoke('create-local-terminal', config),
 
-  // Open native terminal (external window)
-  openNativeTerminal: (config: { host: string; port?: number; username: string; password?: string; privateKeyPath?: string; label?: string }) =>
-    ipcRenderer.invoke('open-native-terminal', config),
-
   sendSSHData: (connectionId: string, data: string) => {
     ipcRenderer.send('send-ssh-data', { connectionId, data });
   },
@@ -92,4 +88,16 @@ contextBridge.exposeInMainWorld('electron', {
     writeText: (text: string) => ipcRenderer.invoke('clipboard-write-text', text),
     readText: () => ipcRenderer.invoke('clipboard-read-text'),
   },
+
+  // SFTP File Transfer
+  getHomeDirectory: () => ipcRenderer.invoke('get-home-directory'),
+  listLocalFiles: (path: string) => ipcRenderer.invoke('list-local-files', path),
+  listRemoteFiles: (config: { connectionId: string; path: string }) =>
+    ipcRenderer.invoke('list-remote-files', config),
+  closeSFTPConnection: (connectionId: string) =>
+    ipcRenderer.invoke('close-sftp-connection', connectionId),
+  uploadFile: (config: { connectionId: string; localPath: string; remotePath: string; fileName: string }) =>
+    ipcRenderer.invoke('upload-file', config),
+  downloadFile: (config: { connectionId: string; remotePath: string; localPath: string; fileName: string }) =>
+    ipcRenderer.invoke('download-file', config),
 });
