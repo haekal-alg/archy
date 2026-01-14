@@ -38,6 +38,14 @@ const SFTPModal: React.FC<SFTPModalProps> = ({ isOpen, onClose }) => {
   const [selectedRemoteFile, setSelectedRemoteFile] = useState<string | null>(null);
   const [dragOverPane, setDragOverPane] = useState<'local' | 'remote' | null>(null);
   const [transferProgress, setTransferProgress] = useState<{ pane: 'local' | 'remote'; fileName: string; progress: number } | null>(null);
+  const [showLocalHidden, setShowLocalHidden] = useState(false);
+  const [showRemoteHidden, setShowRemoteHidden] = useState(false);
+  const [localContextMenu, setLocalContextMenu] = useState(false);
+  const [remoteContextMenu, setRemoteContextMenu] = useState(false);
+  const [localSortColumn, setLocalSortColumn] = useState<'name' | 'modified' | 'type' | 'size'>('name');
+  const [localSortDirection, setLocalSortDirection] = useState<'asc' | 'desc'>('asc');
+  const [remoteSortColumn, setRemoteSortColumn] = useState<'name' | 'modified' | 'type' | 'size'>('name');
+  const [remoteSortDirection, setRemoteSortDirection] = useState<'asc' | 'desc'>('asc');
 
   // Get available SSH hosts from connections
   const availableHosts: SSHHost[] = connections
@@ -50,6 +58,52 @@ const SFTPModal: React.FC<SFTPModalProps> = ({ isOpen, onClose }) => {
       username: conn.username,
       hasSSH: true,
     }));
+
+  // Helper function to check if file is hidden
+  const isHiddenFile = (fileName: string) => {
+    return fileName.startsWith('.') && fileName !== '..';
+  };
+
+  // Helper function to filter and sort files
+  const filterAndSortFiles = (
+    files: FileItem[],
+    showHidden: boolean,
+    sortColumn: 'name' | 'modified' | 'type' | 'size',
+    sortDirection: 'asc' | 'desc'
+  ) => {
+    console.log('[SFTP] Filtering files - showHidden:', showHidden, 'sortColumn:', sortColumn, 'sortDirection:', sortDirection);
+
+    // Filter hidden files
+    let filtered = showHidden ? files : files.filter(f => !isHiddenFile(f.name));
+
+    // Sort files
+    const sorted = [...filtered].sort((a, b) => {
+      let comparison = 0;
+
+      switch (sortColumn) {
+        case 'name':
+          comparison = a.name.localeCompare(b.name);
+          break;
+        case 'modified':
+          comparison = new Date(a.modifiedTime).getTime() - new Date(b.modifiedTime).getTime();
+          break;
+        case 'type':
+          comparison = a.type.localeCompare(b.type);
+          break;
+        case 'size':
+          comparison = a.size - b.size;
+          break;
+      }
+
+      return sortDirection === 'asc' ? comparison : -comparison;
+    });
+
+    return sorted;
+  };
+
+  // Compute filtered and sorted files
+  const displayLocalFiles = filterAndSortFiles(localFiles, showLocalHidden, localSortColumn, localSortDirection);
+  const displayRemoteFiles = filterAndSortFiles(remoteFiles, showRemoteHidden, remoteSortColumn, remoteSortDirection);
 
   // Log available hosts when modal opens
   useEffect(() => {
@@ -98,6 +152,18 @@ const SFTPModal: React.FC<SFTPModalProps> = ({ isOpen, onClose }) => {
       }
     };
   }, [selectedHost]);
+
+  // Close context menus when clicking outside
+  useEffect(() => {
+    const handleClick = () => {
+      setLocalContextMenu(false);
+      setRemoteContextMenu(false);
+    };
+    if (localContextMenu || remoteContextMenu) {
+      document.addEventListener('click', handleClick);
+      return () => document.removeEventListener('click', handleClick);
+    }
+  }, [localContextMenu, remoteContextMenu]);
 
   const loadLocalFiles = async (path: string) => {
     try {
@@ -185,6 +251,28 @@ const SFTPModal: React.FC<SFTPModalProps> = ({ isOpen, onClose }) => {
 
   const handleRemoteNavigate = (path: string) => {
     loadRemoteFiles(path);
+  };
+
+  // Helper to format file size
+  const formatSize = (bytes: number) => {
+    if (bytes === 0) return '-';
+    const kb = bytes / 1024;
+    if (kb < 1024) return `${kb.toFixed(1)} KB`;
+    const mb = kb / 1024;
+    return `${mb.toFixed(1)} MB`;
+  };
+
+  // Helper to format date
+  const formatDate = (dateString: string) => {
+    if (!dateString) return '-';
+    const date = new Date(dateString);
+    return date.toLocaleString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    });
   };
 
   const handleClose = async () => {
@@ -393,8 +481,87 @@ const SFTPModal: React.FC<SFTPModalProps> = ({ isOpen, onClose }) => {
                   color: '#e8ecf4',
                   textTransform: 'uppercase',
                   letterSpacing: '0.5px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  position: 'relative',
                 }}>
-                  Local Machine
+                  <span>Local Machine</span>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      console.log('[SFTP] Local gear clicked');
+                      setLocalContextMenu(!localContextMenu);
+                      setRemoteContextMenu(false);
+                    }}
+                    style={{
+                      background: 'transparent',
+                      border: 'none',
+                      color: '#e8ecf4',
+                      cursor: 'pointer',
+                      padding: '4px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      borderRadius: '4px',
+                      transition: 'all 0.2s',
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.background = '#1f2430';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.background = 'transparent';
+                    }}
+                  >
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <circle cx="12" cy="12" r="3"/>
+                      <path d="M12 1v3m0 16v3m9-9h-3m-16 0H1M19.071 4.929l-2.121 2.121M7.05 16.95l-2.121 2.121M19.071 19.071l-2.121-2.121M7.05 7.05L4.929 4.929"/>
+                    </svg>
+                  </button>
+                  {localContextMenu && (
+                    <div style={{
+                      position: 'absolute',
+                      top: '100%',
+                      right: '8px',
+                      background: '#1f2430',
+                      border: '1px solid #3a4556',
+                      borderRadius: '6px',
+                      boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3)',
+                      zIndex: 1000,
+                      minWidth: '180px',
+                      marginTop: '4px',
+                    }}>
+                      <button
+                        onClick={() => {
+                          console.log('[SFTP] Toggle local hidden files:', !showLocalHidden);
+                          setShowLocalHidden(!showLocalHidden);
+                          setLocalContextMenu(false);
+                        }}
+                        style={{
+                          width: '100%',
+                          padding: '10px 14px',
+                          background: 'transparent',
+                          border: 'none',
+                          color: '#e8ecf4',
+                          fontSize: '13px',
+                          textAlign: 'left',
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '8px',
+                        }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.background = '#252d3f';
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.background = 'transparent';
+                        }}
+                      >
+                        <span style={{ width: '16px' }}>{showLocalHidden ? '✓' : ''}</span>
+                        <span>Show Hidden Files</span>
+                      </button>
+                    </div>
+                  )}
                 </div>
                 <div style={{
                   padding: '8px 16px',
@@ -469,64 +636,123 @@ const SFTPModal: React.FC<SFTPModalProps> = ({ isOpen, onClose }) => {
                     border: dragOverPane === 'local' ? '2px dashed #16825d' : '2px dashed transparent',
                     transition: 'all 0.2s',
                   }}>
-                  {localFiles.length === 0 && !localLoading ? (
+                  {displayLocalFiles.length === 0 && !localLoading ? (
                     <div style={{ textAlign: 'center', padding: '40px', color: '#8892a6' }}>
                       No files found
                     </div>
                   ) : (
-                    localFiles.map((file, index) => (
-                      <div
-                        key={index}
-                        draggable={file.type === 'file'}
-                        onClick={() => {
-                          console.log('[SFTP] Local file clicked:', file.name);
-                          setSelectedLocalFile(file.path);
-                        }}
-                        onDoubleClick={() => {
-                          console.log('[SFTP] Local file double-clicked:', file.name);
-                          if (file.type === 'directory') {
-                            handleLocalNavigate(file.path);
-                          }
-                        }}
-                        onDragStart={(e) => {
-                          console.log('[SFTP] Drag started - local file:', file.name);
-                          e.dataTransfer.setData('sourcePane', 'local');
-                          e.dataTransfer.setData('filePath', file.path);
-                          e.dataTransfer.setData('fileName', file.name);
-                          e.dataTransfer.effectAllowed = 'copy';
-                        }}
-                        style={{
-                          padding: '8px 12px',
-                          borderRadius: '4px',
-                          cursor: 'pointer',
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: '8px',
-                          fontSize: '13px',
-                          color: '#e8ecf4',
-                          transition: 'background 0.15s',
-                          background: selectedLocalFile === file.path ? '#1e3a5f' : 'transparent',
-                        }}
-                        onMouseEnter={(e) => {
-                          if (selectedLocalFile !== file.path) {
-                            e.currentTarget.style.background = '#252d3f';
-                          }
-                        }}
-                        onMouseLeave={(e) => {
-                          if (selectedLocalFile !== file.path) {
-                            e.currentTarget.style.background = 'transparent';
-                          }
-                        }}
-                      >
-                        <span>{file.type === 'directory' ? '📁' : '📄'}</span>
-                        <span style={{ flex: 1 }}>{file.name}</span>
-                        {file.type === 'file' && (
-                          <span style={{ fontSize: '11px', color: '#8892a6' }}>
-                            {(file.size / 1024).toFixed(1)} KB
-                          </span>
-                        )}
-                      </div>
-                    ))
+                    <table style={{ width: '100%', borderCollapse: 'collapse', tableLayout: 'fixed' }}>
+                      <colgroup>
+                        <col style={{ width: '45%' }} />
+                        <col style={{ width: '28%' }} />
+                        <col style={{ width: '12%' }} />
+                        <col style={{ width: '15%' }} />
+                      </colgroup>
+                      <thead>
+                        <tr style={{ borderBottom: '1px solid #3a4556' }}>
+                          {['name', 'modified', 'type', 'size'].map((col) => (
+                            <th
+                              key={col}
+                              onClick={() => {
+                                console.log('[SFTP] Local sort column clicked:', col);
+                                if (localSortColumn === col) {
+                                  setLocalSortDirection(localSortDirection === 'asc' ? 'desc' : 'asc');
+                                } else {
+                                  setLocalSortColumn(col as any);
+                                  setLocalSortDirection('asc');
+                                }
+                              }}
+                              style={{
+                                padding: '8px 12px',
+                                textAlign: 'left',
+                                fontSize: '11px',
+                                fontWeight: 600,
+                                color: '#8892a6',
+                                textTransform: 'uppercase',
+                                letterSpacing: '0.5px',
+                                cursor: 'pointer',
+                                userSelect: 'none',
+                                position: 'relative',
+                                overflow: 'hidden',
+                                textOverflow: 'ellipsis',
+                                whiteSpace: 'nowrap',
+                              }}
+                              onMouseEnter={(e) => {
+                                e.currentTarget.style.background = '#252d3f';
+                              }}
+                              onMouseLeave={(e) => {
+                                e.currentTarget.style.background = 'transparent';
+                              }}
+                            >
+                              {col.charAt(0).toUpperCase() + col.slice(1)}
+                              {localSortColumn === col && (
+                                <span style={{ marginLeft: '4px' }}>
+                                  {localSortDirection === 'asc' ? '↑' : '↓'}
+                                </span>
+                              )}
+                            </th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {displayLocalFiles.map((file, index) => (
+                          <tr
+                            key={index}
+                            draggable={file.type === 'file'}
+                            onClick={() => {
+                              console.log('[SFTP] Local file clicked:', file.name);
+                              setSelectedLocalFile(file.path);
+                            }}
+                            onDoubleClick={() => {
+                              console.log('[SFTP] Local file double-clicked:', file.name);
+                              if (file.type === 'directory') {
+                                handleLocalNavigate(file.path);
+                              }
+                            }}
+                            onDragStart={(e) => {
+                              console.log('[SFTP] Drag started - local file:', file.name);
+                              e.dataTransfer.setData('sourcePane', 'local');
+                              e.dataTransfer.setData('filePath', file.path);
+                              e.dataTransfer.setData('fileName', file.name);
+                              e.dataTransfer.effectAllowed = 'copy';
+                            }}
+                            style={{
+                              cursor: 'pointer',
+                              background: selectedLocalFile === file.path ? '#1e3a5f' : 'transparent',
+                              transition: 'background 0.15s',
+                              opacity: isHiddenFile(file.name) ? 0.5 : 1,
+                              filter: isHiddenFile(file.name) ? 'grayscale(50%)' : 'none',
+                            }}
+                            onMouseEnter={(e) => {
+                              if (selectedLocalFile !== file.path) {
+                                e.currentTarget.style.background = '#252d3f';
+                              }
+                            }}
+                            onMouseLeave={(e) => {
+                              if (selectedLocalFile !== file.path) {
+                                e.currentTarget.style.background = 'transparent';
+                              }
+                            }}
+                          >
+                            <td style={{ padding: '8px 12px', fontSize: '13px', color: '#e8ecf4' }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', overflow: 'hidden' }}>
+                                <span style={{ flexShrink: 0 }}>{file.type === 'directory' ? '📁' : '📄'}</span>
+                                <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{file.name}</span>
+                              </div>
+                            </td>
+                            <td style={{ padding: '8px 12px', fontSize: '12px', color: '#8892a6', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                              {formatDate(file.modifiedTime)}
+                            </td>
+                            <td style={{ padding: '8px 12px', fontSize: '12px', color: '#8892a6', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                              {file.type === 'directory' ? 'Folder' : 'File'}
+                            </td>
+                            <td style={{ padding: '8px 12px', fontSize: '12px', color: '#8892a6', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                              {file.type === 'file' ? formatSize(file.size) : '-'}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
                   )}
 
                   {/* Loading Overlay for Local Pane */}
@@ -626,8 +852,87 @@ const SFTPModal: React.FC<SFTPModalProps> = ({ isOpen, onClose }) => {
                   color: '#e8ecf4',
                   textTransform: 'uppercase',
                   letterSpacing: '0.5px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  position: 'relative',
                 }}>
-                  Remote Machine ({selectedHost.username}@{selectedHost.host})
+                  <span>Remote Machine ({selectedHost.username}@{selectedHost.host})</span>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      console.log('[SFTP] Remote gear clicked');
+                      setRemoteContextMenu(!remoteContextMenu);
+                      setLocalContextMenu(false);
+                    }}
+                    style={{
+                      background: 'transparent',
+                      border: 'none',
+                      color: '#e8ecf4',
+                      cursor: 'pointer',
+                      padding: '4px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      borderRadius: '4px',
+                      transition: 'all 0.2s',
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.background = '#1f2430';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.background = 'transparent';
+                    }}
+                  >
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <circle cx="12" cy="12" r="3"/>
+                      <path d="M12 1v3m0 16v3m9-9h-3m-16 0H1M19.071 4.929l-2.121 2.121M7.05 16.95l-2.121 2.121M19.071 19.071l-2.121-2.121M7.05 7.05L4.929 4.929"/>
+                    </svg>
+                  </button>
+                  {remoteContextMenu && (
+                    <div style={{
+                      position: 'absolute',
+                      top: '100%',
+                      right: '8px',
+                      background: '#1f2430',
+                      border: '1px solid #3a4556',
+                      borderRadius: '6px',
+                      boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3)',
+                      zIndex: 1000,
+                      minWidth: '180px',
+                      marginTop: '4px',
+                    }}>
+                      <button
+                        onClick={() => {
+                          console.log('[SFTP] Toggle remote hidden files:', !showRemoteHidden);
+                          setShowRemoteHidden(!showRemoteHidden);
+                          setRemoteContextMenu(false);
+                        }}
+                        style={{
+                          width: '100%',
+                          padding: '10px 14px',
+                          background: 'transparent',
+                          border: 'none',
+                          color: '#e8ecf4',
+                          fontSize: '13px',
+                          textAlign: 'left',
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '8px',
+                        }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.background = '#252d3f';
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.background = 'transparent';
+                        }}
+                      >
+                        <span style={{ width: '16px' }}>{showRemoteHidden ? '✓' : ''}</span>
+                        <span>Show Hidden Files</span>
+                      </button>
+                    </div>
+                  )}
                 </div>
                 <div style={{
                   padding: '8px 16px',
@@ -702,65 +1007,124 @@ const SFTPModal: React.FC<SFTPModalProps> = ({ isOpen, onClose }) => {
                     border: dragOverPane === 'remote' ? '2px dashed #16825d' : '2px dashed transparent',
                     transition: 'all 0.2s',
                   }}>
-                  {remoteFiles.length === 0 && !remoteLoading ? (
+                  {displayRemoteFiles.length === 0 && !remoteLoading ? (
                     <div style={{ textAlign: 'center', padding: '40px', color: '#8892a6' }}>
                       <div style={{ marginBottom: '12px' }}>📂</div>
                       {error ? 'Failed to load files' : 'No files found'}
                     </div>
                   ) : (
-                    remoteFiles.map((file, index) => (
-                      <div
-                        key={index}
-                        draggable={file.type === 'file'}
-                        onClick={() => {
-                          console.log('[SFTP] Remote file clicked:', file.name);
-                          setSelectedRemoteFile(file.path);
-                        }}
-                        onDoubleClick={() => {
-                          console.log('[SFTP] Remote file double-clicked:', file.name);
-                          if (file.type === 'directory') {
-                            handleRemoteNavigate(file.path);
-                          }
-                        }}
-                        onDragStart={(e) => {
-                          console.log('[SFTP] Drag started - remote file:', file.name);
-                          e.dataTransfer.setData('sourcePane', 'remote');
-                          e.dataTransfer.setData('filePath', file.path);
-                          e.dataTransfer.setData('fileName', file.name);
-                          e.dataTransfer.effectAllowed = 'copy';
-                        }}
-                        style={{
-                          padding: '8px 12px',
-                          borderRadius: '4px',
-                          cursor: 'pointer',
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: '8px',
-                          fontSize: '13px',
-                          color: '#e8ecf4',
-                          transition: 'background 0.15s',
-                          background: selectedRemoteFile === file.path ? '#1e3a5f' : 'transparent',
-                        }}
-                        onMouseEnter={(e) => {
-                          if (selectedRemoteFile !== file.path) {
-                            e.currentTarget.style.background = '#252d3f';
-                          }
-                        }}
-                        onMouseLeave={(e) => {
-                          if (selectedRemoteFile !== file.path) {
-                            e.currentTarget.style.background = 'transparent';
-                          }
-                        }}
-                      >
-                        <span>{file.type === 'directory' ? '📁' : '📄'}</span>
-                        <span style={{ flex: 1 }}>{file.name}</span>
-                        {file.type === 'file' && (
-                          <span style={{ fontSize: '11px', color: '#8892a6' }}>
-                            {(file.size / 1024).toFixed(1)} KB
-                          </span>
-                        )}
-                      </div>
-                    ))
+                    <table style={{ width: '100%', borderCollapse: 'collapse', tableLayout: 'fixed' }}>
+                      <colgroup>
+                        <col style={{ width: '45%' }} />
+                        <col style={{ width: '28%' }} />
+                        <col style={{ width: '12%' }} />
+                        <col style={{ width: '15%' }} />
+                      </colgroup>
+                      <thead>
+                        <tr style={{ borderBottom: '1px solid #3a4556' }}>
+                          {['name', 'modified', 'type', 'size'].map((col) => (
+                            <th
+                              key={col}
+                              onClick={() => {
+                                console.log('[SFTP] Remote sort column clicked:', col);
+                                if (remoteSortColumn === col) {
+                                  setRemoteSortDirection(remoteSortDirection === 'asc' ? 'desc' : 'asc');
+                                } else {
+                                  setRemoteSortColumn(col as any);
+                                  setRemoteSortDirection('asc');
+                                }
+                              }}
+                              style={{
+                                padding: '8px 12px',
+                                textAlign: 'left',
+                                fontSize: '11px',
+                                fontWeight: 600,
+                                color: '#8892a6',
+                                textTransform: 'uppercase',
+                                letterSpacing: '0.5px',
+                                cursor: 'pointer',
+                                userSelect: 'none',
+                                position: 'relative',
+                                overflow: 'hidden',
+                                textOverflow: 'ellipsis',
+                                whiteSpace: 'nowrap',
+                              }}
+                              onMouseEnter={(e) => {
+                                e.currentTarget.style.background = '#252d3f';
+                              }}
+                              onMouseLeave={(e) => {
+                                e.currentTarget.style.background = 'transparent';
+                              }}
+                            >
+                              {col.charAt(0).toUpperCase() + col.slice(1)}
+                              {remoteSortColumn === col && (
+                                <span style={{ marginLeft: '4px' }}>
+                                  {remoteSortDirection === 'asc' ? '↑' : '↓'}
+                                </span>
+                              )}
+                            </th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {displayRemoteFiles.map((file, index) => (
+                          <tr
+                            key={index}
+                            draggable={file.type === 'file'}
+                            onClick={() => {
+                              console.log('[SFTP] Remote file clicked:', file.name);
+                              setSelectedRemoteFile(file.path);
+                            }}
+                            onDoubleClick={() => {
+                              console.log('[SFTP] Remote file double-clicked:', file.name);
+                              if (file.type === 'directory') {
+                                handleRemoteNavigate(file.path);
+                              }
+                            }}
+                            onDragStart={(e) => {
+                              console.log('[SFTP] Drag started - remote file:', file.name);
+                              e.dataTransfer.setData('sourcePane', 'remote');
+                              e.dataTransfer.setData('filePath', file.path);
+                              e.dataTransfer.setData('fileName', file.name);
+                              e.dataTransfer.effectAllowed = 'copy';
+                            }}
+                            style={{
+                              cursor: 'pointer',
+                              background: selectedRemoteFile === file.path ? '#1e3a5f' : 'transparent',
+                              transition: 'background 0.15s',
+                              opacity: isHiddenFile(file.name) ? 0.5 : 1,
+                              filter: isHiddenFile(file.name) ? 'grayscale(50%)' : 'none',
+                            }}
+                            onMouseEnter={(e) => {
+                              if (selectedRemoteFile !== file.path) {
+                                e.currentTarget.style.background = '#252d3f';
+                              }
+                            }}
+                            onMouseLeave={(e) => {
+                              if (selectedRemoteFile !== file.path) {
+                                e.currentTarget.style.background = 'transparent';
+                              }
+                            }}
+                          >
+                            <td style={{ padding: '8px 12px', fontSize: '13px', color: '#e8ecf4' }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', overflow: 'hidden' }}>
+                                <span style={{ flexShrink: 0 }}>{file.type === 'directory' ? '📁' : '📄'}</span>
+                                <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{file.name}</span>
+                              </div>
+                            </td>
+                            <td style={{ padding: '8px 12px', fontSize: '12px', color: '#8892a6', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                              {formatDate(file.modifiedTime)}
+                            </td>
+                            <td style={{ padding: '8px 12px', fontSize: '12px', color: '#8892a6', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                              {file.type === 'directory' ? 'Folder' : 'File'}
+                            </td>
+                            <td style={{ padding: '8px 12px', fontSize: '12px', color: '#8892a6', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                              {file.type === 'file' ? formatSize(file.size) : '-'}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
                   )}
 
                   {/* Loading Overlay for Remote Pane */}
