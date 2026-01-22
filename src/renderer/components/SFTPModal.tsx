@@ -46,22 +46,44 @@ const SFTPModal: React.FC<SFTPModalProps> = ({ isOpen, onClose }) => {
   const [localSortDirection, setLocalSortDirection] = useState<'asc' | 'desc'>('asc');
   const [remoteSortColumn, setRemoteSortColumn] = useState<'name' | 'modified' | 'type' | 'size'>('name');
   const [remoteSortDirection, setRemoteSortDirection] = useState<'asc' | 'desc'>('asc');
+  const [hostSearchQuery, setHostSearchQuery] = useState('');
 
-  // Get available SSH hosts from connections
-  const availableHosts: SSHHost[] = connections
-    .filter(conn => conn.connectionType === 'ssh')
-    .map(conn => ({
-      id: conn.id,
-      label: conn.customLabel || conn.nodeName || `${conn.username}@${conn.host}:${conn.port}`,
-      host: conn.host,
-      port: conn.port,
-      username: conn.username,
-      hasSSH: true,
-    }));
+  // Get ALL hosts from connections (not just SSH)
+  const allHosts: SSHHost[] = connections.map(conn => ({
+    id: conn.id,
+    label: conn.customLabel || conn.nodeName || `${conn.username}@${conn.host}:${conn.port}`,
+    host: conn.host,
+    port: conn.port,
+    username: conn.username,
+    hasSSH: conn.connectionType === 'ssh',
+  }));
+
+  // Filter hosts based on search query
+  const filteredHosts = allHosts.filter(host =>
+    host.label.toLowerCase().includes(hostSearchQuery.toLowerCase()) ||
+    host.host.toLowerCase().includes(hostSearchQuery.toLowerCase()) ||
+    host.username.toLowerCase().includes(hostSearchQuery.toLowerCase())
+  );
 
   // Helper function to check if file is hidden
   const isHiddenFile = (fileName: string) => {
     return fileName.startsWith('.') && fileName !== '..';
+  };
+
+  // Helper function to get OS icon based on node type or OS
+  const getOSIcon = (host: SSHHost) => {
+    // This is a placeholder - ideally we'd detect the actual OS
+    // For now, return different icons based on common patterns
+    const label = host.label.toLowerCase();
+
+    if (label.includes('windows') || label.includes('win')) return '🪟';
+    if (label.includes('linux') || label.includes('ubuntu') || label.includes('debian')) return '🐧';
+    if (label.includes('mac') || label.includes('darwin')) return '🍎';
+    if (label.includes('router') || label.includes('switch')) return '🔌';
+    if (label.includes('server')) return '🖥️';
+
+    // Default icon
+    return '💻';
   };
 
   // Helper function to filter and sort files
@@ -110,8 +132,8 @@ const SFTPModal: React.FC<SFTPModalProps> = ({ isOpen, onClose }) => {
     if (isOpen) {
       console.log('[Frontend] SFTP Modal opened');
       console.log('[Frontend] Available connections:', connections.length);
-      console.log('[Frontend] Available SSH hosts:', availableHosts.length);
-      console.log('[Frontend] Hosts:', availableHosts);
+      console.log('[Frontend] Available hosts:', allHosts.length);
+      console.log('[Frontend] Hosts:', allHosts);
       console.log('[Frontend] window.electron.listRemoteFiles exists?', !!window.electron.listRemoteFiles);
     }
   }, [isOpen]);
@@ -373,98 +395,11 @@ const SFTPModal: React.FC<SFTPModalProps> = ({ isOpen, onClose }) => {
 
         {/* Content */}
         <div style={{ flex: 1, overflow: 'hidden', position: 'relative' }}>
-          {!selectedHost ? (
-            /* Host Selection Screen */
-            <div style={{
-              padding: '40px',
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center',
-              justifyContent: 'center',
-              height: '100%',
-            }}>
-              <h3 style={{
-                margin: '0 0 24px 0',
-                fontSize: '16px',
-                fontWeight: 600,
-                color: '#e8ecf4',
-              }}>
-                Select SSH Host for SFTP Connection
-              </h3>
-              <div style={{
-                display: 'grid',
-                gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))',
-                gap: '16px',
-                width: '100%',
-                maxWidth: '900px',
-              }}>
-                {availableHosts.length === 0 ? (
-                  <div style={{
-                    gridColumn: '1 / -1',
-                    textAlign: 'center',
-                    padding: '60px 20px',
-                    color: '#8892a6',
-                  }}>
-                    <div style={{ fontSize: '48px', marginBottom: '16px' }}>🔌</div>
-                    <div style={{ fontSize: '14px', marginBottom: '8px' }}>
-                      No SSH connections available
-                    </div>
-                    <div style={{ fontSize: '12px' }}>
-                      Create an SSH connection from the Design tab to use SFTP
-                    </div>
-                  </div>
-                ) : (
-                  availableHosts.map((host) => (
-                    <button
-                      key={host.id}
-                      onClick={() => host.hasSSH && handleHostSelect(host)}
-                      disabled={!host.hasSSH}
-                      style={{
-                        background: host.hasSSH ? '#252d3f' : '#1f2430',
-                        border: '1px solid #3a4556',
-                        borderRadius: '8px',
-                        padding: '20px',
-                        cursor: host.hasSSH ? 'pointer' : 'not-allowed',
-                        opacity: host.hasSSH ? 1 : 0.5,
-                        transition: 'all 0.2s',
-                        textAlign: 'left',
-                      }}
-                      onMouseEnter={(e) => {
-                        if (host.hasSSH) {
-                          e.currentTarget.style.background = '#2a3347';
-                          e.currentTarget.style.borderColor = '#16825d';
-                        }
-                      }}
-                      onMouseLeave={(e) => {
-                        e.currentTarget.style.background = host.hasSSH ? '#252d3f' : '#1f2430';
-                        e.currentTarget.style.borderColor = '#3a4556';
-                      }}
-                    >
-                      <div style={{
-                        fontSize: '14px',
-                        fontWeight: 600,
-                        color: host.hasSSH ? '#e8ecf4' : '#6b7280',
-                        marginBottom: '8px',
-                      }}>
-                        {host.label}
-                      </div>
-                      <div style={{
-                        fontSize: '12px',
-                        color: '#8892a6',
-                      }}>
-                        {host.username}@{host.host}:{host.port}
-                      </div>
-                    </button>
-                  ))
-                )}
-              </div>
-            </div>
-          ) : (
-            /* Two-Pane File Browser */
-            <div style={{
-              display: 'flex',
-              height: '100%',
-            }}>
+          {/* Two-Pane File Browser - Always Visible */}
+          <div style={{
+            display: 'flex',
+            height: '100%',
+          }}>
               {/* Left Pane - Local Files */}
               <div style={{
                 flex: 1,
@@ -667,7 +602,7 @@ const SFTPModal: React.FC<SFTPModalProps> = ({ isOpen, onClose }) => {
                                 textAlign: 'left',
                                 fontSize: '11px',
                                 fontWeight: 600,
-                                color: '#8892a6',
+                                color: '#8b949e',
                                 textTransform: 'uppercase',
                                 letterSpacing: '0.5px',
                                 cursor: 'pointer',
@@ -857,157 +792,277 @@ const SFTPModal: React.FC<SFTPModalProps> = ({ isOpen, onClose }) => {
                   justifyContent: 'space-between',
                   position: 'relative',
                 }}>
-                  <span>Remote Machine ({selectedHost.username}@{selectedHost.host})</span>
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      console.log('[SFTP] Remote gear clicked');
-                      setRemoteContextMenu(!remoteContextMenu);
-                      setLocalContextMenu(false);
-                    }}
-                    style={{
-                      background: 'transparent',
-                      border: 'none',
-                      color: '#e8ecf4',
-                      cursor: 'pointer',
-                      padding: '4px',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      borderRadius: '4px',
-                      transition: 'all 0.2s',
-                    }}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.background = '#1f2430';
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.background = 'transparent';
-                    }}
-                  >
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <circle cx="12" cy="12" r="3"/>
-                      <path d="M12 1v3m0 16v3m9-9h-3m-16 0H1M19.071 4.929l-2.121 2.121M7.05 16.95l-2.121 2.121M19.071 19.071l-2.121-2.121M7.05 7.05L4.929 4.929"/>
-                    </svg>
-                  </button>
-                  {remoteContextMenu && (
-                    <div style={{
-                      position: 'absolute',
-                      top: '100%',
-                      right: '8px',
-                      background: '#1f2430',
-                      border: '1px solid #3a4556',
-                      borderRadius: '6px',
-                      boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3)',
-                      zIndex: 1000,
-                      minWidth: '180px',
-                      marginTop: '4px',
-                    }}>
+                  <span>Remote Machine{selectedHost && ` (${selectedHost.username}@${selectedHost.host})`}</span>
+                  {selectedHost && (
+                    <>
                       <button
-                        onClick={() => {
-                          console.log('[SFTP] Toggle remote hidden files:', !showRemoteHidden);
-                          setShowRemoteHidden(!showRemoteHidden);
-                          setRemoteContextMenu(false);
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          console.log('[SFTP] Remote gear clicked');
+                          setRemoteContextMenu(!remoteContextMenu);
+                          setLocalContextMenu(false);
                         }}
                         style={{
-                          width: '100%',
-                          padding: '10px 14px',
                           background: 'transparent',
                           border: 'none',
                           color: '#e8ecf4',
-                          fontSize: '13px',
-                          textAlign: 'left',
                           cursor: 'pointer',
+                          padding: '4px',
                           display: 'flex',
                           alignItems: 'center',
-                          gap: '8px',
+                          justifyContent: 'center',
+                          borderRadius: '4px',
+                          transition: 'all 0.2s',
                         }}
                         onMouseEnter={(e) => {
-                          e.currentTarget.style.background = '#252d3f';
+                          e.currentTarget.style.background = '#1f2430';
                         }}
                         onMouseLeave={(e) => {
                           e.currentTarget.style.background = 'transparent';
                         }}
                       >
-                        <span style={{ width: '16px' }}>{showRemoteHidden ? '✓' : ''}</span>
-                        <span>Show Hidden Files</span>
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <circle cx="12" cy="12" r="3"/>
+                          <path d="M12 1v3m0 16v3m9-9h-3m-16 0H1M19.071 4.929l-2.121 2.121M7.05 16.95l-2.121 2.121M19.071 19.071l-2.121-2.121M7.05 7.05L4.929 4.929"/>
+                        </svg>
                       </button>
-                    </div>
+                      {remoteContextMenu && (
+                        <div style={{
+                          position: 'absolute',
+                          top: '100%',
+                          right: '8px',
+                          background: '#1f2430',
+                          border: '1px solid #3a4556',
+                          borderRadius: '6px',
+                          boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3)',
+                          zIndex: 1000,
+                          minWidth: '180px',
+                          marginTop: '4px',
+                        }}>
+                          <button
+                            onClick={() => {
+                              console.log('[SFTP] Toggle remote hidden files:', !showRemoteHidden);
+                              setShowRemoteHidden(!showRemoteHidden);
+                              setRemoteContextMenu(false);
+                            }}
+                            style={{
+                              width: '100%',
+                              padding: '10px 14px',
+                              background: 'transparent',
+                              border: 'none',
+                              color: '#e8ecf4',
+                              fontSize: '13px',
+                              textAlign: 'left',
+                              cursor: 'pointer',
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '8px',
+                            }}
+                            onMouseEnter={(e) => {
+                              e.currentTarget.style.background = '#252d3f';
+                            }}
+                            onMouseLeave={(e) => {
+                              e.currentTarget.style.background = 'transparent';
+                            }}
+                          >
+                            <span style={{ width: '16px' }}>{showRemoteHidden ? '✓' : ''}</span>
+                            <span>Show Hidden Files</span>
+                          </button>
+                        </div>
+                      )}
+                    </>
                   )}
                 </div>
-                <div style={{
-                  padding: '8px 16px',
-                  background: '#1f2430',
-                  borderBottom: '1px solid #3a4556',
-                  fontSize: '11px',
-                  color: '#8892a6',
-                  fontFamily: 'monospace',
-                }}>
-                  {remotePath}
-                </div>
-                <div
-                  onDragOver={(e) => {
-                    e.preventDefault();
-                    e.dataTransfer.dropEffect = 'copy';
-                  }}
-                  onDragEnter={(e) => {
-                    e.preventDefault();
-                    console.log('[SFTP] Drag enter remote pane');
-                    setDragOverPane('remote');
-                  }}
-                  onDragLeave={(e) => {
-                    // Only clear if leaving the pane completely
-                    const rect = e.currentTarget.getBoundingClientRect();
-                    if (
-                      e.clientX < rect.left ||
-                      e.clientX >= rect.right ||
-                      e.clientY < rect.top ||
-                      e.clientY >= rect.bottom
-                    ) {
-                      console.log('[SFTP] Drag leave remote pane');
-                      setDragOverPane(null);
-                    }
-                  }}
-                  onDrop={async (e) => {
-                    e.preventDefault();
-                    setDragOverPane(null);
-                    const sourcePane = e.dataTransfer.getData('sourcePane');
-                    const filePath = e.dataTransfer.getData('filePath');
-                    const fileName = e.dataTransfer.getData('fileName');
 
-                    console.log('[SFTP] File dropped on remote pane:', { sourcePane, filePath, fileName });
+                {/* Search bar when no host selected, path when host selected */}
+                {!selectedHost ? (
+                  <div style={{
+                    padding: '12px 16px',
+                    background: '#1f2430',
+                    borderBottom: '1px solid #3a4556',
+                  }}>
+                    <input
+                      type="text"
+                      placeholder="Search hosts..."
+                      value={hostSearchQuery}
+                      onChange={(e) => setHostSearchQuery(e.target.value)}
+                      style={{
+                        width: '100%',
+                        padding: '8px 12px',
+                        background: '#252d3f',
+                        border: '1px solid #3a4556',
+                        borderRadius: '6px',
+                        color: '#e8ecf4',
+                        fontSize: '13px',
+                        outline: 'none',
+                      }}
+                      onFocus={(e) => {
+                        e.currentTarget.style.borderColor = '#16825d';
+                      }}
+                      onBlur={(e) => {
+                        e.currentTarget.style.borderColor = '#3a4556';
+                      }}
+                    />
+                  </div>
+                ) : (
+                  <div style={{
+                    padding: '8px 16px',
+                    background: '#1f2430',
+                    borderBottom: '1px solid #3a4556',
+                    fontSize: '11px',
+                    color: '#c9d1d9',
+                    fontFamily: 'monospace',
+                  }}>
+                    {remotePath}
+                  </div>
+                )}
 
-                    if (sourcePane === 'local') {
-                      // Upload from local to remote
-                      console.log('[SFTP] Initiating upload:', fileName);
-                      setTransferProgress({ pane: 'remote', fileName, progress: 0 });
-                      try {
-                        await window.electron.uploadFile({
-                          connectionId: selectedHost!.id,
-                          localPath: filePath,
-                          remotePath: remotePath,
-                          fileName,
-                        });
-                        console.log('[SFTP] Upload complete:', fileName);
-                        setTransferProgress(null);
-                        // Refresh remote files
-                        loadRemoteFiles(remotePath);
-                      } catch (err: any) {
-                        console.error('[SFTP] Upload failed:', err);
-                        setError(`Upload failed: ${err.message}`);
-                        setTransferProgress(null);
-                      }
-                    }
-                  }}
-                  style={{
+                {/* Remote Pane Content: Host Selection or File Browser */}
+                {!selectedHost ? (
+                  /* Show host cards when no host selected */
+                  <div style={{
                     flex: 1,
                     overflow: 'auto',
-                    padding: '8px',
-                    position: 'relative',
-                    background: dragOverPane === 'remote' ? 'rgba(22, 130, 93, 0.1)' : 'transparent',
-                    border: dragOverPane === 'remote' ? '2px dashed #16825d' : '2px dashed transparent',
-                    transition: 'all 0.2s',
+                    padding: '16px',
                   }}>
-                  {displayRemoteFiles.length === 0 && !remoteLoading ? (
+                    {filteredHosts.length === 0 ? (
+                      <div style={{ textAlign: 'center', padding: '60px 20px', color: '#c9d1d9' }}>
+                        <div style={{ fontSize: '48px', marginBottom: '16px' }}>🔍</div>
+                        <div style={{ fontSize: '14px', marginBottom: '8px' }}>
+                          {hostSearchQuery ? 'No hosts found matching your search' : 'No hosts available'}
+                        </div>
+                        <div style={{ fontSize: '12px', color: '#8b949e' }}>
+                          {hostSearchQuery ? 'Try a different search term' : 'Create a connection from the Design tab'}
+                        </div>
+                      </div>
+                    ) : (
+                      <div style={{
+                        display: 'grid',
+                        gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))',
+                        gap: '12px',
+                      }}>
+                        {filteredHosts.map((host) => (
+                          <button
+                            key={host.id}
+                            onClick={() => host.hasSSH && handleHostSelect(host)}
+                            disabled={!host.hasSSH}
+                            style={{
+                              background: host.hasSSH ? '#252d3f' : '#1f2430',
+                              border: '1px solid #3a4556',
+                              borderRadius: '8px',
+                              padding: '16px',
+                              cursor: host.hasSSH ? 'pointer' : 'not-allowed',
+                              opacity: host.hasSSH ? 1 : 0.5,
+                              transition: 'all 0.2s',
+                              textAlign: 'center',
+                              display: 'flex',
+                              flexDirection: 'column',
+                              alignItems: 'center',
+                              gap: '8px',
+                            }}
+                            onMouseEnter={(e) => {
+                              if (host.hasSSH) {
+                                e.currentTarget.style.background = '#2a3347';
+                                e.currentTarget.style.borderColor = '#16825d';
+                              }
+                            }}
+                            onMouseLeave={(e) => {
+                              e.currentTarget.style.background = host.hasSSH ? '#252d3f' : '#1f2430';
+                              e.currentTarget.style.borderColor = '#3a4556';
+                            }}
+                          >
+                            <div style={{ fontSize: '32px' }}>{getOSIcon(host)}</div>
+                            <div style={{
+                              fontSize: '13px',
+                              fontWeight: 600,
+                              color: host.hasSSH ? '#e8ecf4' : '#8b949e',
+                              overflow: 'hidden',
+                              textOverflow: 'ellipsis',
+                              whiteSpace: 'nowrap',
+                              width: '100%',
+                            }}>
+                              {host.label}
+                            </div>
+                            {!host.hasSSH && (
+                              <div style={{
+                                fontSize: '10px',
+                                color: '#8b949e',
+                                fontStyle: 'italic',
+                              }}>
+                                SSH not available
+                              </div>
+                            )}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  /* Show file browser when host selected */
+                  <div
+                    onDragOver={(e) => {
+                      e.preventDefault();
+                      e.dataTransfer.dropEffect = 'copy';
+                    }}
+                    onDragEnter={(e) => {
+                      e.preventDefault();
+                      console.log('[SFTP] Drag enter remote pane');
+                      setDragOverPane('remote');
+                    }}
+                    onDragLeave={(e) => {
+                      // Only clear if leaving the pane completely
+                      const rect = e.currentTarget.getBoundingClientRect();
+                      if (
+                        e.clientX < rect.left ||
+                        e.clientX >= rect.right ||
+                        e.clientY < rect.top ||
+                        e.clientY >= rect.bottom
+                      ) {
+                        console.log('[SFTP] Drag leave remote pane');
+                        setDragOverPane(null);
+                      }
+                    }}
+                    onDrop={async (e) => {
+                      e.preventDefault();
+                      setDragOverPane(null);
+                      const sourcePane = e.dataTransfer.getData('sourcePane');
+                      const filePath = e.dataTransfer.getData('filePath');
+                      const fileName = e.dataTransfer.getData('fileName');
+
+                      console.log('[SFTP] File dropped on remote pane:', { sourcePane, filePath, fileName });
+
+                      if (sourcePane === 'local') {
+                        // Upload from local to remote
+                        console.log('[SFTP] Initiating upload:', fileName);
+                        setTransferProgress({ pane: 'remote', fileName, progress: 0 });
+                        try {
+                          await window.electron.uploadFile({
+                            connectionId: selectedHost!.id,
+                            localPath: filePath,
+                            remotePath: remotePath,
+                            fileName,
+                          });
+                          console.log('[SFTP] Upload complete:', fileName);
+                          setTransferProgress(null);
+                          // Refresh remote files
+                          loadRemoteFiles(remotePath);
+                        } catch (err: any) {
+                          console.error('[SFTP] Upload failed:', err);
+                          setError(`Upload failed: ${err.message}`);
+                          setTransferProgress(null);
+                        }
+                      }
+                    }}
+                    style={{
+                      flex: 1,
+                      overflow: 'auto',
+                      padding: '8px',
+                      position: 'relative',
+                      background: dragOverPane === 'remote' ? 'rgba(22, 130, 93, 0.1)' : 'transparent',
+                      border: dragOverPane === 'remote' ? '2px dashed #16825d' : '2px dashed transparent',
+                      transition: 'all 0.2s',
+                    }}>
+                    {displayRemoteFiles.length === 0 && !remoteLoading ? (
                     <div style={{ textAlign: 'center', padding: '40px', color: '#8892a6' }}>
                       <div style={{ marginBottom: '12px' }}>📂</div>
                       {error ? 'Failed to load files' : 'No files found'}
@@ -1039,7 +1094,7 @@ const SFTPModal: React.FC<SFTPModalProps> = ({ isOpen, onClose }) => {
                                 textAlign: 'left',
                                 fontSize: '11px',
                                 fontWeight: 600,
-                                color: '#8892a6',
+                                color: '#8b949e',
                                 textTransform: 'uppercase',
                                 letterSpacing: '0.5px',
                                 cursor: 'pointer',
@@ -1143,12 +1198,13 @@ const SFTPModal: React.FC<SFTPModalProps> = ({ isOpen, onClose }) => {
                       zIndex: 10,
                     }}>
                       <div style={{
-                        width: '40px',
-                        height: '40px',
-                        border: '3px solid rgba(58, 69, 86, 0.3)',
-                        borderTop: '3px solid #16825d',
+                        width: '50px',
+                        height: '50px',
+                        border: '4px solid rgba(58, 69, 86, 0.2)',
+                        borderTop: '4px solid #4d7cfe',
                         borderRadius: '50%',
                         animation: 'spin 0.8s linear infinite',
+                        boxShadow: '0 0 25px rgba(77, 124, 254, 0.6), 0 0 50px rgba(77, 124, 254, 0.3), inset 0 0 10px rgba(77, 124, 254, 0.2)',
                       }} />
                     </div>
                   )}
@@ -1194,10 +1250,10 @@ const SFTPModal: React.FC<SFTPModalProps> = ({ isOpen, onClose }) => {
                       </div>
                     </div>
                   )}
-                </div>
+                  </div>
+                )}
               </div>
             </div>
-          )}
         </div>
 
         {/* Error Toast */}

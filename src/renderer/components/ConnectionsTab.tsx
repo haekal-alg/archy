@@ -3,6 +3,7 @@ import { useTabContext } from '../contexts/TabContext';
 import TerminalEmulator from './TerminalEmulator';
 import ConnectionContextMenu from './ConnectionContextMenu';
 import SFTPModal from './SFTPModal';
+import { ClimbingBoxLoader } from 'react-spinners';
 
 const ConnectionsTab: React.FC = () => {
   const { connections, activeConnectionId, setActiveConnectionId, disconnectConnection, removeConnection, retryConnection, createLocalTerminal, renameConnection } = useTabContext();
@@ -632,20 +633,20 @@ const ConnectionsTab: React.FC = () => {
                   alignItems: 'center',
                   justifyContent: 'center',
                   height: '100%',
-                  color: '#b4bcc9',
+                  color: '#e8ecf4',
                   fontSize: '14px',
-                  gap: '16px',
+                  gap: '24px',
                 }}>
-                  {/* Loading Spinner */}
+                  {/* Modern Loading Spinner with Glow */}
                   <div style={{
-                    width: '40px',
-                    height: '40px',
-                    border: '4px solid #252d3f',
-                    borderTop: '4px solid #4d7cfe',
-                    borderRadius: '50%',
-                    animation: 'spin 1s linear infinite',
-                  }} />
-                  <div>Connecting to {activeConnection.host}...</div>
+                    filter: 'drop-shadow(0 0 15px rgba(77, 124, 254, 1)) drop-shadow(0 0 30px rgba(77, 124, 254, 0.8)) drop-shadow(0 0 50px rgba(77, 124, 254, 0.6)) drop-shadow(0 0 80px rgba(77, 124, 254, 0.4))',
+                  }}>
+                    <ClimbingBoxLoader color="#4d7cfe" size={18} />
+                  </div>
+                  <div style={{
+                    textShadow: '0 0 10px rgba(77, 124, 254, 0.5)',
+                    fontWeight: 500,
+                  }}>Connecting to {activeConnection.host}...</div>
                 </div>
               )}
               {activeConnection && activeConnection.status === 'error' && (
