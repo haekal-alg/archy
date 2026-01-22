@@ -5,6 +5,25 @@ import ConnectionContextMenu from './ConnectionContextMenu';
 import SFTPModal from './SFTPModal';
 import { ClimbingBoxLoader } from 'react-spinners';
 
+// Icon for local terminal connections
+const LocalTerminalIcon = () => (
+  <svg width="14" height="14" viewBox="0 0 14 14" fill="none" style={{ flexShrink: 0 }}>
+    <rect x="1" y="2" width="12" height="10" rx="1.5" stroke="currentColor" strokeWidth="1.2" fill="none" />
+    <path d="M3.5 5L5.5 7L3.5 9" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
+    <path d="M7 9H10" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
+  </svg>
+);
+
+// Icon for remote SSH connections
+const RemoteSSHIcon = () => (
+  <svg width="14" height="14" viewBox="0 0 14 14" fill="none" style={{ flexShrink: 0 }}>
+    <rect x="4" y="1" width="6" height="4" rx="0.5" stroke="currentColor" strokeWidth="1.2" fill="none" />
+    <rect x="4" y="9" width="6" height="4" rx="0.5" stroke="currentColor" strokeWidth="1.2" fill="none" />
+    <path d="M7 5V9" stroke="currentColor" strokeWidth="1.2" />
+    <path d="M4 7H2V11H4M10 7H12V11H10" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
+  </svg>
+);
+
 const ConnectionsTab: React.FC = () => {
   const { connections, activeConnectionId, setActiveConnectionId, disconnectConnection, removeConnection, retryConnection, createLocalTerminal, renameConnection } = useTabContext();
   const [sidePanelCollapsed, setSidePanelCollapsed] = useState(false);
@@ -114,6 +133,16 @@ const ConnectionsTab: React.FC = () => {
     if (renameModal) {
       renameConnection(renameModal.connectionId, newLabel);
       setRenameModal(null);
+    }
+  };
+
+  const handleOpenInExplorer = () => {
+    if (contextMenu) {
+      const conn = connections.find(c => c.id === contextMenu.connectionId);
+      if (conn && conn.connectionType === 'local') {
+        window.electron.openTerminalInExplorer(contextMenu.connectionId);
+      }
+      closeContextMenu();
     }
   };
 
@@ -297,7 +326,7 @@ const ConnectionsTab: React.FC = () => {
                   }
                 }}
               >
-                {/* Node Name / Custom Label */}
+                {/* Node Name / Custom Label with Icon */}
                 <div style={{
                   display: 'flex',
                   alignItems: 'center',
@@ -305,6 +334,9 @@ const ConnectionsTab: React.FC = () => {
                   marginBottom: '8px',
                   paddingRight: conn.status === 'connected' ? '32px' : '0',
                 }}>
+                  <span style={{ color: conn.connectionType === 'local' ? '#3dd68c' : '#4d7cfe' }}>
+                    {conn.connectionType === 'local' ? <LocalTerminalIcon /> : <RemoteSSHIcon />}
+                  </span>
                   <span style={{
                     fontSize: '11px',
                     fontWeight: 600,
@@ -716,6 +748,7 @@ const ConnectionsTab: React.FC = () => {
             onDisconnect={handleDisconnect}
             onRemove={handleRemove}
             onRename={handleRename}
+            onOpenInExplorer={conn.connectionType === 'local' ? handleOpenInExplorer : undefined}
             onClose={closeContextMenu}
           />
         );

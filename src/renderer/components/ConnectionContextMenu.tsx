@@ -9,6 +9,7 @@ interface ConnectionContextMenuProps {
   onDisconnect?: () => void;
   onRemove?: () => void;
   onRename?: () => void;
+  onOpenInExplorer?: () => void;
   onClose: () => void;
 }
 
@@ -35,6 +36,12 @@ const RemoveIcon = () => (
 const RenameIcon = () => (
   <svg width="14" height="14" viewBox="0 0 14 14" fill="none" style={{ marginRight: '8px' }}>
     <path d="M8.5 2L12 5.5M2 12L5 11.5L11.5 5C12 4.5 12 3.5 11.5 3L11 2.5C10.5 2 9.5 2 9 2.5L2.5 9L2 12Z" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+  </svg>
+);
+
+const ExplorerIcon = () => (
+  <svg width="14" height="14" viewBox="0 0 14 14" fill="none" style={{ marginRight: '8px' }}>
+    <path d="M2 3C2 2.44772 2.44772 2 3 2H5.5L7 3.5H11C11.5523 3.5 12 3.94772 12 4.5V11C12 11.5523 11.5523 12 11 12H3C2.44772 12 2 11.5523 2 11V3Z" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
   </svg>
 );
 
@@ -79,6 +86,7 @@ const ConnectionContextMenu: React.FC<ConnectionContextMenuProps> = ({
   onDisconnect,
   onRemove,
   onRename,
+  onOpenInExplorer,
   onClose,
 }) => {
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
@@ -190,6 +198,28 @@ const ConnectionContextMenu: React.FC<ConnectionContextMenuProps> = ({
           );
         })()}
 
+        {/* Open in Explorer - Local terminals only */}
+        {onOpenInExplorer && (() => {
+          const explorerIndex = 3;
+          const isHovered = hoveredIndex === explorerIndex;
+          return (
+            <button
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                onOpenInExplorer();
+                onClose();
+              }}
+              onMouseEnter={() => setHoveredIndex(explorerIndex)}
+              onMouseLeave={() => setHoveredIndex(null)}
+              style={getMenuItemStyle(isHovered)}
+            >
+              <ExplorerIcon />
+              Open in Explorer
+            </button>
+          );
+        })()}
+
         {/* Separator */}
         <div style={{
           borderTop: '1px solid rgba(255, 255, 255, 0.15)',
@@ -198,7 +228,7 @@ const ConnectionContextMenu: React.FC<ConnectionContextMenuProps> = ({
 
         {/* Remove */}
         {onRemove && (() => {
-          const removeIndex = 3;
+          const removeIndex = 4;
           const isHovered = hoveredIndex === removeIndex;
           return (
             <button

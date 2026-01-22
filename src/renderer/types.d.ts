@@ -25,6 +25,7 @@ export interface ElectronAPI {
 
   // Local Terminal Management
   createLocalTerminal: (config: { connectionId: string }) => Promise<{ success: boolean; error?: string }>;
+  openTerminalInExplorer: (connectionId: string) => Promise<{ success: boolean; error?: string }>;
 
   sendSSHData: (connectionId: string, data: string) => void;
   resizeSSHTerminal: (connectionId: string, cols: number, rows: number) => void;

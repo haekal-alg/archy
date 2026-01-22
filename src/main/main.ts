@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain, Menu, dialog, clipboard, session } from 'electron';
+import { app, BrowserWindow, ipcMain, Menu, dialog, clipboard, session, shell } from 'electron';
 import * as path from 'path';
 import * as fs from 'fs';
 import { exec } from 'child_process';
@@ -51,6 +51,7 @@ interface LocalSession {
   connectionId: string;
   isPaused: boolean;     // Flow control: track if stream is paused
   queuedBytes: number;   // Flow control: track bytes queued for renderer
+  cwd: string;           // Initial working directory for "Open in Explorer"
 }
 
 const localSessions = new Map<string, LocalSession>();
@@ -505,11 +506,13 @@ ipcMain.handle('create-local-terminal', async (event, { connectionId }) => {
       // Spawn PTY session for proper terminal emulation
       const shell = process.platform === 'win32' ? 'cmd.exe' : '/bin/bash';
 
+      const initialCwd = process.env.HOME || process.env.USERPROFILE || process.cwd();
+
       const ptyProcess = pty.spawn(shell, [], {
         name: 'xterm-256color',
         cols: 80,
         rows: 24,
-        cwd: process.env.HOME || process.env.USERPROFILE || process.cwd(),
+        cwd: initialCwd,
         env: process.env as { [key: string]: string },
       });
 
@@ -519,6 +522,7 @@ ipcMain.handle('create-local-terminal', async (event, { connectionId }) => {
         connectionId,
         isPaused: false,
         queuedBytes: 0,
+        cwd: initialCwd,
       });
 
       // Forward PTY data to renderer with buffering
@@ -648,6 +652,20 @@ ipcMain.on('ssh-data-consumed', (event, { connectionId, bytesConsumed }) => {
       console.log(`[${connectionId}] Local terminal queue resumed: queue size ${localSession.queuedBytes} bytes`);
     }
   }
+});
+
+// Open local terminal's directory in system file explorer
+ipcMain.handle('open-terminal-in-explorer', async (event, { connectionId }) => {
+  const localSession = localSessions.get(connectionId);
+  if (localSession && localSession.cwd) {
+    try {
+      await shell.openPath(localSession.cwd);
+      return { success: true };
+    } catch (error) {
+      return { success: false, error: error instanceof Error ? error.message : 'Failed to open explorer' };
+    }
+  }
+  return { success: false, error: 'Local terminal session not found' };
 });
 
 // Periodic latency measurement - DISABLED
