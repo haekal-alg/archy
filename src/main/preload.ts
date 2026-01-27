@@ -39,11 +39,14 @@ contextBridge.exposeInMainWorld('electron', {
     ipcRenderer.invoke('create-ssh-session', config),
 
   // Local Terminal Management
-  createLocalTerminal: (config: { connectionId: string }) =>
+  createLocalTerminal: (config: { connectionId: string; cwd?: string }) =>
     ipcRenderer.invoke('create-local-terminal', config),
 
   openTerminalInExplorer: (connectionId: string) =>
     ipcRenderer.invoke('open-terminal-in-explorer', { connectionId }),
+
+  getLocalTerminalCwd: (connectionId: string) =>
+    ipcRenderer.invoke('get-local-terminal-cwd', { connectionId }),
 
   sendSSHData: (connectionId: string, data: string) => {
     ipcRenderer.send('send-ssh-data', { connectionId, data });

@@ -146,6 +146,19 @@ const ConnectionsTab: React.FC = () => {
     }
   };
 
+  const handleDuplicateLocal = async () => {
+    if (!contextMenu) return;
+    const connectionId = contextMenu.connectionId;
+    closeContextMenu();
+
+    const conn = connections.find(c => c.id === connectionId);
+    if (conn && conn.connectionType === 'local') {
+      const result = await window.electron.getLocalTerminalCwd(conn.id);
+      const cwd = result.success ? result.cwd : undefined;
+      await createLocalTerminal(cwd);
+    }
+  };
+
   // Derived state
   const activeConnection = connections.find(c => c.id === activeConnectionId);
   const activeZoom = activeConnectionId ? getConnectionZoom(activeConnectionId) : 1.0;
@@ -207,7 +220,7 @@ const ConnectionsTab: React.FC = () => {
           <div style={{ display: 'flex', gap: '8px' }}>
             {/* New Local Terminal Button */}
             <button
-              onClick={createLocalTerminal}
+              onClick={() => createLocalTerminal()}
               style={{
                 padding: '6px 10px',
                 background: '#303948',
@@ -744,11 +757,12 @@ const ConnectionsTab: React.FC = () => {
             x={contextMenu.x}
             y={contextMenu.y}
             connectionStatus={conn.status}
-            onRetry={handleRetry}
-            onDisconnect={handleDisconnect}
+            onRetry={conn.connectionType === 'local' ? undefined : handleRetry}
+            onDisconnect={conn.connectionType === 'local' ? undefined : handleDisconnect}
             onRemove={handleRemove}
             onRename={handleRename}
             onOpenInExplorer={conn.connectionType === 'local' ? handleOpenInExplorer : undefined}
+            onDuplicate={conn.connectionType === 'local' ? handleDuplicateLocal : undefined}
             onClose={closeContextMenu}
           />
         );

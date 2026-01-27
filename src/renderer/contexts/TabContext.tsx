@@ -78,7 +78,7 @@ export const TabProvider: React.FC<TabProviderProps> = ({ children }) => {
     }
   }, []);
 
-  const createLocalTerminal = useCallback(async () => {
+  const createLocalTerminal = useCallback(async (cwd?: string) => {
     const connectionId = `local-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
     const terminalNumber = connections.filter(c => c.connectionType === 'local').length + 1;
 
@@ -99,7 +99,7 @@ export const TabProvider: React.FC<TabProviderProps> = ({ children }) => {
     setActiveTab('connections');
 
     try {
-      await window.electron.createLocalTerminal({ connectionId });
+      await window.electron.createLocalTerminal({ connectionId, cwd });
 
       setConnections(prev =>
         prev.map(conn =>

@@ -55,6 +55,139 @@ interface LocalSession {
 }
 
 const localSessions = new Map<string, LocalSession>();
+const localInputBuffers = new Map<string, string>();
+const localDirStacks = new Map<string, string[]>();
+
+const getHomeDirectory = () => process.env.HOME || process.env.USERPROFILE || process.cwd();
+
+const stripQuotes = (value: string) => {
+  if ((value.startsWith('"') && value.endsWith('"')) || (value.startsWith("'") && value.endsWith("'"))) {
+    return value.slice(1, -1);
+  }
+  return value;
+};
+
+const expandEnvVariables = (value: string) => {
+  if (process.platform === 'win32') {
+    return value.replace(/%([^%]+)%/g, (match, name) => {
+      const key = String(name || '').trim();
+      return process.env[key] ?? match;
+    });
+  }
+
+  return value.replace(/\$(\w+)|\$\{([^}]+)\}/g, (match, name, braceName) => {
+    const key = String(name || braceName || '').trim();
+    return process.env[key] ?? match;
+  });
+};
+
+const resolveLocalCwd = (baseCwd: string, target: string | undefined | null): string | null => {
+  const trimmed = (target || '').trim();
+  if (!trimmed) {
+    if (process.platform === 'win32') {
+      return baseCwd;
+    }
+    return getHomeDirectory();
+  }
+
+  let nextPath = expandEnvVariables(trimmed);
+  if (nextPath.startsWith('~')) {
+    const homeDir = getHomeDirectory();
+    nextPath = path.join(homeDir, nextPath.slice(1));
+  }
+
+  if (process.platform === 'win32' && /^[a-zA-Z]:$/.test(nextPath)) {
+    nextPath = `${nextPath}\\`;
+  }
+
+  const candidate = path.isAbsolute(nextPath) ? nextPath : path.resolve(baseCwd, nextPath);
+
+  try {
+    if (fs.existsSync(candidate) && fs.statSync(candidate).isDirectory()) {
+      return candidate;
+    }
+  } catch (error) {
+    return null;
+  }
+
+  return null;
+};
+
+const updateInputBuffer = (buffer: string, data: string) => {
+  let nextBuffer = buffer;
+  const commands: string[] = [];
+
+  for (const char of data) {
+    if (char === '\r' || char === '\n') {
+      if (nextBuffer.trim()) {
+        commands.push(nextBuffer);
+      }
+      nextBuffer = '';
+      continue;
+    }
+    if (char === '\b' || char === '\x7f') {
+      nextBuffer = nextBuffer.slice(0, -1);
+      continue;
+    }
+    if (char.charCodeAt(0) < 32) {
+      continue;
+    }
+    nextBuffer += char;
+  }
+
+  return { buffer: nextBuffer, commands };
+};
+
+const parseCwdCommand = (line: string) => {
+  const [firstSegment] = line.split(/&&|&|;/);
+  const command = (firstSegment || '').trim();
+  if (!command) {
+    return null;
+  }
+
+  if (/^[a-zA-Z]:$/.test(command)) {
+    return { action: 'cd', target: `${command}\\` };
+  }
+
+  const pushdMatch = command.match(/^pushd(?:\s+(.*))?$/i);
+  if (pushdMatch) {
+    const target = stripQuotes((pushdMatch[1] || '').trim());
+    return target ? { action: 'pushd', target } : null;
+  }
+
+  if (/^popd$/i.test(command)) {
+    return { action: 'popd' };
+  }
+
+  if (/^cd\.\.$/i.test(command) || /^chdir\.\.$/i.test(command)) {
+    return { action: 'cd', target: '..' };
+  }
+
+  if (/^cd\.$/i.test(command) || /^chdir\.$/i.test(command)) {
+    return { action: 'cd', target: '.' };
+  }
+
+  if (/^cd[\\/]+$/i.test(command) || /^chdir[\\/]+$/i.test(command)) {
+    return { action: 'cd', target: command.slice(2).trim() };
+  }
+
+  const directPathMatch = command.match(/^(cd|chdir)([\\/].+)$/i);
+  if (directPathMatch) {
+    return { action: 'cd', target: stripQuotes(directPathMatch[2].trim()) };
+  }
+
+  const cdMatch = command.match(/^(cd|chdir)(?:\s+\/d)?(?:\s+(.*))?$/i);
+  if (!cdMatch) {
+    return null;
+  }
+
+  const rawTarget = stripQuotes((cdMatch[2] || '').trim());
+  if (!rawTarget) {
+    return { action: 'cd', target: '' };
+  }
+
+  return { action: 'cd', target: rawTarget };
+};
 
 // Data buffering for improved terminal performance
 interface BufferState {
@@ -500,13 +633,14 @@ ipcMain.handle('create-ssh-session', async (event, { connectionId, host, port = 
 });
 
 // Create local terminal session
-ipcMain.handle('create-local-terminal', async (event, { connectionId }) => {
+ipcMain.handle('create-local-terminal', async (event, { connectionId, cwd }) => {
   return new Promise((resolve, reject) => {
     try {
       // Spawn PTY session for proper terminal emulation
       const shell = process.platform === 'win32' ? 'cmd.exe' : '/bin/bash';
 
-      const initialCwd = process.env.HOME || process.env.USERPROFILE || process.cwd();
+      const defaultCwd = getHomeDirectory();
+      const initialCwd = resolveLocalCwd(defaultCwd, cwd) || defaultCwd;
 
       const ptyProcess = pty.spawn(shell, [], {
         name: 'xterm-256color',
@@ -524,6 +658,8 @@ ipcMain.handle('create-local-terminal', async (event, { connectionId }) => {
         queuedBytes: 0,
         cwd: initialCwd,
       });
+      localInputBuffers.set(connectionId, '');
+      localDirStacks.set(connectionId, []);
 
       // Forward PTY data to renderer with buffering
       ptyProcess.onData((data: string) => {
@@ -569,13 +705,15 @@ ipcMain.handle('create-local-terminal', async (event, { connectionId }) => {
           dataBuffers.delete(connectionId);
         }
 
+        localInputBuffers.delete(connectionId);
+        localDirStacks.delete(connectionId);
         localSessions.delete(connectionId);
         if (mainWindow && !mainWindow.isDestroyed()) {
           mainWindow.webContents.send('ssh-closed', { connectionId });
         }
       });
 
-      resolve({ success: true });
+      resolve({ success: true, cwd: initialCwd });
     } catch (error) {
       reject(error);
     }
@@ -592,6 +730,43 @@ ipcMain.on('send-ssh-data', (event, { connectionId, data }) => {
 
   const localSession = localSessions.get(connectionId);
   if (localSession && localSession.ptyProcess) {
+    const bufferState = localInputBuffers.get(connectionId) || '';
+    const { buffer, commands } = updateInputBuffer(bufferState, data);
+    localInputBuffers.set(connectionId, buffer);
+
+    if (commands.length > 0) {
+      const dirStack = localDirStacks.get(connectionId) || [];
+
+      commands.forEach((command) => {
+        const parsed = parseCwdCommand(command);
+        if (!parsed) {
+          return;
+        }
+
+        if (parsed.action === 'popd') {
+          const previous = dirStack.pop();
+          if (previous) {
+            const resolved = resolveLocalCwd(previous, '.');
+            if (resolved) {
+              localSession.cwd = resolved;
+            }
+          }
+          return;
+        }
+
+        if (parsed.action === 'pushd') {
+          dirStack.push(localSession.cwd);
+        }
+
+        const resolved = resolveLocalCwd(localSession.cwd, parsed.target || '');
+        if (resolved) {
+          localSession.cwd = resolved;
+        }
+      });
+
+      localDirStacks.set(connectionId, dirStack);
+    }
+
     localSession.ptyProcess.write(data);
   }
 });
@@ -623,6 +798,8 @@ ipcMain.on('close-ssh-session', (event, { connectionId }) => {
   if (localSession) {
     localSession.ptyProcess.kill();
     localSessions.delete(connectionId);
+    localInputBuffers.delete(connectionId);
+    localDirStacks.delete(connectionId);
   }
 });
 
@@ -664,6 +841,15 @@ ipcMain.handle('open-terminal-in-explorer', async (event, { connectionId }) => {
     } catch (error) {
       return { success: false, error: error instanceof Error ? error.message : 'Failed to open explorer' };
     }
+  }
+  return { success: false, error: 'Local terminal session not found' };
+});
+
+// Get local terminal's current working directory
+ipcMain.handle('get-local-terminal-cwd', async (event, { connectionId }) => {
+  const localSession = localSessions.get(connectionId);
+  if (localSession && localSession.cwd) {
+    return { success: true, cwd: localSession.cwd };
   }
   return { success: false, error: 'Local terminal session not found' };
 });
@@ -887,7 +1073,7 @@ ipcMain.handle('clipboard-read-text', async () => {
 
 // SFTP File Transfer - Get home directory
 ipcMain.handle('get-home-directory', async () => {
-  return process.env.HOME || process.env.USERPROFILE || '';
+  return getHomeDirectory();
 });
 
 // SFTP File Transfer - List local files

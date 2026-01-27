@@ -1,5 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useTabContext } from '../contexts/TabContext';
+import { getMenuContainerStyle, getMenuItemStyle } from './ContextMenu';
 import theme from '../../theme';
 
 interface SFTPModalProps {
@@ -37,16 +38,31 @@ const SFTPModal: React.FC<SFTPModalProps> = ({ isOpen, onClose }) => {
   const [selectedLocalFile, setSelectedLocalFile] = useState<string | null>(null);
   const [selectedRemoteFile, setSelectedRemoteFile] = useState<string | null>(null);
   const [dragOverPane, setDragOverPane] = useState<'local' | 'remote' | null>(null);
-  const [transferProgress, setTransferProgress] = useState<{ pane: 'local' | 'remote'; fileName: string; progress: number } | null>(null);
+  const [transferProgress, setTransferProgress] = useState<{
+    pane: 'local' | 'remote';
+    fileName: string;
+    progress: number;
+    sizeBytes?: number;
+    startedAt: number;
+  } | null>(null);
   const [showLocalHidden, setShowLocalHidden] = useState(false);
   const [showRemoteHidden, setShowRemoteHidden] = useState(false);
   const [localContextMenu, setLocalContextMenu] = useState(false);
   const [remoteContextMenu, setRemoteContextMenu] = useState(false);
+  const [localMenuPos, setLocalMenuPos] = useState<{ x: number; y: number } | null>(null);
+  const [remoteMenuPos, setRemoteMenuPos] = useState<{ x: number; y: number } | null>(null);
+  const [localMenuVisible, setLocalMenuVisible] = useState(false);
+  const [remoteMenuVisible, setRemoteMenuVisible] = useState(false);
+  const [localMenuHover, setLocalMenuHover] = useState<number | null>(null);
+  const [remoteMenuHover, setRemoteMenuHover] = useState<number | null>(null);
   const [localSortColumn, setLocalSortColumn] = useState<'name' | 'modified' | 'type' | 'size'>('name');
   const [localSortDirection, setLocalSortDirection] = useState<'asc' | 'desc'>('asc');
   const [remoteSortColumn, setRemoteSortColumn] = useState<'name' | 'modified' | 'type' | 'size'>('name');
   const [remoteSortDirection, setRemoteSortDirection] = useState<'asc' | 'desc'>('asc');
   const [hostSearchQuery, setHostSearchQuery] = useState('');
+  const [modalVisible, setModalVisible] = useState(false);
+  const localGearRef = useRef<HTMLButtonElement | null>(null);
+  const remoteGearRef = useRef<HTMLButtonElement | null>(null);
 
   // Get ALL hosts from connections (not just SSH)
   const allHosts: SSHHost[] = connections.map(conn => ({
@@ -138,6 +154,17 @@ const SFTPModal: React.FC<SFTPModalProps> = ({ isOpen, onClose }) => {
     }
   }, [isOpen]);
 
+  // Subtle entrance animation
+  useEffect(() => {
+    if (!isOpen) {
+      setModalVisible(false);
+      return;
+    }
+    setModalVisible(false);
+    const timer = setTimeout(() => setModalVisible(true), 10);
+    return () => clearTimeout(timer);
+  }, [isOpen]);
+
   // Initialize local path to user's home directory
   useEffect(() => {
     if (isOpen && !localPath) {
@@ -180,12 +207,67 @@ const SFTPModal: React.FC<SFTPModalProps> = ({ isOpen, onClose }) => {
     const handleClick = () => {
       setLocalContextMenu(false);
       setRemoteContextMenu(false);
+      setLocalMenuVisible(false);
+      setRemoteMenuVisible(false);
+      setLocalMenuHover(null);
+      setRemoteMenuHover(null);
+      setLocalMenuPos(null);
+      setRemoteMenuPos(null);
     };
     if (localContextMenu || remoteContextMenu) {
       document.addEventListener('click', handleClick);
       return () => document.removeEventListener('click', handleClick);
     }
   }, [localContextMenu, remoteContextMenu]);
+
+  // Trigger context menu entrance animations
+  useEffect(() => {
+    if (!localContextMenu) {
+      setLocalMenuVisible(false);
+      return;
+    }
+    setLocalMenuVisible(false);
+    const timer = setTimeout(() => setLocalMenuVisible(true), 10);
+    return () => clearTimeout(timer);
+  }, [localContextMenu]);
+
+  useEffect(() => {
+    if (!remoteContextMenu) {
+      setRemoteMenuVisible(false);
+      return;
+    }
+    setRemoteMenuVisible(false);
+    const timer = setTimeout(() => setRemoteMenuVisible(true), 10);
+    return () => clearTimeout(timer);
+  }, [remoteContextMenu]);
+
+  const SETTINGS_MENU_WIDTH = 200;
+  const SETTINGS_MENU_GAP = 6;
+
+  const getSettingsMenuPosition = (button: HTMLButtonElement | null) => {
+    if (!button) return null;
+    const rect = button.getBoundingClientRect();
+    const width = SETTINGS_MENU_WIDTH;
+    const maxX = Math.max(8, window.innerWidth - width - 8);
+    const x = Math.min(maxX, Math.max(8, rect.right - width));
+    const maxY = Math.max(8, window.innerHeight - 120);
+    const y = Math.min(maxY, rect.bottom + SETTINGS_MENU_GAP);
+    return { x, y };
+  };
+
+  const closeLocalMenu = () => {
+    setLocalContextMenu(false);
+    setLocalMenuVisible(false);
+    setLocalMenuPos(null);
+    setLocalMenuHover(null);
+  };
+
+  const closeRemoteMenu = () => {
+    setRemoteContextMenu(false);
+    setRemoteMenuVisible(false);
+    setRemoteMenuPos(null);
+    setRemoteMenuHover(null);
+  };
 
   const loadLocalFiles = async (path: string) => {
     try {
@@ -275,13 +357,222 @@ const SFTPModal: React.FC<SFTPModalProps> = ({ isOpen, onClose }) => {
     loadRemoteFiles(path);
   };
 
-  // Helper to format file size
   const formatSize = (bytes: number) => {
-    if (bytes === 0) return '-';
-    const kb = bytes / 1024;
-    if (kb < 1024) return `${kb.toFixed(1)} KB`;
-    const mb = kb / 1024;
-    return `${mb.toFixed(1)} MB`;
+    if (!bytes) return '-';
+    const units = ['B', 'KB', 'MB', 'GB', 'TB'];
+    let value = bytes;
+    let unitIndex = 0;
+    while (value >= 1024 && unitIndex < units.length - 1) {
+      value /= 1024;
+      unitIndex += 1;
+    }
+    const precision = value < 10 && unitIndex > 0 ? 1 : 0;
+    return `${value.toFixed(precision)} ${units[unitIndex]}`;
+  };
+
+  const getFileExtension = (name: string) => {
+    const parts = name.toLowerCase().split('.');
+    if (parts.length <= 1) return '';
+    return parts.slice(1).join('.');
+  };
+
+  const isArchiveFile = (name: string) => {
+    const ext = getFileExtension(name);
+    const archiveExtensions = [
+      'zip', 'tar', 'gz', 'tgz', 'bz2', 'tbz2', 'xz', 'txz', '7z', 'rar',
+    ];
+    return archiveExtensions.some(a => ext === a || ext.endsWith(`.${a}`));
+  };
+
+  const FolderIcon = () => (
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+      <path d="M1.5 4.5C1.5 3.67 2.17 3 3 3h3l1.2 1.4h5.8c.83 0 1.5.67 1.5 1.5v6.6c0 .83-.67 1.5-1.5 1.5H3c-.83 0-1.5-.67-1.5-1.5V4.5Z" stroke="currentColor" strokeWidth="1.2" />
+      <path d="M1.5 6h13" stroke="currentColor" strokeWidth="1.2" />
+    </svg>
+  );
+
+  const FileIcon = () => (
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+      <path d="M4 1.5h5.2L12.5 4.8V14c0 .83-.67 1.5-1.5 1.5H4c-.83 0-1.5-.67-1.5-1.5V3c0-.83.67-1.5 1.5-1.5Z" stroke="currentColor" strokeWidth="1.2" />
+      <path d="M9 1.5V5h3.5" stroke="currentColor" strokeWidth="1.2" />
+    </svg>
+  );
+
+  const ArchiveIcon = () => (
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+      <rect x="2.5" y="2.5" width="11" height="11" rx="1.5" stroke="currentColor" strokeWidth="1.2" />
+      <path d="M5.5 2.5v11M8 5h3M8 8h3M8 11h3" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
+      <path d="M4.8 4.2h1.4M4.8 7.2h1.4M4.8 10.2h1.4" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
+    </svg>
+  );
+
+  const CheckIcon = ({ visible }: { visible: boolean }) => (
+    <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true" style={{ opacity: visible ? 1 : 0 }}>
+      <path d="M3 7.5l2.2 2.2L11 4.5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+
+  const getFileIcon = (file: FileItem) => {
+    if (file.type === 'directory') {
+      return <FolderIcon />;
+    }
+    if (isArchiveFile(file.name)) {
+      return <ArchiveIcon />;
+    }
+    return <FileIcon />;
+  };
+
+  const formatDuration = (ms: number) => {
+    const totalSeconds = Math.max(1, Math.round(ms / 1000));
+    const minutes = Math.floor(totalSeconds / 60);
+    const seconds = totalSeconds % 60;
+    if (minutes >= 60) {
+      const hours = Math.floor(minutes / 60);
+      const remMinutes = minutes % 60;
+      return `${hours}h ${remMinutes}m`;
+    }
+    if (minutes > 0) {
+      return `${minutes}m ${seconds}s`;
+    }
+    return `${seconds}s`;
+  };
+
+  const estimateTransferTime = (sizeBytes?: number) => {
+    if (!sizeBytes) return null;
+    // Heuristic: assume ~8 MB/s average transfer speed
+    const assumedBytesPerSecond = 8 * 1024 * 1024;
+    const ms = (sizeBytes / assumedBytesPerSecond) * 1000;
+    return Math.max(1000, ms);
+  };
+
+  const findFileSize = (pane: 'local' | 'remote', fileName: string) => {
+    const sourceFiles = pane === 'local' ? localFiles : remoteFiles;
+    const match = sourceFiles.find(f => f.name === fileName);
+    return match?.size;
+  };
+
+  const startTransfer = (targetPane: 'local' | 'remote', fileName: string) => {
+    const sourcePane = targetPane === 'local' ? 'remote' : 'local';
+    const sizeBytes = findFileSize(sourcePane, fileName);
+    setTransferProgress({
+      pane: targetPane,
+      fileName,
+      progress: 0,
+      sizeBytes,
+      startedAt: Date.now(),
+    });
+  };
+
+  const ArrowDownIcon = () => (
+    <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
+      <path d="M7 2.2v8.2M3.8 7.8 7 11.2l3.2-3.4" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+
+  const ArrowUpIcon = () => (
+    <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
+      <path d="M7 11.8V3.6M10.2 6.2 7 2.8 3.8 6.2" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+
+  const TRANSFER_FOOTER_HEIGHT = 78;
+
+  const renderTransferFooter = (pane: 'local' | 'remote') => {
+    const active = transferProgress && transferProgress.pane === pane;
+    const directionLabel = pane === 'local' ? 'Downloading' : 'Uploading';
+    const sizeLabel = active && transferProgress.sizeBytes ? formatSize(transferProgress.sizeBytes) : null;
+    const etaMs = active ? estimateTransferTime(transferProgress.sizeBytes) : null;
+    const etaLabel = etaMs ? formatDuration(etaMs) : 'Estimating...';
+
+    return (
+      <div style={{
+        height: `${TRANSFER_FOOTER_HEIGHT}px`,
+        borderTop: '1px solid #3a4556',
+        background: 'linear-gradient(180deg, rgba(31, 36, 48, 0.92), rgba(26, 31, 46, 0.98))',
+        padding: '10px 14px',
+        display: 'flex',
+        flexDirection: 'column',
+        justifyContent: 'center',
+        gap: '8px',
+        opacity: active ? 1 : 0.6,
+        transition: 'opacity 0.2s ease',
+      }}>
+        {active ? (
+          <>
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: '12px',
+            }}>
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                minWidth: 0,
+                color: '#c9d1d9',
+                fontSize: '12px',
+                fontWeight: 600,
+              }}>
+                <span style={{ color: pane === 'local' ? '#4d7cfe' : '#3dd68c', display: 'flex' }}>
+                  {pane === 'local' ? <ArrowDownIcon /> : <ArrowUpIcon />}
+                </span>
+                <span style={{ whiteSpace: 'nowrap' }}>{directionLabel}</span>
+                <span style={{ color: '#e8ecf4', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  {transferProgress.fileName}
+                </span>
+              </div>
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '10px',
+                fontSize: '11px',
+                color: '#8b949e',
+                flexShrink: 0,
+              }}>
+                {sizeLabel && <span>{sizeLabel}</span>}
+                <span>ETA ~{etaLabel}</span>
+              </div>
+            </div>
+            <div style={{
+              position: 'relative',
+              width: '100%',
+              height: '8px',
+              borderRadius: '999px',
+              background: '#222a3a',
+              border: '1px solid #2d374a',
+              overflow: 'hidden',
+              boxShadow: 'inset 0 1px 2px rgba(0, 0, 0, 0.45)',
+            }}>
+              <div style={{
+                position: 'absolute',
+                top: 0,
+                left: '-35%',
+                width: '35%',
+                height: '100%',
+                borderRadius: '999px',
+                background: pane === 'local'
+                  ? 'linear-gradient(90deg, rgba(77, 124, 254, 0.15), #4d7cfe, rgba(77, 124, 254, 0.15))'
+                  : 'linear-gradient(90deg, rgba(22, 130, 93, 0.15), #1ea672, rgba(22, 130, 93, 0.15))',
+                boxShadow: pane === 'local'
+                  ? '0 0 12px rgba(77, 124, 254, 0.45)'
+                  : '0 0 12px rgba(30, 166, 114, 0.45)',
+                animation: 'sftp-progress-slide 1.6s ease-in-out infinite',
+              }} />
+            </div>
+          </>
+        ) : (
+          <div style={{
+            fontSize: '11px',
+            color: '#6b7280',
+            textAlign: 'center',
+            letterSpacing: '0.2px',
+          }}>
+            No active transfers
+          </div>
+        )}
+      </div>
+    );
   };
 
   // Helper to format date
@@ -330,6 +621,9 @@ const SFTPModal: React.FC<SFTPModalProps> = ({ isOpen, onClose }) => {
       zIndex: 10000,
       display: 'flex',
       flexDirection: 'column',
+      opacity: modalVisible ? 1 : 0,
+      transform: modalVisible ? 'translateY(0) scale(1)' : 'translateY(6px) scale(0.995)',
+      transition: 'opacity 0.18s ease-out, transform 0.22s ease-out',
     }}>
         {/* Header */}
         <div style={{
@@ -423,11 +717,19 @@ const SFTPModal: React.FC<SFTPModalProps> = ({ isOpen, onClose }) => {
                 }}>
                   <span>Local Machine</span>
                   <button
+                    ref={localGearRef}
                     onClick={(e) => {
                       e.stopPropagation();
-                      console.log('[SFTP] Local gear clicked');
-                      setLocalContextMenu(!localContextMenu);
+                      const nextOpen = !localContextMenu;
+                      if (nextOpen) {
+                        setLocalMenuPos(getSettingsMenuPosition(e.currentTarget));
+                      } else {
+                        setLocalMenuPos(null);
+                      }
+                      setLocalContextMenu(nextOpen);
+                      setLocalMenuHover(null);
                       setRemoteContextMenu(false);
+                      setRemoteMenuPos(null);
                     }}
                     style={{
                       background: 'transparent',
@@ -448,55 +750,13 @@ const SFTPModal: React.FC<SFTPModalProps> = ({ isOpen, onClose }) => {
                       e.currentTarget.style.background = 'transparent';
                     }}
                   >
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <circle cx="12" cy="12" r="3"/>
-                      <path d="M12 1v3m0 16v3m9-9h-3m-16 0H1M19.071 4.929l-2.121 2.121M7.05 16.95l-2.121 2.121M19.071 19.071l-2.121-2.121M7.05 7.05L4.929 4.929"/>
+                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                      <circle cx="8" cy="8" r="2.2" />
+                      <path d="M8 1.6v1.4M8 13v1.4M1.6 8h1.4M13 8h1.4M3.2 3.2l1 1M11.8 11.8l1 1M12.8 3.2l-1 1M4.2 11.8l-1 1" />
+                      <circle cx="8" cy="8" r="5.4" strokeOpacity="0.55" />
                     </svg>
                   </button>
-                  {localContextMenu && (
-                    <div style={{
-                      position: 'absolute',
-                      top: '100%',
-                      right: '8px',
-                      background: '#1f2430',
-                      border: '1px solid #3a4556',
-                      borderRadius: '6px',
-                      boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3)',
-                      zIndex: 1000,
-                      minWidth: '180px',
-                      marginTop: '4px',
-                    }}>
-                      <button
-                        onClick={() => {
-                          console.log('[SFTP] Toggle local hidden files:', !showLocalHidden);
-                          setShowLocalHidden(!showLocalHidden);
-                          setLocalContextMenu(false);
-                        }}
-                        style={{
-                          width: '100%',
-                          padding: '10px 14px',
-                          background: 'transparent',
-                          border: 'none',
-                          color: '#e8ecf4',
-                          fontSize: '13px',
-                          textAlign: 'left',
-                          cursor: 'pointer',
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: '8px',
-                        }}
-                        onMouseEnter={(e) => {
-                          e.currentTarget.style.background = '#252d3f';
-                        }}
-                        onMouseLeave={(e) => {
-                          e.currentTarget.style.background = 'transparent';
-                        }}
-                      >
-                        <span style={{ width: '16px' }}>{showLocalHidden ? '✓' : ''}</span>
-                        <span>Show Hidden Files</span>
-                      </button>
-                    </div>
-                  )}
+                  
                 </div>
                 <div style={{
                   padding: '8px 16px',
@@ -543,7 +803,7 @@ const SFTPModal: React.FC<SFTPModalProps> = ({ isOpen, onClose }) => {
                     if (sourcePane === 'remote') {
                       // Download from remote to local
                       console.log('[SFTP] Initiating download:', fileName);
-                      setTransferProgress({ pane: 'local', fileName, progress: 0 });
+                      startTransfer('local', fileName);
                       try {
                         await window.electron.downloadFile({
                           connectionId: selectedHost!.id,
@@ -566,6 +826,7 @@ const SFTPModal: React.FC<SFTPModalProps> = ({ isOpen, onClose }) => {
                     flex: 1,
                     overflow: 'auto',
                     padding: '8px',
+                    paddingBottom: `${TRANSFER_FOOTER_HEIGHT + 16}px`,
                     position: 'relative',
                     background: dragOverPane === 'local' ? 'rgba(22, 130, 93, 0.1)' : 'transparent',
                     border: dragOverPane === 'local' ? '2px dashed #16825d' : '2px dashed transparent',
@@ -671,7 +932,18 @@ const SFTPModal: React.FC<SFTPModalProps> = ({ isOpen, onClose }) => {
                           >
                             <td style={{ padding: '8px 12px', fontSize: '13px', color: '#e8ecf4' }}>
                               <div style={{ display: 'flex', alignItems: 'center', gap: '8px', overflow: 'hidden' }}>
-                                <span style={{ flexShrink: 0 }}>{file.type === 'directory' ? '📁' : '📄'}</span>
+                                <span style={{
+                                  flexShrink: 0,
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  color: file.type === 'directory'
+                                    ? '#4d7cfe'
+                                    : isArchiveFile(file.name)
+                                      ? '#f59e0b'
+                                      : '#b4bcc9',
+                                }}>
+                                  {getFileIcon(file)}
+                                </span>
                                 <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{file.name}</span>
                               </div>
                             </td>
@@ -713,63 +985,13 @@ const SFTPModal: React.FC<SFTPModalProps> = ({ isOpen, onClose }) => {
                         borderRadius: '50%',
                         animation: 'spin 0.8s linear infinite',
                       }} />
-                      <style>{`
-                        @keyframes spin {
-                          0% { transform: rotate(0deg); }
-                          100% { transform: rotate(360deg); }
-                        }
-                      `}</style>
                     </div>
                   )}
 
-                  {/* Transfer Progress for Local Pane */}
-                  {transferProgress && transferProgress.pane === 'local' && (
-                    <div style={{
-                      position: 'absolute',
-                      bottom: '8px',
-                      left: '8px',
-                      right: '8px',
-                      background: 'rgba(26, 31, 46, 0.95)',
-                      border: '1px solid #3a4556',
-                      borderRadius: '6px',
-                      padding: '8px 12px',
-                      zIndex: 20,
-                      boxShadow: '0 2px 8px rgba(0, 0, 0, 0.3)',
-                    }}>
-                      <div style={{
-                        fontSize: '11px',
-                        color: '#8892a6',
-                        marginBottom: '6px',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '6px',
-                      }}>
-                        <span>⬇️</span>
-                        <span>Downloading: {transferProgress.fileName}</span>
-                      </div>
-                      <div style={{
-                        width: '100%',
-                        height: '4px',
-                        background: '#252d3f',
-                        borderRadius: '2px',
-                        overflow: 'hidden',
-                      }}>
-                        <div style={{
-                          width: '100%',
-                          height: '100%',
-                          background: 'linear-gradient(90deg, #16825d, #1ea672)',
-                          animation: 'progress 1.5s ease-in-out infinite',
-                        }} />
-                      </div>
-                      <style>{`
-                        @keyframes progress {
-                          0% { transform: translateX(-100%); }
-                          100% { transform: translateX(100%); }
-                        }
-                      `}</style>
-                    </div>
-                  )}
-                </div>
+                  <div style={{ position: 'sticky', bottom: 0, paddingTop: '8px', zIndex: 15 }}>
+                    {renderTransferFooter('local')}
+                  </div>
+                  </div>
               </div>
 
               {/* Right Pane - Remote Files */}
@@ -794,13 +1016,20 @@ const SFTPModal: React.FC<SFTPModalProps> = ({ isOpen, onClose }) => {
                 }}>
                   <span>Remote Machine{selectedHost && ` (${selectedHost.username}@${selectedHost.host})`}</span>
                   {selectedHost && (
-                    <>
-                      <button
+                    <button
+                        ref={remoteGearRef}
                         onClick={(e) => {
                           e.stopPropagation();
-                          console.log('[SFTP] Remote gear clicked');
-                          setRemoteContextMenu(!remoteContextMenu);
+                          const nextOpen = !remoteContextMenu;
+                          if (nextOpen) {
+                            setRemoteMenuPos(getSettingsMenuPosition(e.currentTarget));
+                          } else {
+                            setRemoteMenuPos(null);
+                          }
+                          setRemoteContextMenu(nextOpen);
+                          setRemoteMenuHover(null);
                           setLocalContextMenu(false);
+                          setLocalMenuPos(null);
                         }}
                         style={{
                           background: 'transparent',
@@ -821,56 +1050,12 @@ const SFTPModal: React.FC<SFTPModalProps> = ({ isOpen, onClose }) => {
                           e.currentTarget.style.background = 'transparent';
                         }}
                       >
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                          <circle cx="12" cy="12" r="3"/>
-                          <path d="M12 1v3m0 16v3m9-9h-3m-16 0H1M19.071 4.929l-2.121 2.121M7.05 16.95l-2.121 2.121M19.071 19.071l-2.121-2.121M7.05 7.05L4.929 4.929"/>
+                        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                          <circle cx="8" cy="8" r="2.2" />
+                          <path d="M8 1.6v1.4M8 13v1.4M1.6 8h1.4M13 8h1.4M3.2 3.2l1 1M11.8 11.8l1 1M12.8 3.2l-1 1M4.2 11.8l-1 1" />
+                          <circle cx="8" cy="8" r="5.4" strokeOpacity="0.55" />
                         </svg>
                       </button>
-                      {remoteContextMenu && (
-                        <div style={{
-                          position: 'absolute',
-                          top: '100%',
-                          right: '8px',
-                          background: '#1f2430',
-                          border: '1px solid #3a4556',
-                          borderRadius: '6px',
-                          boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3)',
-                          zIndex: 1000,
-                          minWidth: '180px',
-                          marginTop: '4px',
-                        }}>
-                          <button
-                            onClick={() => {
-                              console.log('[SFTP] Toggle remote hidden files:', !showRemoteHidden);
-                              setShowRemoteHidden(!showRemoteHidden);
-                              setRemoteContextMenu(false);
-                            }}
-                            style={{
-                              width: '100%',
-                              padding: '10px 14px',
-                              background: 'transparent',
-                              border: 'none',
-                              color: '#e8ecf4',
-                              fontSize: '13px',
-                              textAlign: 'left',
-                              cursor: 'pointer',
-                              display: 'flex',
-                              alignItems: 'center',
-                              gap: '8px',
-                            }}
-                            onMouseEnter={(e) => {
-                              e.currentTarget.style.background = '#252d3f';
-                            }}
-                            onMouseLeave={(e) => {
-                              e.currentTarget.style.background = 'transparent';
-                            }}
-                          >
-                            <span style={{ width: '16px' }}>{showRemoteHidden ? '✓' : ''}</span>
-                            <span>Show Hidden Files</span>
-                          </button>
-                        </div>
-                      )}
-                    </>
                   )}
                 </div>
 
@@ -1034,7 +1219,7 @@ const SFTPModal: React.FC<SFTPModalProps> = ({ isOpen, onClose }) => {
                       if (sourcePane === 'local') {
                         // Upload from local to remote
                         console.log('[SFTP] Initiating upload:', fileName);
-                        setTransferProgress({ pane: 'remote', fileName, progress: 0 });
+                        startTransfer('remote', fileName);
                         try {
                           await window.electron.uploadFile({
                             connectionId: selectedHost!.id,
@@ -1057,6 +1242,7 @@ const SFTPModal: React.FC<SFTPModalProps> = ({ isOpen, onClose }) => {
                       flex: 1,
                       overflow: 'auto',
                       padding: '8px',
+                      paddingBottom: `${TRANSFER_FOOTER_HEIGHT + 16}px`,
                       position: 'relative',
                       background: dragOverPane === 'remote' ? 'rgba(22, 130, 93, 0.1)' : 'transparent',
                       border: dragOverPane === 'remote' ? '2px dashed #16825d' : '2px dashed transparent',
@@ -1163,7 +1349,18 @@ const SFTPModal: React.FC<SFTPModalProps> = ({ isOpen, onClose }) => {
                           >
                             <td style={{ padding: '8px 12px', fontSize: '13px', color: '#e8ecf4' }}>
                               <div style={{ display: 'flex', alignItems: 'center', gap: '8px', overflow: 'hidden' }}>
-                                <span style={{ flexShrink: 0 }}>{file.type === 'directory' ? '📁' : '📄'}</span>
+                                <span style={{
+                                  flexShrink: 0,
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  color: file.type === 'directory'
+                                    ? '#4d7cfe'
+                                    : isArchiveFile(file.name)
+                                      ? '#f59e0b'
+                                      : '#b4bcc9',
+                                }}>
+                                  {getFileIcon(file)}
+                                </span>
                                 <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{file.name}</span>
                               </div>
                             </td>
@@ -1209,52 +1406,118 @@ const SFTPModal: React.FC<SFTPModalProps> = ({ isOpen, onClose }) => {
                     </div>
                   )}
 
-                  {/* Transfer Progress for Remote Pane */}
-                  {transferProgress && transferProgress.pane === 'remote' && (
-                    <div style={{
-                      position: 'absolute',
-                      bottom: '8px',
-                      left: '8px',
-                      right: '8px',
-                      background: 'rgba(26, 31, 46, 0.95)',
-                      border: '1px solid #3a4556',
-                      borderRadius: '6px',
-                      padding: '8px 12px',
-                      zIndex: 20,
-                      boxShadow: '0 2px 8px rgba(0, 0, 0, 0.3)',
-                    }}>
-                      <div style={{
-                        fontSize: '11px',
-                        color: '#8892a6',
-                        marginBottom: '6px',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '6px',
-                      }}>
-                        <span>⬆️</span>
-                        <span>Uploading: {transferProgress.fileName}</span>
-                      </div>
-                      <div style={{
-                        width: '100%',
-                        height: '4px',
-                        background: '#252d3f',
-                        borderRadius: '2px',
-                        overflow: 'hidden',
-                      }}>
-                        <div style={{
-                          width: '100%',
-                          height: '100%',
-                          background: 'linear-gradient(90deg, #16825d, #1ea672)',
-                          animation: 'progress 1.5s ease-in-out infinite',
-                        }} />
-                      </div>
-                    </div>
-                  )}
+                  <div style={{ position: 'sticky', bottom: 0, paddingTop: '8px', zIndex: 15 }}>
+                    {renderTransferFooter('remote')}
+                  </div>
                   </div>
                 )}
               </div>
             </div>
         </div>
+
+        {localContextMenu && localMenuPos && (
+          <>
+            <div
+              style={{
+                position: 'fixed',
+                inset: 0,
+                zIndex: 1200,
+              }}
+              onClick={closeLocalMenu}
+              onContextMenu={(e) => {
+                e.preventDefault();
+                closeLocalMenu();
+              }}
+            />
+            <div
+              style={{
+                position: 'fixed',
+                top: localMenuPos.y,
+                left: localMenuPos.x,
+                width: `${SETTINGS_MENU_WIDTH}px`,
+                padding: '4px',
+                zIndex: 1201,
+                pointerEvents: 'auto',
+                ...getMenuContainerStyle(localMenuVisible),
+              }}
+            >
+              <button
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  setShowLocalHidden(!showLocalHidden);
+                  closeLocalMenu();
+                }}
+                onMouseEnter={() => setLocalMenuHover(0)}
+                onMouseLeave={() => setLocalMenuHover(null)}
+                style={getMenuItemStyle(localMenuHover === 0)}
+              >
+                <span style={{ width: '18px', display: 'flex', justifyContent: 'center' }}>
+                  <CheckIcon visible={showLocalHidden} />
+                </span>
+                Show Hidden Files
+              </button>
+            </div>
+          </>
+        )}
+
+        {remoteContextMenu && remoteMenuPos && (
+          <>
+            <div
+              style={{
+                position: 'fixed',
+                inset: 0,
+                zIndex: 1200,
+              }}
+              onClick={closeRemoteMenu}
+              onContextMenu={(e) => {
+                e.preventDefault();
+                closeRemoteMenu();
+              }}
+            />
+            <div
+              style={{
+                position: 'fixed',
+                top: remoteMenuPos.y,
+                left: remoteMenuPos.x,
+                width: `${SETTINGS_MENU_WIDTH}px`,
+                padding: '4px',
+                zIndex: 1201,
+                pointerEvents: 'auto',
+                ...getMenuContainerStyle(remoteMenuVisible),
+              }}
+            >
+              <button
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  setShowRemoteHidden(!showRemoteHidden);
+                  closeRemoteMenu();
+                }}
+                onMouseEnter={() => setRemoteMenuHover(0)}
+                onMouseLeave={() => setRemoteMenuHover(null)}
+                style={getMenuItemStyle(remoteMenuHover === 0)}
+              >
+                <span style={{ width: '18px', display: 'flex', justifyContent: 'center' }}>
+                  <CheckIcon visible={showRemoteHidden} />
+                </span>
+                Show Hidden Files
+              </button>
+            </div>
+          </>
+        )}
+
+        <style>{`
+          @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+          }
+          @keyframes sftp-progress-slide {
+            0% { transform: translateX(-120%); }
+            60% { transform: translateX(220%); }
+            100% { transform: translateX(220%); }
+          }
+        `}</style>
 
         {/* Error Toast */}
         {error && (

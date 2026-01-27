@@ -39,7 +39,7 @@ export interface TabContextType {
     password: string;
     privateKeyPath?: string;
   }) => Promise<void>;
-  createLocalTerminal: () => Promise<void>;
+  createLocalTerminal: (cwd?: string) => Promise<void>;
   renameConnection: (id: string, newLabel: string) => void;
   disconnectConnection: (id: string) => void;
   removeConnection: (id: string) => void;

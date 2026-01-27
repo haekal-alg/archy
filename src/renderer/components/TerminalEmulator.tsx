@@ -26,6 +26,7 @@ const terminalInstances = new Map<string, {
   keydownHandler?: (e: KeyboardEvent) => void;
 }>();
 
+
 // Export cleanup function
 export const cleanupTerminal = (connectionId: string) => {
   const instance = terminalInstances.get(connectionId);

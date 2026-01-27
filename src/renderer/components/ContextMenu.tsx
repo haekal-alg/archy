@@ -53,7 +53,7 @@ const ConnectIcon = ({ type }: { type: string }) => {
 };
 
 // Shared menu styles
-const getMenuContainerStyle = (isVisible: boolean) => ({
+export const getMenuContainerStyle = (isVisible: boolean) => ({
   background: 'rgba(50, 50, 55, 0.65)',
   backdropFilter: 'blur(60px) saturate(200%) brightness(1.1)',
   WebkitBackdropFilter: 'blur(60px) saturate(200%) brightness(1.1)',
@@ -67,7 +67,7 @@ const getMenuContainerStyle = (isVisible: boolean) => ({
   transformOrigin: 'top left',
 });
 
-const getMenuItemStyle = (isHovered: boolean, isDanger: boolean = false) => ({
+export const getMenuItemStyle = (isHovered: boolean, isDanger: boolean = false) => ({
   width: '100%',
   padding: '6px 12px',
   border: 'none',
