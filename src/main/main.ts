@@ -10,6 +10,13 @@ const store = new Store.default();
 
 let mainWindow: BrowserWindow | null = null;
 
+interface SSHPortForward {
+  localPort: number;
+  remoteHost: string;
+  remotePort: number;
+  bindAddress?: string;
+}
+
 // Fix cache permission issues - clear cache in development
 if (!app.isPackaged) {
   app.commandLine.appendSwitch('disable-http-cache');
@@ -38,6 +45,7 @@ interface SSHSession {
   port: number;
   username: string;
   privateKeyPath?: string;
+  portForwards?: SSHPortForward[];
 }
 
 const sshSessions = new Map<string, SSHSession>();
@@ -458,7 +466,7 @@ kdcproxyname:s:`;
 
 // Create persistent SSH session using native SSH client via node-pty
 // This provides better performance than ssh2 library (native crypto, direct PTY)
-ipcMain.handle('create-ssh-session', async (event, { connectionId, host, port = 22, username, password, privateKeyPath }) => {
+ipcMain.handle('create-ssh-session', async (event, { connectionId, host, port = 22, username, password, privateKeyPath, portForwards = [] }: { connectionId: string; host: string; port?: number; username: string; password: string; privateKeyPath?: string; portForwards?: SSHPortForward[] }) => {
   return new Promise((resolve, reject) => {
     try {
       // Build SSH command arguments
@@ -474,6 +482,29 @@ ipcMain.handle('create-ssh-session', async (event, { connectionId, host, port = 
       if (privateKeyPath && privateKeyPath.trim() !== '') {
         args.push('-i', privateKeyPath);
       }
+
+      // Add local port forwards (-L)
+      const validPortForwards = (portForwards || [])
+        .map((forward) => ({
+          localPort: Number(forward.localPort),
+          remoteHost: String(forward.remoteHost || '').trim(),
+          remotePort: Number(forward.remotePort),
+          bindAddress: forward.bindAddress ? String(forward.bindAddress).trim() : undefined,
+        }))
+        .filter((forward) => (
+          Number.isFinite(forward.localPort) &&
+          forward.localPort > 0 &&
+          Number.isFinite(forward.remotePort) &&
+          forward.remotePort > 0 &&
+          forward.remoteHost.length > 0
+        ));
+
+      validPortForwards.forEach((forward) => {
+        const spec = forward.bindAddress && forward.bindAddress.length > 0
+          ? `${forward.bindAddress}:${forward.localPort}:${forward.remoteHost}:${forward.remotePort}`
+          : `${forward.localPort}:${forward.remoteHost}:${forward.remotePort}`;
+        args.push('-L', spec);
+      });
 
       // Add user@host
       args.push(`${username}@${host}`);
@@ -505,6 +536,7 @@ ipcMain.handle('create-ssh-session', async (event, { connectionId, host, port = 
         port,
         username,
         privateKeyPath,
+        portForwards: validPortForwards,
       });
 
       // Handle PTY data (both stdout and stderr combined)

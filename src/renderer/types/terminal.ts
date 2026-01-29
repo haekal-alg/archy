@@ -1,5 +1,12 @@
 export type TabType = 'design' | 'connections';
 
+export interface SSHPortForward {
+  localPort: number;
+  remoteHost: string;
+  remotePort: number;
+  bindAddress?: string;
+}
+
 export interface SSHConnection {
   id: string;
   nodeName: string;
@@ -17,6 +24,7 @@ export interface SSHConnection {
   // Store credentials for retry functionality
   password?: string;
   privateKeyPath?: string;
+  portForwards?: SSHPortForward[];
 }
 
 export interface TerminalSession {
@@ -38,6 +46,7 @@ export interface TabContextType {
     username: string;
     password: string;
     privateKeyPath?: string;
+    portForwards?: SSHPortForward[];
   }) => Promise<void>;
   createLocalTerminal: (cwd?: string) => Promise<void>;
   renameConnection: (id: string, newLabel: string) => void;

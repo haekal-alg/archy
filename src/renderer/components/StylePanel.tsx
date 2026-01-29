@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Node, Edge } from '@xyflow/react';
-import { EnhancedDeviceData, ConnectionConfig } from './EnhancedDeviceNode';
+import { EnhancedDeviceData, ConnectionConfig, SSHPortForward } from './EnhancedDeviceNode';
 import { GroupNodeData } from './GroupNode';
 import { TextNodeData } from './TextNode';
 import theme from '../../theme';
@@ -87,8 +87,17 @@ const StylePanel: React.FC<StylePanelProps> = ({
   const [nodeBgOpacity, setNodeBgOpacity] = useState(100);
   const [nodeBgTransparent, setNodeBgTransparent] = useState(false);
 
+  type EditablePortForward = {
+    id: string;
+    localPort: number | null;
+    remoteHost: string;
+    remotePort: number | null;
+    bindAddress?: string;
+  };
+
   // Multiple connections support
   const [connections, setConnections] = useState<ConnectionConfig[]>([]);
+  const [sshPortForwards, setSshPortForwards] = useState<EditablePortForward[]>([]);
   const [editingConnectionId, setEditingConnectionId] = useState<string | null>(null);
   const [showConnectionForm, setShowConnectionForm] = useState(false);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
@@ -193,6 +202,7 @@ const StylePanel: React.FC<StylePanelProps> = ({
         setNodePassword('');
         setNodeCustomCommand('');
         setPrivateKeyPath('');
+        setSshPortForwards([]);
         setShowPassword(false);
         setHasUnsavedChanges(false);
       } else {
@@ -221,6 +231,7 @@ const StylePanel: React.FC<StylePanelProps> = ({
         setNodePassword('');
         setNodeCustomCommand('');
         setPrivateKeyPath('');
+        setSshPortForwards([]);
         setShowPassword(false);
         setHasUnsavedChanges(false);
       }
@@ -328,6 +339,44 @@ const StylePanel: React.FC<StylePanelProps> = ({
   };
 
   // Connection management functions
+  const makeId = (prefix: string) => `${prefix}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+
+  const toEditablePortForwards = (portForwards?: SSHPortForward[]): EditablePortForward[] => {
+    if (!portForwards || portForwards.length === 0) {
+      return [];
+    }
+
+    return portForwards.map((forward) => ({
+      id: makeId('pf'),
+      localPort: typeof forward.localPort === 'number' ? forward.localPort : null,
+      remoteHost: forward.remoteHost || 'localhost',
+      remotePort: typeof forward.remotePort === 'number' ? forward.remotePort : null,
+      bindAddress: forward.bindAddress,
+    }));
+  };
+
+  const handleAddPortForward = () => {
+    setSshPortForwards([
+      ...sshPortForwards,
+      {
+        id: makeId('pf'),
+        localPort: null,
+        remoteHost: 'localhost',
+        remotePort: null,
+      },
+    ]);
+  };
+
+  const handleUpdatePortForward = (id: string, updates: Partial<EditablePortForward>) => {
+    setSshPortForwards(sshPortForwards.map((forward) => (
+      forward.id === id ? { ...forward, ...updates } : forward
+    )));
+  };
+
+  const handleDeletePortForward = (id: string) => {
+    setSshPortForwards(sshPortForwards.filter((forward) => forward.id !== id));
+  };
+
   const handleAddConnection = () => {
     setShowConnectionForm(true);
     setEditingConnectionId(null);
@@ -339,6 +388,7 @@ const StylePanel: React.FC<StylePanelProps> = ({
     setNodePassword('');
     setNodeCustomCommand('');
     setPrivateKeyPath('');
+    setSshPortForwards([]);
     setShowPassword(false);
   };
 
@@ -353,12 +403,26 @@ const StylePanel: React.FC<StylePanelProps> = ({
     setNodePassword(connection.password || '');
     setNodeCustomCommand(connection.customCommand || '');
     setPrivateKeyPath(connection.privateKeyPath || '');
+    setSshPortForwards(toEditablePortForwards(connection.portForwards));
     setShowPassword(false);
   };
 
   const handleSaveConnection = () => {
+    const cleanedPortForwards: SSHPortForward[] = nodeType === 'ssh'
+      ? sshPortForwards
+          .map((forward) => ({
+            localPort: forward.localPort ?? 0,
+            remoteHost: (forward.remoteHost || '').trim(),
+            remotePort: forward.remotePort ?? 0,
+            bindAddress: forward.bindAddress?.trim() || undefined,
+          }))
+          .filter((forward) => (
+            forward.localPort > 0 && forward.remotePort > 0 && forward.remoteHost.length > 0
+          ))
+      : [];
+
     const newConnection: ConnectionConfig = {
-      id: editingConnectionId || `conn-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+      id: editingConnectionId || makeId('conn'),
       label: connectionLabel,
       type: nodeType,
       host: nodeHost,
@@ -366,7 +430,8 @@ const StylePanel: React.FC<StylePanelProps> = ({
       username: nodeUsername,
       password: nodePassword,
       customCommand: nodeCustomCommand,
-      privateKeyPath: privateKeyPath
+      privateKeyPath: privateKeyPath,
+      portForwards: nodeType === 'ssh' && cleanedPortForwards.length > 0 ? cleanedPortForwards : undefined
     };
 
     if (editingConnectionId) {
@@ -388,6 +453,9 @@ const StylePanel: React.FC<StylePanelProps> = ({
     setNodeUsername('');
     setNodePassword('');
     setNodeCustomCommand('');
+    setPrivateKeyPath('');
+    setSshPortForwards([]);
+    setShowPassword(false);
 
     // Mark as having unsaved changes
     setHasUnsavedChanges(true);
@@ -411,6 +479,7 @@ const StylePanel: React.FC<StylePanelProps> = ({
     setNodePassword('');
     setNodeCustomCommand('');
     setPrivateKeyPath('');
+    setSshPortForwards([]);
     setShowPassword(false);
   };
 
@@ -427,8 +496,11 @@ const StylePanel: React.FC<StylePanelProps> = ({
     switch (connection.type) {
       case 'rdp':
         return connection.host || 'No host';
-      case 'ssh':
-        return `${connection.username || 'user'}@${connection.host || 'host'}:${connection.port || 22}`;
+      case 'ssh': {
+        const base = `${connection.username || 'user'}@${connection.host || 'host'}:${connection.port || 22}`;
+        const forwardCount = connection.portForwards?.length || 0;
+        return forwardCount > 0 ? `${base} (+${forwardCount} fwd)` : base;
+      }
       case 'browser':
         return connection.host || 'No URL';
       case 'custom':
@@ -1427,6 +1499,200 @@ const StylePanel: React.FC<StylePanelProps> = ({
                                     + Import
                                   </button>
                                 </div>
+                              </div>
+                              <div style={{
+                                marginBottom: theme.spacing.lg,
+                                padding: theme.spacing.md,
+                                border: `1px solid ${theme.border.default}`,
+                                borderRadius: theme.radius.sm,
+                                background: theme.background.tertiary
+                              }}>
+                                <div style={{
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'space-between',
+                                  marginBottom: theme.spacing.sm
+                                }}>
+                                  <div style={{
+                                    fontSize: theme.fontSize.sm,
+                                    fontWeight: theme.fontWeight.semibold,
+                                    color: theme.text.primary
+                                  }}>
+                                    Port Forwarding (Optional)
+                                  </div>
+                                  <button
+                                    type="button"
+                                    onClick={handleAddPortForward}
+                                    onMouseDown={(e) => e.stopPropagation()}
+                                    style={{
+                                      padding: `${theme.spacing.xs} ${theme.spacing.sm}`,
+                                      border: `1px solid ${theme.accent.green}`,
+                                      borderRadius: theme.radius.xs,
+                                      background: theme.accent.green,
+                                      color: theme.text.inverted,
+                                      cursor: 'pointer',
+                                      fontSize: theme.fontSize.xs,
+                                      fontWeight: theme.fontWeight.semibold,
+                                      pointerEvents: 'auto'
+                                    }}
+                                    title="Add local port forward (-L)"
+                                  >
+                                    + Add Forward
+                                  </button>
+                                </div>
+
+                                {sshPortForwards.length === 0 && (
+                                  <div style={{
+                                    fontSize: theme.fontSize.xs,
+                                    color: theme.text.tertiary,
+                                    marginBottom: theme.spacing.sm
+                                  }}>
+                                    Example: ssh -L 1455:localhost:1455 user@remote
+                                  </div>
+                                )}
+
+                                {sshPortForwards.map((forward) => (
+                                  <div
+                                    key={forward.id}
+                                    style={{
+                                      border: `1px solid ${theme.border.default}`,
+                                      borderRadius: theme.radius.sm,
+                                      padding: theme.spacing.sm,
+                                      marginBottom: theme.spacing.sm,
+                                      background: theme.background.elevated
+                                    }}
+                                  >
+                                    <div style={{
+                                      display: 'flex',
+                                      flexDirection: 'column',
+                                      gap: theme.spacing.sm
+                                    }}>
+                                      <div>
+                                        <label style={{
+                                          display: 'block',
+                                          fontSize: theme.fontSize.xs,
+                                          marginBottom: theme.spacing.xs,
+                                          fontWeight: theme.fontWeight.medium,
+                                          color: theme.text.secondary
+                                        }}>
+                                          Local Port
+                                        </label>
+                                        <input
+                                          type="number"
+                                          value={forward.localPort ?? ''}
+                                          onChange={(e) => handleUpdatePortForward(forward.id, {
+                                            localPort: parseInt(e.target.value, 10) || null
+                                          })}
+                                          onMouseDown={(e) => e.stopPropagation()}
+                                          onFocus={(e) => e.stopPropagation()}
+                                          placeholder="1455"
+                                          autoComplete="off"
+                                          style={connectionInputStyle}
+                                        />
+                                      </div>
+
+                                      <div>
+                                        <label style={{
+                                          display: 'block',
+                                          fontSize: theme.fontSize.xs,
+                                          marginBottom: theme.spacing.xs,
+                                          fontWeight: theme.fontWeight.medium,
+                                          color: theme.text.secondary
+                                        }}>
+                                          Remote Host
+                                        </label>
+                                        <input
+                                          type="text"
+                                          value={forward.remoteHost}
+                                          onChange={(e) => handleUpdatePortForward(forward.id, {
+                                            remoteHost: e.target.value
+                                          })}
+                                          onMouseDown={(e) => e.stopPropagation()}
+                                          onFocus={(e) => e.stopPropagation()}
+                                          placeholder="localhost"
+                                          autoComplete="off"
+                                          style={{
+                                            ...connectionInputStyle,
+                                            fontFamily: 'monospace'
+                                          }}
+                                        />
+                                      </div>
+
+                                      <div>
+                                        <label style={{
+                                          display: 'block',
+                                          fontSize: theme.fontSize.xs,
+                                          marginBottom: theme.spacing.xs,
+                                          fontWeight: theme.fontWeight.medium,
+                                          color: theme.text.secondary
+                                        }}>
+                                          Remote Port
+                                        </label>
+                                        <input
+                                          type="number"
+                                          value={forward.remotePort ?? ''}
+                                          onChange={(e) => handleUpdatePortForward(forward.id, {
+                                            remotePort: parseInt(e.target.value, 10) || null
+                                          })}
+                                          onMouseDown={(e) => e.stopPropagation()}
+                                          onFocus={(e) => e.stopPropagation()}
+                                          placeholder="1455"
+                                          autoComplete="off"
+                                          style={connectionInputStyle}
+                                        />
+                                      </div>
+
+                                      <button
+                                        type="button"
+                                        onClick={() => handleDeletePortForward(forward.id)}
+                                        onMouseDown={(e) => e.stopPropagation()}
+                                        style={{
+                                          padding: `${theme.spacing.xs} ${theme.spacing.sm}`,
+                                          border: `1px solid ${theme.accent.red}`,
+                                          borderRadius: theme.radius.xs,
+                                          background: theme.accent.red,
+                                          color: theme.text.inverted,
+                                          cursor: 'pointer',
+                                          fontSize: theme.fontSize.xs,
+                                          fontWeight: theme.fontWeight.semibold,
+                                          height: '36px',
+                                          alignSelf: 'flex-start',
+                                          pointerEvents: 'auto'
+                                        }}
+                                        title="Remove this port forward"
+                                      >
+                                        Remove
+                                      </button>
+                                    </div>
+
+                                    <div>
+                                      <label style={{
+                                        display: 'block',
+                                        fontSize: theme.fontSize.xs,
+                                        marginBottom: theme.spacing.xs,
+                                        fontWeight: theme.fontWeight.medium,
+                                        color: theme.text.secondary
+                                      }}>
+                                        Bind Address (Optional)
+                                      </label>
+                                      <input
+                                        type="text"
+                                        value={forward.bindAddress || ''}
+                                        onChange={(e) => handleUpdatePortForward(forward.id, {
+                                          bindAddress: e.target.value
+                                        })}
+                                        onMouseDown={(e) => e.stopPropagation()}
+                                        onFocus={(e) => e.stopPropagation()}
+                                        placeholder="127.0.0.1"
+                                        autoComplete="off"
+                                        style={{
+                                          ...connectionInputStyle,
+                                          fontFamily: 'monospace'
+                                        }}
+                                      />
+                                    </div>
+                                  </div>
+                                ))}
                               </div>
                             </>
                           )}

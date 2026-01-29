@@ -1,3 +1,10 @@
+export interface SSHPortForward {
+  localPort: number;
+  remoteHost: string;
+  remotePort: number;
+  bindAddress?: string;
+}
+
 export interface ElectronAPI {
   // App information
   isPackaged: () => Promise<boolean>;
@@ -21,6 +28,7 @@ export interface ElectronAPI {
     username: string;
     password: string;
     privateKeyPath?: string;
+    portForwards?: SSHPortForward[];
   }) => Promise<{ success: boolean; error?: string }>;
 
   // Local Terminal Management

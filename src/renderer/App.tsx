@@ -550,7 +550,7 @@ const AppContent: React.FC = () => {
       return;
     }
 
-    const { type, host, port, username, password, customCommand, privateKeyPath } = connection;
+    const { type, host, port, username, password, customCommand, privateKeyPath, portForwards } = connection;
 
     try {
       // Handle connection types
@@ -570,6 +570,7 @@ const AppContent: React.FC = () => {
           username,
           password,
           privateKeyPath,
+          portForwards,
         });
         console.log('SSH connection initiated in terminal emulator');
       } else if (type === 'browser') {

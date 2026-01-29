@@ -18,6 +18,13 @@ import {
   MobileIcon
 } from './NetworkIcons';
 
+export interface SSHPortForward {
+  localPort: number;
+  remoteHost: string;
+  remotePort: number;
+  bindAddress?: string;
+}
+
 export interface ConnectionConfig {
   id: string;
   label?: string;
@@ -28,6 +35,7 @@ export interface ConnectionConfig {
   password?: string;
   customCommand?: string;
   privateKeyPath?: string;
+  portForwards?: SSHPortForward[];
 }
 
 export interface EnhancedDeviceData {

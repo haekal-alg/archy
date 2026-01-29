@@ -35,7 +35,7 @@ contextBridge.exposeInMainWorld('electron', {
     ipcRenderer.invoke('delete-diagram', name),
 
   // SSH Session Management
-  createSSHSession: (config: { connectionId: string; host: string; port: number; username: string; password: string; privateKeyPath?: string }) =>
+  createSSHSession: (config: { connectionId: string; host: string; port: number; username: string; password: string; privateKeyPath?: string; portForwards?: Array<{ localPort: number; remoteHost: string; remotePort: number; bindAddress?: string }> }) =>
     ipcRenderer.invoke('create-ssh-session', config),
 
   // Local Terminal Management

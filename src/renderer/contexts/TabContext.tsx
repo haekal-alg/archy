@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useCallback, ReactNode } from 'react';
-import { TabType, SSHConnection, TabContextType } from '../types/terminal';
+import { TabType, SSHConnection, TabContextType, SSHPortForward } from '../types/terminal';
 import { cleanupTerminal } from '../components/TerminalEmulator';
 
 const TabContext = createContext<TabContextType | undefined>(undefined);
@@ -29,6 +29,7 @@ export const TabProvider: React.FC<TabProviderProps> = ({ children }) => {
     username: string;
     password: string;
     privateKeyPath?: string;
+    portForwards?: SSHPortForward[];
   }) => {
     const connectionId = `conn-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
 
@@ -43,6 +44,7 @@ export const TabProvider: React.FC<TabProviderProps> = ({ children }) => {
       lastActivity: new Date(),
       password: config.password,
       privateKeyPath: config.privateKeyPath,
+      portForwards: config.portForwards,
       connectionType: 'ssh',
     };
 
@@ -58,6 +60,7 @@ export const TabProvider: React.FC<TabProviderProps> = ({ children }) => {
         username: config.username,
         password: config.password,
         privateKeyPath: config.privateKeyPath,
+        portForwards: config.portForwards,
       });
 
       setConnections(prev =>
@@ -195,6 +198,7 @@ export const TabProvider: React.FC<TabProviderProps> = ({ children }) => {
         username: connection.username,
         password: connection.password || '',
         privateKeyPath: connection.privateKeyPath,
+        portForwards: connection.portForwards,
       });
 
       setConnections(prev =>
