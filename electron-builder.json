@@ -7,6 +7,7 @@
   },
   "files": [
     "dist/**/*",
+    "src/splash.html",
     "package.json",
     "node_modules/**/*",
     "!**/*.map",
@@ -50,7 +51,8 @@
     "signAndEditExecutable": false
   },
   "portable": {
-    "artifactName": "${productName}-${version}-portable.${ext}"
+    "artifactName": "${productName}-${version}-portable.${ext}",
+    "splashImage": "build/splash.bmp"
   },
   "linux": {
     "target": ["AppImage"],

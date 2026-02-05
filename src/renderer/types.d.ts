@@ -44,11 +44,11 @@ export interface ElectronAPI {
   onSSHClosed: (callback: (data: { connectionId: string }) => void) => () => void;
   onSSHLatency: (callback: (data: { connectionId: string; latency: number }) => void) => () => void;
 
-  // Menu event listeners
-  onMenuSave: (callback: () => void) => void;
-  onMenuLoad: (callback: () => void) => void;
-  onMenuExport: (callback: () => void) => void;
-  onMenuClear: (callback: () => void) => void;
+  // Menu event listeners - return cleanup functions to prevent memory leaks
+  onMenuSave: (callback: () => void) => () => void;
+  onMenuLoad: (callback: () => void) => () => void;
+  onMenuExport: (callback: () => void) => () => void;
+  onMenuClear: (callback: () => void) => () => void;
 
   // Clipboard operations
   clipboard: {

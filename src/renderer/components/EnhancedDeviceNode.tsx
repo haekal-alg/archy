@@ -28,6 +28,7 @@ export interface SSHPortForward {
 export interface ConnectionConfig {
   id: string;
   label?: string;
+  group?: string;
   type: 'rdp' | 'ssh' | 'browser' | 'custom';
   host?: string;
   port?: number;

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useTabContext } from '../contexts/TabContext';
 import TerminalEmulator from './TerminalEmulator';
 import ConnectionContextMenu from './ConnectionContextMenu';
@@ -27,16 +27,17 @@ const RemoteSSHIcon = () => (
 const ConnectionsTab: React.FC = () => {
   const { connections, activeConnectionId, setActiveConnectionId, disconnectConnection, removeConnection, retryConnection, createLocalTerminal, renameConnection } = useTabContext();
   const [sidePanelCollapsed, setSidePanelCollapsed] = useState(false);
-  const [, setForceUpdate] = useState(false);
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; connectionId: string } | null>(null);
   const [renameModal, setRenameModal] = useState<{ connectionId: string; currentName: string } | null>(null);
   const [sftpModalOpen, setSftpModalOpen] = useState(false);
 
-  // Helper functions defined first
-  const getConnectionZoom = (connectionId: string): number => {
-    const stored = localStorage.getItem(`terminal-zoom-${connectionId}`);
-    return stored ? parseFloat(stored) : 1.0;
-  };
+  // Cache zoom values in state to avoid localStorage reads during render
+  const [zoomCache, setZoomCache] = useState<Record<string, number>>({});
+
+  // Helper function to get zoom from cache (no localStorage access during render)
+  const getConnectionZoom = useCallback((connectionId: string): number => {
+    return zoomCache[connectionId] ?? 1.0;
+  }, [zoomCache]);
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -163,10 +164,26 @@ const ConnectionsTab: React.FC = () => {
   const activeConnection = connections.find(c => c.id === activeConnectionId);
   const activeZoom = activeConnectionId ? getConnectionZoom(activeConnectionId) : 1.0;
 
-  // Effects
+  // Initialize zoom cache from localStorage when connections change
   useEffect(() => {
-    const handleZoomUpdate = () => {
-      setForceUpdate(prev => !prev);
+    const newCache: Record<string, number> = {};
+    connections.forEach(conn => {
+      const stored = localStorage.getItem(`terminal-zoom-${conn.id}`);
+      newCache[conn.id] = stored ? parseFloat(stored) : 1.0;
+    });
+    setZoomCache(prev => {
+      // Only update if there are actual changes to prevent unnecessary re-renders
+      const hasChanges = connections.some(conn => prev[conn.id] !== newCache[conn.id]);
+      return hasChanges ? newCache : prev;
+    });
+  }, [connections]);
+
+  // Listen for zoom changes from user interaction
+  useEffect(() => {
+    const handleZoomUpdate = (event: Event) => {
+      const customEvent = event as CustomEvent<{ connectionId: string; zoom: number }>;
+      const { connectionId, zoom } = customEvent.detail;
+      setZoomCache(prev => ({ ...prev, [connectionId]: zoom }));
     };
 
     window.addEventListener('terminal-zoom-change', handleZoomUpdate);

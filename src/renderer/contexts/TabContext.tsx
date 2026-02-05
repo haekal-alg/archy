@@ -1,8 +1,11 @@
-import React, { createContext, useContext, useState, useCallback, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useCallback, useRef, ReactNode } from 'react';
 import { TabType, SSHConnection, TabContextType, SSHPortForward } from '../types/terminal';
 import { cleanupTerminal } from '../components/TerminalEmulator';
 
 const TabContext = createContext<TabContextType | undefined>(undefined);
+
+// Connection timeout in milliseconds (30 seconds)
+const CONNECTION_TIMEOUT_MS = 30000;
 
 export const useTabContext = () => {
   const context = useContext(TabContext);
@@ -21,6 +24,18 @@ export const TabProvider: React.FC<TabProviderProps> = ({ children }) => {
   const [connections, setConnections] = useState<SSHConnection[]>([]);
   const [activeConnectionId, setActiveConnectionId] = useState<string | null>(null);
 
+  // Track connection timeouts to prevent memory leaks
+  const connectionTimeouts = useRef<Map<string, NodeJS.Timeout>>(new Map());
+
+  // Helper to clear connection timeout
+  const clearConnectionTimeout = useCallback((connectionId: string) => {
+    const timeout = connectionTimeouts.current.get(connectionId);
+    if (timeout) {
+      clearTimeout(timeout);
+      connectionTimeouts.current.delete(connectionId);
+    }
+  }, []);
+
   const createConnection = useCallback(async (config: {
     nodeName: string;
     nodeType: string;
@@ -31,6 +46,20 @@ export const TabProvider: React.FC<TabProviderProps> = ({ children }) => {
     privateKeyPath?: string;
     portForwards?: SSHPortForward[];
   }) => {
+    // Validate required fields
+    if (!config.host || !config.host.trim()) {
+      console.error('[TabContext] Connection failed: host is required');
+      return;
+    }
+    if (!config.username || !config.username.trim()) {
+      console.error('[TabContext] Connection failed: username is required');
+      return;
+    }
+    if (config.port <= 0 || config.port > 65535) {
+      console.error('[TabContext] Connection failed: invalid port');
+      return;
+    }
+
     const connectionId = `conn-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
 
     const newConnection: SSHConnection = {
@@ -52,6 +81,28 @@ export const TabProvider: React.FC<TabProviderProps> = ({ children }) => {
     setActiveConnectionId(connectionId);
     setActiveTab('connections');
 
+    // Set up connection timeout
+    const timeoutId = setTimeout(() => {
+      setConnections(prev => {
+        const conn = prev.find(c => c.id === connectionId);
+        if (conn && conn.status === 'connecting') {
+          console.warn(`[TabContext] Connection timeout for ${connectionId}`);
+          // Cleanup terminal and close session
+          cleanupTerminal(connectionId);
+          window.electron.closeSSHSession(connectionId);
+          return prev.map(c =>
+            c.id === connectionId
+              ? { ...c, status: 'error', error: 'Connection timeout', lastActivity: new Date() }
+              : c
+          );
+        }
+        return prev;
+      });
+      connectionTimeouts.current.delete(connectionId);
+    }, CONNECTION_TIMEOUT_MS);
+
+    connectionTimeouts.current.set(connectionId, timeoutId);
+
     try {
       await window.electron.createSSHSession({
         connectionId,
@@ -63,6 +114,9 @@ export const TabProvider: React.FC<TabProviderProps> = ({ children }) => {
         portForwards: config.portForwards,
       });
 
+      // Clear timeout on success
+      clearConnectionTimeout(connectionId);
+
       setConnections(prev =>
         prev.map(conn =>
           conn.id === connectionId
@@ -71,6 +125,9 @@ export const TabProvider: React.FC<TabProviderProps> = ({ children }) => {
         )
       );
     } catch (error) {
+      // Clear timeout on error
+      clearConnectionTimeout(connectionId);
+
       setConnections(prev =>
         prev.map(conn =>
           conn.id === connectionId
@@ -79,7 +136,7 @@ export const TabProvider: React.FC<TabProviderProps> = ({ children }) => {
         )
       );
     }
-  }, []);
+  }, [clearConnectionTimeout]);
 
   const createLocalTerminal = useCallback(async (cwd?: string) => {
     const connectionId = `local-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
@@ -133,6 +190,9 @@ export const TabProvider: React.FC<TabProviderProps> = ({ children }) => {
   }, []);
 
   const disconnectConnection = useCallback((id: string) => {
+    // Clear any pending timeout
+    clearConnectionTimeout(id);
+
     // Close SSH session
     window.electron.closeSSHSession(id);
 
@@ -153,9 +213,12 @@ export const TabProvider: React.FC<TabProviderProps> = ({ children }) => {
       const remainingConnections = connections.filter(c => c.id !== id && c.status === 'connected');
       setActiveConnectionId(remainingConnections.length > 0 ? remainingConnections[0].id : null);
     }
-  }, [activeConnectionId, connections]);
+  }, [activeConnectionId, connections, clearConnectionTimeout]);
 
   const removeConnection = useCallback((id: string) => {
+    // Clear any pending timeout
+    clearConnectionTimeout(id);
+
     // Close SSH session
     window.electron.closeSSHSession(id);
 
@@ -168,7 +231,7 @@ export const TabProvider: React.FC<TabProviderProps> = ({ children }) => {
       const remainingConnections = connections.filter(c => c.id !== id && c.status === 'connected');
       setActiveConnectionId(remainingConnections.length > 0 ? remainingConnections[0].id : null);
     }
-  }, [activeConnectionId, connections]);
+  }, [activeConnectionId, connections, clearConnectionTimeout]);
 
   const retryConnection = useCallback(async (id: string) => {
     const connection = connections.find(c => c.id === id);
@@ -231,6 +294,38 @@ export const TabProvider: React.FC<TabProviderProps> = ({ children }) => {
       );
     });
     return unsubscribe; // Cleanup on unmount
+  }, []);
+
+  // Listen for SSH close events to cleanup timeouts and update state
+  React.useEffect(() => {
+    const unsubscribe = window.electron.onSSHClosed((data: { connectionId: string }) => {
+      // Clear any pending timeout for this connection
+      const timeout = connectionTimeouts.current.get(data.connectionId);
+      if (timeout) {
+        clearTimeout(timeout);
+        connectionTimeouts.current.delete(data.connectionId);
+      }
+
+      // Update connection status
+      setConnections(prev =>
+        prev.map(conn =>
+          conn.id === data.connectionId && conn.status !== 'disconnected'
+            ? { ...conn, status: 'disconnected', lastActivity: new Date() }
+            : conn
+        )
+      );
+    });
+    return unsubscribe;
+  }, []);
+
+  // Cleanup all timeouts on unmount
+  React.useEffect(() => {
+    return () => {
+      connectionTimeouts.current.forEach((timeout) => {
+        clearTimeout(timeout);
+      });
+      connectionTimeouts.current.clear();
+    };
   }, []);
 
   const value: TabContextType = {

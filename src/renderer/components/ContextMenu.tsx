@@ -104,6 +104,25 @@ const ContextMenu: React.FC<ContextMenuProps> = ({
     const timer = setTimeout(() => setIsVisible(true), 10);
     return () => clearTimeout(timer);
   }, []);
+
+  const normalizeGroup = (group?: string) => (group || '').trim();
+  const connectionItems: Array<
+    | { type: 'divider'; label: string }
+    | { type: 'connection'; connection: ConnectionConfig }
+  > = [];
+  let currentGroup = '';
+  connections.forEach((connection) => {
+    const group = normalizeGroup(connection.group);
+    if (group && group !== currentGroup) {
+      connectionItems.push({ type: 'divider', label: group });
+      currentGroup = group;
+    }
+    if (!group) {
+      currentGroup = '';
+    }
+    connectionItems.push({ type: 'connection', connection });
+  });
+
   const getConnectionLabel = (connection: ConnectionConfig): string => {
     // Use custom label if provided
     if (connection.label && connection.label.trim() !== '') {
@@ -162,9 +181,30 @@ const ContextMenu: React.FC<ContextMenuProps> = ({
         {/* Connection options */}
         {showConnect && onConnect && connections.length > 0 && (
           <>
-            {connections.map((connection, index) => {
+            {connectionItems.map((item, index) => {
+              if (item.type === 'divider') {
+                return (
+                  <div
+                    key={`group-${item.label}-${index}`}
+                    style={{
+                      padding: '6px 10px 4px',
+                      fontSize: theme.fontSize.xs,
+                      fontWeight: theme.fontWeight.semibold,
+                      color: theme.text.secondary,
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.04em',
+                      borderTop: '1px solid rgba(255, 255, 255, 0.08)',
+                      marginTop: index === 0 ? 0 : '4px'
+                    }}
+                  >
+                    {item.label}
+                  </div>
+                );
+              }
+
               const itemIndex = index;
               const isHovered = hoveredIndex === itemIndex;
+              const { connection } = item;
               return (
                 <button
                   key={connection.id}

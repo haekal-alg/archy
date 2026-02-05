@@ -102,8 +102,11 @@ const StylePanel: React.FC<StylePanelProps> = ({
   const [showConnectionForm, setShowConnectionForm] = useState(false);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [connectionLabel, setConnectionLabel] = useState('');
+  const [connectionGroup, setConnectionGroup] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [privateKeyPath, setPrivateKeyPath] = useState('');
+  const [draggingConnectionId, setDraggingConnectionId] = useState<string | null>(null);
+  const [dragOverConnectionId, setDragOverConnectionId] = useState<string | null>(null);
 
   useEffect(() => {
     if (selectedNode) {
@@ -195,6 +198,7 @@ const StylePanel: React.FC<StylePanelProps> = ({
         setShowConnectionForm(false);
         setEditingConnectionId(null);
         setConnectionLabel('');
+        setConnectionGroup('');
         setNodeType('ssh');
         setNodeHost('');
         setNodePort(22);
@@ -224,6 +228,7 @@ const StylePanel: React.FC<StylePanelProps> = ({
         setShowConnectionForm(false);
         setEditingConnectionId(null);
         setConnectionLabel('');
+        setConnectionGroup('');
         setNodeType('ssh');
         setNodeHost('');
         setNodePort(22);
@@ -340,6 +345,24 @@ const StylePanel: React.FC<StylePanelProps> = ({
 
   // Connection management functions
   const makeId = (prefix: string) => `${prefix}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+  const normalizeGroup = (group?: string) => (group || '').trim();
+
+  const reorderConnections = (fromId: string, toId: string) => {
+    if (fromId === toId) return;
+    setConnections((prev) => {
+      const fromIndex = prev.findIndex((conn) => conn.id === fromId);
+      const toIndex = prev.findIndex((conn) => conn.id === toId);
+      if (fromIndex === -1 || toIndex === -1 || fromIndex === toIndex) {
+        return prev;
+      }
+
+      const next = [...prev];
+      const [moved] = next.splice(fromIndex, 1);
+      next.splice(toIndex, 0, moved);
+      return next;
+    });
+    setHasUnsavedChanges(true);
+  };
 
   const toEditablePortForwards = (portForwards?: SSHPortForward[]): EditablePortForward[] => {
     if (!portForwards || portForwards.length === 0) {
@@ -381,6 +404,7 @@ const StylePanel: React.FC<StylePanelProps> = ({
     setShowConnectionForm(true);
     setEditingConnectionId(null);
     setConnectionLabel('');
+    setConnectionGroup('');
     setNodeType('ssh');
     setNodeHost('');
     setNodePort(22);
@@ -396,6 +420,7 @@ const StylePanel: React.FC<StylePanelProps> = ({
     setEditingConnectionId(connection.id);
     setShowConnectionForm(true);
     setConnectionLabel(connection.label || '');
+    setConnectionGroup(connection.group || '');
     setNodeType(connection.type);
     setNodeHost(connection.host || '');
     setNodePort(connection.port || 22);
@@ -424,6 +449,7 @@ const StylePanel: React.FC<StylePanelProps> = ({
     const newConnection: ConnectionConfig = {
       id: editingConnectionId || makeId('conn'),
       label: connectionLabel,
+      group: connectionGroup.trim() !== '' ? connectionGroup.trim() : undefined,
       type: nodeType,
       host: nodeHost,
       port: nodePort,
@@ -456,6 +482,7 @@ const StylePanel: React.FC<StylePanelProps> = ({
     setPrivateKeyPath('');
     setSshPortForwards([]);
     setShowPassword(false);
+    setConnectionGroup('');
 
     // Mark as having unsaved changes
     setHasUnsavedChanges(true);
@@ -472,6 +499,7 @@ const StylePanel: React.FC<StylePanelProps> = ({
     setShowConnectionForm(false);
     setEditingConnectionId(null);
     setConnectionLabel('');
+    setConnectionGroup('');
     setNodeType('ssh');
     setNodeHost('');
     setNodePort(22);
@@ -530,6 +558,23 @@ const StylePanel: React.FC<StylePanelProps> = ({
     { name: 'Teal', value: theme.swatches.teal },
     { name: 'Gray', value: theme.swatches.gray }
   ];
+
+  const groupedConnectionItems: Array<
+    | { type: 'divider'; label: string }
+    | { type: 'connection'; connection: ConnectionConfig }
+  > = [];
+  let currentGroup = '';
+  connections.forEach((connection) => {
+    const group = normalizeGroup(connection.group);
+    if (group && group !== currentGroup) {
+      groupedConnectionItems.push({ type: 'divider', label: group });
+      currentGroup = group;
+    }
+    if (!group) {
+      currentGroup = '';
+    }
+    groupedConnectionItems.push({ type: 'connection', connection });
+  });
 
   return (
     <div
@@ -945,14 +990,64 @@ const StylePanel: React.FC<StylePanelProps> = ({
                           display: 'block',
                           fontSize: theme.fontSize.sm,
                           marginBottom: theme.spacing.md,
-                          fontWeight: theme.fontWeight.medium,
-                          color: theme.text.secondary
-                        }}>
-                          Configured Connections
-                        </label>
-                        {connections.map((connection) => (
+                        fontWeight: theme.fontWeight.medium,
+                        color: theme.text.secondary
+                      }}>
+                        Configured Connections
+                      </label>
+                      {groupedConnectionItems.map((item) => {
+                        if (item.type === 'divider') {
+                          return (
+                            <div
+                              key={`group-${item.label}`}
+                              style={{
+                                margin: `${theme.spacing.md} 0 ${theme.spacing.sm}`,
+                                padding: `${theme.spacing.xs} ${theme.spacing.sm}`,
+                                borderRadius: theme.radius.xs,
+                                background: theme.background.secondary,
+                                border: `1px solid ${theme.border.default}`,
+                                color: theme.text.secondary,
+                                fontSize: theme.fontSize.xs,
+                                fontWeight: theme.fontWeight.semibold,
+                                textTransform: 'uppercase',
+                                letterSpacing: '0.04em'
+                              }}
+                            >
+                              {item.label}
+                            </div>
+                          );
+                        }
+
+                        const { connection } = item;
+                        const isDragging = draggingConnectionId === connection.id;
+                        const isDragOver = dragOverConnectionId === connection.id;
+
+                        return (
                           <div
                             key={connection.id}
+                            onDragOver={(e) => {
+                              e.preventDefault();
+                              e.dataTransfer.dropEffect = 'move';
+                            }}
+                            onDragEnter={() => setDragOverConnectionId(connection.id)}
+                            onDragLeave={() => {
+                              if (dragOverConnectionId === connection.id) {
+                                setDragOverConnectionId(null);
+                              }
+                            }}
+                            onDrop={(e) => {
+                              e.preventDefault();
+                              const fromId = e.dataTransfer.getData('text/plain') || draggingConnectionId;
+                              if (fromId) {
+                                reorderConnections(fromId, connection.id);
+                              }
+                              setDraggingConnectionId(null);
+                              setDragOverConnectionId(null);
+                            }}
+                            onDragEnd={() => {
+                              setDraggingConnectionId(null);
+                              setDragOverConnectionId(null);
+                            }}
                             style={{
                               display: 'flex',
                               alignItems: 'center',
@@ -960,11 +1055,46 @@ const StylePanel: React.FC<StylePanelProps> = ({
                               padding: theme.spacing.md,
                               marginBottom: theme.spacing.md,
                               background: theme.background.tertiary,
-                              border: `1px solid ${theme.border.default}`,
+                              border: `1px solid ${isDragOver ? theme.accent.blue : theme.border.default}`,
                               borderRadius: theme.radius.sm,
-                              fontSize: theme.fontSize.sm
+                              fontSize: theme.fontSize.sm,
+                              boxShadow: isDragOver ? '0 0 0 2px rgba(47, 129, 247, 0.2)' : 'none',
+                              opacity: isDragging ? 0.6 : 1
                             }}
                           >
+                            <div
+                              draggable
+                              onDragStart={(e) => {
+                                setDraggingConnectionId(connection.id);
+                                e.dataTransfer.effectAllowed = 'move';
+                                e.dataTransfer.setData('text/plain', connection.id);
+                              }}
+                              onDragEnd={() => {
+                                setDraggingConnectionId(null);
+                                setDragOverConnectionId(null);
+                              }}
+                              title="Drag to reorder"
+                              style={{
+                                width: '14px',
+                                height: '14px',
+                                border: `1px solid ${theme.border.default}`,
+                                borderRadius: '3px',
+                                display: 'grid',
+                                placeItems: 'center',
+                                cursor: 'grab',
+                                background: theme.background.secondary,
+                                color: theme.text.tertiary,
+                                flexShrink: 0
+                              }}
+                            >
+                              <div style={{
+                                width: '6px',
+                                height: '6px',
+                                borderRadius: '2px',
+                                border: `1px solid ${theme.border.default}`
+                              }} />
+                            </div>
+
                             {/* Connection Type Badge */}
                             <span style={{
                               padding: `2px ${theme.spacing.sm}`,
@@ -1042,8 +1172,9 @@ const StylePanel: React.FC<StylePanelProps> = ({
                               Delete
                             </button>
                           </div>
-                        ))}
-                      </div>
+                        );
+                      })}
+                    </div>
                     )}
 
                     {/* No connections message */}
@@ -1138,6 +1269,28 @@ const StylePanel: React.FC<StylePanelProps> = ({
                               onMouseDown={(e) => e.stopPropagation()}
                               onFocus={(e) => e.stopPropagation()}
                               placeholder="e.g., Connect via SSH, Open Web Panel, etc."
+                              autoComplete="off"
+                              style={connectionInputStyle}
+                            />
+                          </div>
+
+                          <div style={{ marginBottom: theme.spacing.lg }}>
+                            <label style={{
+                              display: 'block',
+                              fontSize: theme.fontSize.sm,
+                              marginBottom: theme.spacing.xs,
+                              fontWeight: theme.fontWeight.medium,
+                              color: theme.text.secondary
+                            }}>
+                              Group (Optional)
+                            </label>
+                            <input
+                              type="text"
+                              value={connectionGroup}
+                              onChange={(e) => setConnectionGroup(e.target.value)}
+                              onMouseDown={(e) => e.stopPropagation()}
+                              onFocus={(e) => e.stopPropagation()}
+                              placeholder="e.g., Lab, Prod, External"
                               autoComplete="off"
                               style={connectionInputStyle}
                             />

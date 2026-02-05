@@ -83,11 +83,27 @@ contextBridge.exposeInMainWorld('electron', {
     return () => ipcRenderer.removeListener('ssh-latency', subscription);
   },
 
-  // Menu event listeners
-  onMenuSave: (callback: () => void) => ipcRenderer.on('menu-save', callback),
-  onMenuLoad: (callback: () => void) => ipcRenderer.on('menu-load', callback),
-  onMenuExport: (callback: () => void) => ipcRenderer.on('menu-export', callback),
-  onMenuClear: (callback: () => void) => ipcRenderer.on('menu-clear', callback),
+  // Menu event listeners - return cleanup functions to prevent memory leaks
+  onMenuSave: (callback: () => void) => {
+    const subscription = () => callback();
+    ipcRenderer.on('menu-save', subscription);
+    return () => ipcRenderer.removeListener('menu-save', subscription);
+  },
+  onMenuLoad: (callback: () => void) => {
+    const subscription = () => callback();
+    ipcRenderer.on('menu-load', subscription);
+    return () => ipcRenderer.removeListener('menu-load', subscription);
+  },
+  onMenuExport: (callback: () => void) => {
+    const subscription = () => callback();
+    ipcRenderer.on('menu-export', subscription);
+    return () => ipcRenderer.removeListener('menu-export', subscription);
+  },
+  onMenuClear: (callback: () => void) => {
+    const subscription = () => callback();
+    ipcRenderer.on('menu-clear', subscription);
+    return () => ipcRenderer.removeListener('menu-clear', subscription);
+  },
 
   // Clipboard operations
   clipboard: {

@@ -26,6 +26,137 @@ const terminalInstances = new Map<string, {
   keydownHandler?: (e: KeyboardEvent) => void;
 }>();
 
+// === PERFORMANCE FIX: Bounded chunk-based buffer for terminal data ===
+// Prevents unbounded memory growth when data arrives faster than rendering
+
+// Buffer configuration constants
+const MAX_PENDING_CHUNKS = 100;      // Maximum queued data chunks before dropping
+const MAX_CHUNK_SIZE = 16384;        // 16KB per chunk max (split larger chunks)
+const WRITE_BATCH_SIZE = 8192;       // 8KB per write to terminal (prevents blocking)
+const MAX_TOTAL_BUFFER_SIZE = 1048576; // 1MB total buffer limit
+
+// Buffer state for each connection
+interface PendingDataState {
+  chunks: string[];
+  totalSize: number;
+  writeScheduled: boolean;
+  droppedBytes: number;
+  lastDropWarning: number;
+}
+
+const pendingDataStates = new Map<string, PendingDataState>();
+
+// Get or create buffer state for a connection
+function getBufferState(connectionId: string): PendingDataState {
+  let state = pendingDataStates.get(connectionId);
+  if (!state) {
+    state = {
+      chunks: [],
+      totalSize: 0,
+      writeScheduled: false,
+      droppedBytes: 0,
+      lastDropWarning: 0,
+    };
+    pendingDataStates.set(connectionId, state);
+  }
+  return state;
+}
+
+// Clean up buffer state for a connection
+function cleanupBufferState(connectionId: string): void {
+  pendingDataStates.delete(connectionId);
+}
+
+// Enqueue data chunk with size enforcement
+function enqueueChunk(state: PendingDataState, chunk: string): void {
+  // Split large chunks to maintain granular control
+  if (chunk.length > MAX_CHUNK_SIZE) {
+    for (let i = 0; i < chunk.length; i += MAX_CHUNK_SIZE) {
+      const subChunk = chunk.slice(i, i + MAX_CHUNK_SIZE);
+      state.chunks.push(subChunk);
+      state.totalSize += subChunk.length;
+    }
+  } else {
+    state.chunks.push(chunk);
+    state.totalSize += chunk.length;
+  }
+
+  // Enforce maximum chunks limit - drop oldest
+  while (state.chunks.length > MAX_PENDING_CHUNKS) {
+    const dropped = state.chunks.shift()!;
+    state.totalSize -= dropped.length;
+    state.droppedBytes += dropped.length;
+  }
+
+  // Enforce maximum total buffer size - drop oldest
+  while (state.totalSize > MAX_TOTAL_BUFFER_SIZE && state.chunks.length > 0) {
+    const dropped = state.chunks.shift()!;
+    state.totalSize -= dropped.length;
+    state.droppedBytes += dropped.length;
+  }
+
+  // Log warning about dropped data (throttled to once per second)
+  const now = Date.now();
+  if (state.droppedBytes > 0 && now - state.lastDropWarning > 1000) {
+    console.warn(`[TerminalEmulator] Buffer overflow: dropped ${state.droppedBytes} bytes to maintain responsiveness`);
+    state.lastDropWarning = now;
+    // Reset counter after warning
+    state.droppedBytes = 0;
+  }
+}
+
+// Schedule batched write to terminal
+function scheduleTerminalWrite(connectionId: string, state: PendingDataState): void {
+  if (state.writeScheduled || state.chunks.length === 0) return;
+
+  state.writeScheduled = true;
+  requestAnimationFrame(() => {
+    const instance = terminalInstances.get(connectionId);
+    if (!instance || state.chunks.length === 0) {
+      state.writeScheduled = false;
+      return;
+    }
+
+    // Collect up to WRITE_BATCH_SIZE bytes for this frame
+    let writeData = '';
+    let bytesToWrite = 0;
+
+    while (state.chunks.length > 0 && bytesToWrite < WRITE_BATCH_SIZE) {
+      const chunk = state.chunks[0];
+      if (bytesToWrite + chunk.length <= WRITE_BATCH_SIZE) {
+        // Take entire chunk
+        writeData += state.chunks.shift()!;
+        bytesToWrite += chunk.length;
+      } else {
+        // Partial chunk - take what we can fit
+        const remaining = WRITE_BATCH_SIZE - bytesToWrite;
+        writeData += chunk.slice(0, remaining);
+        state.chunks[0] = chunk.slice(remaining);
+        bytesToWrite = WRITE_BATCH_SIZE;
+        break;
+      }
+    }
+
+    state.totalSize -= bytesToWrite;
+
+    // Write batch to terminal
+    if (writeData) {
+      instance.terminal.write(writeData);
+      // Signal consumption for flow control
+      if (window.electron.sshDataConsumed) {
+        window.electron.sshDataConsumed(connectionId, bytesToWrite);
+      }
+    }
+
+    state.writeScheduled = false;
+
+    // Schedule next batch if more data pending
+    if (state.chunks.length > 0) {
+      scheduleTerminalWrite(connectionId, state);
+    }
+  });
+}
+
 
 // Export cleanup function
 export const cleanupTerminal = (connectionId: string) => {
@@ -48,6 +179,8 @@ export const cleanupTerminal = (connectionId: string) => {
     instance.terminal.dispose();
     terminalInstances.delete(connectionId);
   }
+  // Clean up buffer state
+  cleanupBufferState(connectionId);
 };
 
 // Export function to get serialized terminal content (useful for debugging or future features)
@@ -204,32 +337,15 @@ const TerminalEmulator: React.FC<TerminalEmulatorProps> = ({ connectionId, isVis
       });
 
       // Listen for data from SSH session - only ONE listener per terminal
-      // Use requestAnimationFrame batching for smoother rendering aligned with display refresh
-      let pendingData = '';
-      let writeScheduled = false;
+      // Uses bounded chunk-based buffer to prevent memory exhaustion
+      const bufferState = getBufferState(connectionId);
 
       const dataListener = window.electron.onSSHData((data: { connectionId: string; data: string }) => {
         if (data.connectionId === connectionId) {
-          // Accumulate data for batched write
-          pendingData += data.data;
-
-          if (!writeScheduled) {
-            writeScheduled = true;
-            requestAnimationFrame(() => {
-              // Get the current instance from map (avoid stale closure)
-              const currentInstance = terminalInstances.get(connectionId);
-              if (pendingData && currentInstance) {
-                // Write all accumulated data in one call, synced with display refresh
-                currentInstance.terminal.write(pendingData);
-                // Signal consumption for flow control (defensive check for preload compatibility)
-                if (window.electron.sshDataConsumed) {
-                  window.electron.sshDataConsumed(connectionId, pendingData.length);
-                }
-                pendingData = '';
-              }
-              writeScheduled = false;
-            });
-          }
+          // Enqueue data chunk (with overflow protection)
+          enqueueChunk(bufferState, data.data);
+          // Schedule batched write to terminal
+          scheduleTerminalWrite(connectionId, bufferState);
         }
       });
 

@@ -1,14 +1,19 @@
 import { app, BrowserWindow, ipcMain, Menu, dialog, clipboard, session, shell } from 'electron';
 import * as path from 'path';
 import * as fs from 'fs';
+import { promises as fsPromises } from 'fs';
 import { exec } from 'child_process';
 import * as pty from 'node-pty';
 const SftpClient = require('ssh2-sftp-client');
+
+// Async file operation helpers
+const { readFile, writeFile, stat, access } = fsPromises;
 
 const Store = require('electron-store');
 const store = new Store.default();
 
 let mainWindow: BrowserWindow | null = null;
+let splashWindow: BrowserWindow | null = null;
 
 interface SSHPortForward {
   localPort: number;
@@ -219,10 +224,19 @@ function flushBuffer(connectionId: string) {
   const bufferState = dataBuffers.get(connectionId);
   if (!bufferState || bufferState.buffer.length === 0) return;
 
+  // Clear timer reference first to prevent double-flush
+  if (bufferState.timer) {
+    bufferState.timer = null;
+  }
+
   // Concatenate all buffered chunks into single buffer
   const combinedBuffer = Buffer.concat(bufferState.buffer);
   const dataStr = combinedBuffer.toString('utf-8');
   const bytesSent = combinedBuffer.length;
+
+  // Reset buffer state BEFORE sending to prevent race conditions
+  bufferState.buffer = [];
+  bufferState.lastFlush = Date.now();
 
   // Send single IPC message with batched data
   if (mainWindow && !mainWindow.isDestroyed()) {
@@ -233,6 +247,7 @@ function flushBuffer(connectionId: string) {
   }
 
   // Track queued bytes for flow control (monitoring only - node-pty doesn't support pause/resume)
+  // Re-fetch session to avoid stale references
   const session = sshSessions.get(connectionId);
   if (session) {
     session.queuedBytes += bytesSent;
@@ -244,7 +259,7 @@ function flushBuffer(connectionId: string) {
     }
   }
 
-  // Also track for local sessions
+  // Also track for local sessions - re-fetch to avoid stale references
   const localSession = localSessions.get(connectionId);
   if (localSession) {
     localSession.queuedBytes += bytesSent;
@@ -254,11 +269,6 @@ function flushBuffer(connectionId: string) {
       console.warn(`[${connectionId}] Local queue exceeded threshold: ${localSession.queuedBytes} bytes`);
     }
   }
-
-  // Reset buffer state
-  bufferState.buffer = [];
-  bufferState.lastFlush = Date.now();
-  bufferState.timer = null;
 }
 
 function createMenu() {
@@ -335,6 +345,33 @@ function createMenu() {
   Menu.setApplicationMenu(menu);
 }
 
+function createSplashWindow(): BrowserWindow {
+  const splash = new BrowserWindow({
+    width: 400,
+    height: 300,
+    frame: false,
+    transparent: true,
+    resizable: false,
+    alwaysOnTop: true,
+    skipTaskbar: true,
+    show: true, // Show immediately
+    backgroundColor: '#0f0f14', // Match splash background for instant display
+    webPreferences: {
+      nodeIntegration: false,
+      contextIsolation: true,
+    },
+  });
+
+  // Load splash HTML
+  const splashPath = path.join(__dirname, '../src/splash.html');
+  splash.loadFile(splashPath).catch((err) => {
+    console.error('Failed to load splash screen:', err);
+  });
+
+  splash.center();
+  return splash;
+}
+
 function createWindow() {
   // Determine icon path based on environment
   // In production, icons are in resources directory via extraResources
@@ -361,6 +398,7 @@ function createWindow() {
     height: 900,
     title: windowTitle,
     icon: iconPath,
+    show: false, // Don't show until ready
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,
@@ -379,12 +417,27 @@ function createWindow() {
     mainWindow.loadFile(path.join(__dirname, '../dist/index.html'));
   }
 
+  // Show main window when ready and close splash
+  mainWindow.once('ready-to-show', () => {
+    // Small delay to ensure smooth transition
+    setTimeout(() => {
+      if (splashWindow && !splashWindow.isDestroyed()) {
+        splashWindow.close();
+        splashWindow = null;
+      }
+      mainWindow?.show();
+    }, 500);
+  });
+
   mainWindow.on('closed', () => {
     mainWindow = null;
   });
 }
 
 app.whenReady().then(() => {
+  // Show splash screen FIRST - before anything else
+  splashWindow = createSplashWindow();
+
   // Clear cache in development to avoid permission errors
   if (!app.isPackaged) {
     session.defaultSession.clearCache().catch(() => {
@@ -397,6 +450,7 @@ app.whenReady().then(() => {
     });
   }
 
+  // Create main window (will show when ready)
   createWindow();
 });
 
@@ -419,8 +473,7 @@ ipcMain.handle('is-packaged', async () => {
 
 // Handle RDP connections
 ipcMain.handle('connect-rdp', async (event, { host, username, password }) => {
-  return new Promise((resolve, reject) => {
-    const rdpContent = `full address:s:${host}
+  const rdpContent = `full address:s:${host}
 username:s:${username}
 prompt for credentials:i:0
 authentication level:i:0
@@ -438,21 +491,24 @@ use redirection server name:i:0
 rdgiskdcproxy:i:0
 kdcproxyname:s:`;
 
-    const tempPath = path.join(app.getPath('temp'), 'temp_connection.rdp');
-    fs.writeFileSync(tempPath, rdpContent);
+  const tempPath = path.join(app.getPath('temp'), 'temp_connection.rdp');
 
-    // IMPORTANT: For RDP, cmdkey requires TERMSRV/ prefix
-    const credentialTarget = `TERMSRV/${host}`;
+  // Write temp file asynchronously to avoid blocking main process
+  await writeFile(tempPath, rdpContent, 'utf-8');
 
-    // First, delete any existing credentials for this host
-    const deleteCmd = `cmdkey /delete:${credentialTarget}`;
+  // IMPORTANT: For RDP, cmdkey requires TERMSRV/ prefix
+  const credentialTarget = `TERMSRV/${host}`;
 
-    // Then add the new credentials and launch mstsc
-    const addCmd = `cmdkey /generic:${credentialTarget} /user:${username} /pass:"${password}"`;
-    const launchCmd = `mstsc "${tempPath}"`;
+  // First, delete any existing credentials for this host
+  const deleteCmd = `cmdkey /delete:${credentialTarget}`;
 
-    const fullCommand = `${deleteCmd} 2>nul & ${addCmd} && ${launchCmd}`;
+  // Then add the new credentials and launch mstsc
+  const addCmd = `cmdkey /generic:${credentialTarget} /user:${username} /pass:"${password}"`;
+  const launchCmd = `mstsc "${tempPath}"`;
 
+  const fullCommand = `${deleteCmd} 2>nul & ${addCmd} && ${launchCmd}`;
+
+  return new Promise((resolve, reject) => {
     exec(fullCommand, (error) => {
       if (error) {
         console.error('RDP connection error:', error);
@@ -468,6 +524,25 @@ kdcproxyname:s:`;
 // This provides better performance than ssh2 library (native crypto, direct PTY)
 ipcMain.handle('create-ssh-session', async (event, { connectionId, host, port = 22, username, password, privateKeyPath, portForwards = [] }: { connectionId: string; host: string; port?: number; username: string; password: string; privateKeyPath?: string; portForwards?: SSHPortForward[] }) => {
   return new Promise((resolve, reject) => {
+    // Clean up any existing session with the same ID (for retry support)
+    const existingSession = sshSessions.get(connectionId);
+    if (existingSession) {
+      console.log(`[${connectionId}] Cleaning up existing session for retry`);
+      try {
+        existingSession.ptyProcess.kill();
+      } catch (e) {
+        // Ignore kill errors for already-dead processes
+      }
+      sshSessions.delete(connectionId);
+
+      // Clean up associated buffer state
+      const existingBuffer = dataBuffers.get(connectionId);
+      if (existingBuffer) {
+        if (existingBuffer.timer) clearTimeout(existingBuffer.timer);
+        dataBuffers.delete(connectionId);
+      }
+    }
+
     try {
       // Build SSH command arguments
       const args = [
@@ -509,15 +584,23 @@ ipcMain.handle('create-ssh-session', async (event, { connectionId, host, port = 
       // Add user@host
       args.push(`${username}@${host}`);
 
-      // Spawn SSH process
+      // Spawn SSH process with error handling
       const shell = process.platform === 'win32' ? 'ssh.exe' : 'ssh';
-      const ptyProcess = pty.spawn(shell, args, {
-        name: 'xterm-256color',
-        cols: 80,
-        rows: 24,
-        cwd: process.env.HOME || process.env.USERPROFILE || process.cwd(),
-        env: process.env as { [key: string]: string },
-      });
+      let ptyProcess: pty.IPty;
+
+      try {
+        ptyProcess = pty.spawn(shell, args, {
+          name: 'xterm-256color',
+          cols: 80,
+          rows: 24,
+          cwd: process.env.HOME || process.env.USERPROFILE || process.cwd(),
+          env: process.env as { [key: string]: string },
+        });
+      } catch (spawnError: any) {
+        console.error(`[${connectionId}] Failed to spawn SSH process:`, spawnError);
+        reject(new Error(`Failed to spawn SSH process: ${spawnError.message}`));
+        return;
+      }
 
       console.log(`[${connectionId}] SSH spawned: ${shell} ${args.join(' ')}`);
 
@@ -819,16 +902,33 @@ ipcMain.on('resize-ssh-terminal', (event, { connectionId, cols, rows }) => {
 
 // Close SSH or local terminal session (fire-and-forget)
 ipcMain.on('close-ssh-session', (event, { connectionId }) => {
+  // Clean up buffer state first
+  const bufferState = dataBuffers.get(connectionId);
+  if (bufferState) {
+    if (bufferState.timer) clearTimeout(bufferState.timer);
+    dataBuffers.delete(connectionId);
+  }
+
   const sshSession = sshSessions.get(connectionId);
   if (sshSession) {
-    sshSession.ptyProcess.kill();
+    try {
+      sshSession.ptyProcess.kill();
+    } catch (e) {
+      // Ignore errors when killing already-dead processes
+      console.log(`[${connectionId}] SSH process already terminated`);
+    }
     sshSessions.delete(connectionId);
     return;
   }
 
   const localSession = localSessions.get(connectionId);
   if (localSession) {
-    localSession.ptyProcess.kill();
+    try {
+      localSession.ptyProcess.kill();
+    } catch (e) {
+      // Ignore errors when killing already-dead processes
+      console.log(`[${connectionId}] Local process already terminated`);
+    }
     localSessions.delete(connectionId);
     localInputBuffers.delete(connectionId);
     localDirStacks.delete(connectionId);
@@ -974,9 +1074,9 @@ ipcMain.handle('save-diagram', async (event, { name, data, filePath }) => {
       targetPath = result.filePath;
     }
 
-    // Save to the file
+    // Save to the file asynchronously to avoid blocking main process
     const jsonString = JSON.stringify(data, null, 2);
-    fs.writeFileSync(targetPath, jsonString);
+    await writeFile(targetPath, jsonString, 'utf-8');
 
     // Also save to electron-store for quick access
     store.set(`diagram.${name}`, data);
@@ -1003,8 +1103,9 @@ ipcMain.handle('save-diagram-as', async (event, { name, data }) => {
     });
 
     if (!result.canceled && result.filePath) {
+      // Save to file asynchronously to avoid blocking main process
       const jsonString = JSON.stringify(data, null, 2);
-      fs.writeFileSync(result.filePath, jsonString);
+      await writeFile(result.filePath, jsonString, 'utf-8');
 
       // Also save to electron-store for quick access
       store.set(`diagram.${name}`, data);
@@ -1035,7 +1136,8 @@ ipcMain.handle('load-diagram', async () => {
 
     if (!result.canceled && result.filePaths.length > 0) {
       const filePath = result.filePaths[0];
-      const fileContent = fs.readFileSync(filePath, 'utf-8');
+      // Read file asynchronously to avoid blocking main process
+      const fileContent = await readFile(filePath, 'utf-8');
       const data = JSON.parse(fileContent);
 
       // Save as last opened file for session persistence
@@ -1060,11 +1162,19 @@ ipcMain.handle('get-last-session', async () => {
   try {
     const lastFilePath = store.get('lastOpenedFile') as string | undefined;
 
-    if (!lastFilePath || !fs.existsSync(lastFilePath)) {
+    if (!lastFilePath) {
       return { success: false, noSession: true };
     }
 
-    const fileContent = fs.readFileSync(lastFilePath, 'utf-8');
+    // Check if file exists asynchronously
+    try {
+      await access(lastFilePath, fs.constants.F_OK);
+    } catch {
+      return { success: false, noSession: true };
+    }
+
+    // Read file asynchronously to avoid blocking main process
+    const fileContent = await readFile(lastFilePath, 'utf-8');
     const data = JSON.parse(fileContent);
 
     return {
@@ -1110,23 +1220,16 @@ ipcMain.handle('get-home-directory', async () => {
 
 // SFTP File Transfer - List local files
 ipcMain.handle('list-local-files', async (event, dirPath: string) => {
-  return new Promise((resolve, reject) => {
-    fs.readdir(dirPath, { withFileTypes: true }, (err, entries) => {
-      if (err) {
-        reject(new Error(`Failed to read directory: ${err.message}`));
-        return;
-      }
+  try {
+    // Use fs.promises.readdir for async directory reading
+    const entries = await fsPromises.readdir(dirPath, { withFileTypes: true });
 
-      const files = entries.map(entry => {
-        const fullPath = path.join(dirPath, entry.name);
-        let stats;
-        try {
-          stats = fs.statSync(fullPath);
-        } catch (e) {
-          // If we can't stat the file, skip it
-          return null;
-        }
-
+    // Process all file stats in parallel to avoid blocking event loop
+    const filePromises = entries.map(async (entry) => {
+      const fullPath = path.join(dirPath, entry.name);
+      try {
+        // Use async stat to avoid blocking
+        const stats = await stat(fullPath);
         return {
           name: entry.name,
           type: entry.isDirectory() ? 'directory' : 'file',
@@ -1134,23 +1237,32 @@ ipcMain.handle('list-local-files', async (event, dirPath: string) => {
           modifiedTime: stats.mtime.toISOString(),
           path: fullPath,
         };
-      }).filter(f => f !== null);
-
-      // Add parent directory entry (..) if not at root
-      const parentPath = path.dirname(dirPath);
-      if (parentPath !== dirPath) {
-        files.unshift({
-          name: '..',
-          type: 'directory' as const,
-          size: 0,
-          modifiedTime: '',
-          path: parentPath,
-        });
+      } catch (e) {
+        // If we can't stat the file, skip it
+        return null;
       }
-
-      resolve(files);
     });
-  });
+
+    // Wait for all stat operations to complete in parallel
+    const results = await Promise.all(filePromises);
+    const files = results.filter((f): f is NonNullable<typeof f> => f !== null);
+
+    // Add parent directory entry (..) if not at root
+    const parentPath = path.dirname(dirPath);
+    if (parentPath !== dirPath) {
+      files.unshift({
+        name: '..',
+        type: 'directory' as const,
+        size: 0,
+        modifiedTime: '',
+        path: parentPath,
+      });
+    }
+
+    return files;
+  } catch (err: any) {
+    throw new Error(`Failed to read directory: ${err.message}`);
+  }
 });
 
 // SFTP File Transfer - List remote files via SFTP protocol
@@ -1169,9 +1281,30 @@ ipcMain.handle('list-remote-files', async (event, { connectionId, path: remotePa
 
   // Check if we already have an active SFTP connection for this connectionId
   let sftp = sftpClients.get(connectionId);
+  let needsNewConnection = !sftp;
 
-  if (!sftp) {
-    console.log('[SFTP] No existing connection, creating new SFTP client');
+  // Validate existing connection is still alive
+  if (sftp) {
+    try {
+      // Quick check to see if connection is still valid
+      await sftp.cwd();
+      console.log('[SFTP] Reusing existing SFTP connection (validated)');
+    } catch (validationError) {
+      console.log('[SFTP] Existing connection is stale, creating new one');
+      // Try to close the stale connection
+      try {
+        await sftp.end();
+      } catch (e) {
+        // Ignore cleanup errors
+      }
+      sftpClients.delete(connectionId);
+      sftp = null;
+      needsNewConnection = true;
+    }
+  }
+
+  if (needsNewConnection) {
+    console.log('[SFTP] Creating new SFTP client');
     sftp = new SftpClient();
 
     // Create SFTP connection config
@@ -1188,7 +1321,8 @@ ipcMain.handle('list-remote-files', async (event, { connectionId, path: remotePa
     if (session.privateKeyPath && session.privateKeyPath.trim() !== '') {
       console.log(`[SFTP] Using private key authentication: ${session.privateKeyPath}`);
       try {
-        const privateKey = fs.readFileSync(session.privateKeyPath, 'utf8');
+        // Read private key asynchronously to avoid blocking main process
+        const privateKey = await readFile(session.privateKeyPath, 'utf8');
         config.privateKey = privateKey;
         // If password is also provided, use it as passphrase for encrypted keys
         if (session.password) {
@@ -1216,10 +1350,14 @@ ipcMain.handle('list-remote-files', async (event, { connectionId, path: remotePa
       console.log('[SFTP] Connection stored for reuse');
     } catch (error: any) {
       console.error('[SFTP] Connection failed:', error.message);
+      // Clean up the failed client
+      try {
+        await sftp.end();
+      } catch (e) {
+        // Ignore cleanup errors
+      }
       throw new Error(`Failed to connect to SFTP server: ${error.message}`);
     }
-  } else {
-    console.log('[SFTP] Reusing existing SFTP connection');
   }
 
   try {
