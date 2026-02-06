@@ -25,7 +25,7 @@ const RemoteSSHIcon = () => (
 );
 
 const ConnectionsTab: React.FC = () => {
-  const { connections, activeConnectionId, setActiveConnectionId, disconnectConnection, removeConnection, retryConnection, createLocalTerminal, renameConnection } = useTabContext();
+  const { connections, activeConnectionId, setActiveConnectionId, disconnectConnection, removeConnection, retryConnection, createLocalTerminal, renameConnection, cancelAutoReconnect } = useTabContext();
   const [sidePanelCollapsed, setSidePanelCollapsed] = useState(false);
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; connectionId: string } | null>(null);
   const [renameModal, setRenameModal] = useState<{ connectionId: string; currentName: string } | null>(null);
@@ -436,7 +436,7 @@ const ConnectionsTab: React.FC = () => {
                 </div>
 
                 {/* Error Message */}
-                {conn.error && (
+                {conn.error && !conn.reconnectState && (
                   <div style={{
                     marginTop: '8px',
                     fontSize: '10px',
@@ -448,6 +448,66 @@ const ConnectionsTab: React.FC = () => {
                     lineHeight: '1.4',
                   }}>
                     {conn.error}
+                  </div>
+                )}
+
+                {/* Auto-Reconnect Status */}
+                {conn.reconnectState?.isReconnecting && (
+                  <div style={{
+                    marginTop: '8px',
+                    padding: '8px',
+                    background: '#2a3347',
+                    borderRadius: '4px',
+                    border: '1px solid #f59e0b',
+                  }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <div style={{ fontSize: '11px', color: '#f59e0b', fontWeight: 500 }}>
+                        Reconnecting... Attempt {conn.reconnectState.attemptNumber}/{conn.reconnectState.maxAttempts}
+                      </div>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          cancelAutoReconnect(conn.id);
+                        }}
+                        style={{
+                          padding: '3px 8px',
+                          background: '#303948',
+                          border: '1px solid #3a4556',
+                          borderRadius: '3px',
+                          color: '#e8ecf4',
+                          fontSize: '10px',
+                          cursor: 'pointer',
+                          fontWeight: 500,
+                          transition: 'all 0.2s ease',
+                        }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.background = '#3a4556';
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.background = '#303948';
+                        }}
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                    <div style={{ fontSize: '10px', color: '#8892a6', marginTop: '4px' }}>
+                      Next attempt in {Math.ceil(conn.reconnectState.nextAttemptIn / 1000)}s
+                    </div>
+                    {/* Progress bar for countdown */}
+                    <div style={{
+                      marginTop: '6px',
+                      height: '3px',
+                      background: '#1e2433',
+                      borderRadius: '2px',
+                      overflow: 'hidden',
+                    }}>
+                      <div style={{
+                        height: '100%',
+                        width: `${Math.max(0, (conn.reconnectState.nextAttemptIn / (1000 * Math.pow(2, conn.reconnectState.attemptNumber - 1))) * 100)}%`,
+                        background: '#f59e0b',
+                        transition: 'width 1s linear',
+                      }} />
+                    </div>
                   </div>
                 )}
 

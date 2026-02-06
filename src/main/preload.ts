@@ -71,8 +71,8 @@ contextBridge.exposeInMainWorld('electron', {
     return () => ipcRenderer.removeListener('ssh-data', subscription);
   },
 
-  onSSHClosed: (callback: (data: { connectionId: string }) => void) => {
-    const subscription = (_event: any, data: { connectionId: string }) => callback(data);
+  onSSHClosed: (callback: (data: { connectionId: string; reason?: string; exitCode?: number; signal?: number }) => void) => {
+    const subscription = (_event: any, data: { connectionId: string; reason?: string; exitCode?: number; signal?: number }) => callback(data);
     ipcRenderer.on('ssh-closed', subscription);
     return () => ipcRenderer.removeListener('ssh-closed', subscription);
   },

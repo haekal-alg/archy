@@ -7,6 +7,22 @@ export interface SSHPortForward {
   bindAddress?: string;
 }
 
+/**
+ * Reason for SSH disconnection - used for auto-reconnect logic
+ */
+export type DisconnectReason = 'user' | 'network' | 'auth' | 'timeout' | 'unknown';
+
+/**
+ * State for auto-reconnect functionality
+ */
+export interface ReconnectState {
+  isReconnecting: boolean;
+  attemptNumber: number;
+  maxAttempts: number;
+  nextAttemptIn: number; // milliseconds until next attempt
+  reason: DisconnectReason;
+}
+
 export interface SSHConnection {
   id: string;
   nodeName: string;
@@ -25,6 +41,8 @@ export interface SSHConnection {
   password?: string;
   privateKeyPath?: string;
   portForwards?: SSHPortForward[];
+  // Auto-reconnect state
+  reconnectState?: ReconnectState;
 }
 
 export interface TerminalSession {
@@ -53,4 +71,5 @@ export interface TabContextType {
   disconnectConnection: (id: string) => void;
   removeConnection: (id: string) => void;
   retryConnection: (id: string) => Promise<void>;
+  cancelAutoReconnect: (id: string) => void;
 }
