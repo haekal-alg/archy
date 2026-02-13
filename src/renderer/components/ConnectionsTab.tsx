@@ -621,11 +621,74 @@ const ConnectionsTab: React.FC = () => {
               alignItems: 'center',
             }}>
               <div style={{
-                fontSize: theme.fontSize.md,
-                color: theme.text.primary,
-                fontFamily: 'Consolas, monospace',
+                display: 'flex',
+                alignItems: 'center',
+                gap: theme.spacing.md,
+                minWidth: 0,
               }}>
-                {activeConnection.username}@{activeConnection.host} — {activeConnection.customLabel || activeConnection.nodeName}
+                {/* Topology color dot */}
+                {(() => {
+                  const topoNode = activeConnection.nodeId
+                    ? topologyNodes.find(n => n.id === activeConnection.nodeId)
+                    : null;
+                  if (activeConnection.connectionType === 'local') {
+                    return <LocalTerminalIcon />;
+                  }
+                  if (topoNode) {
+                    return (
+                      <span style={{
+                        width: '8px',
+                        height: '8px',
+                        borderRadius: '50%',
+                        backgroundColor: topoNode.color,
+                        display: 'inline-block',
+                        flexShrink: 0,
+                      }} />
+                    );
+                  }
+                  return null;
+                })()}
+                <span style={{
+                  fontSize: theme.fontSize.md,
+                  color: theme.text.primary,
+                  fontFamily: 'Consolas, monospace',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  whiteSpace: 'nowrap',
+                }}>
+                  {activeConnection.connectionType === 'local'
+                    ? (activeConnection.customLabel || 'Local Terminal')
+                    : `${activeConnection.username}@${activeConnection.host} — ${activeConnection.customLabel || activeConnection.nodeName}`
+                  }
+                </span>
+                {/* Show in Design button */}
+                {activeConnection.nodeId && topologyNodes.find(n => n.id === activeConnection.nodeId) && (
+                  <button
+                    onClick={() => focusNode(activeConnection.nodeId!)}
+                    style={{
+                      padding: `2px 8px`,
+                      fontSize: theme.fontSize.xs,
+                      background: theme.background.tertiary,
+                      border: `1px solid ${theme.border.default}`,
+                      borderRadius: theme.radius.xs,
+                      color: theme.text.secondary,
+                      cursor: 'pointer',
+                      whiteSpace: 'nowrap',
+                      flexShrink: 0,
+                      transition: theme.transition.normal,
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.background = theme.background.hover;
+                      e.currentTarget.style.color = theme.text.primary;
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.background = theme.background.tertiary;
+                      e.currentTarget.style.color = theme.text.secondary;
+                    }}
+                  >
+                    Show in Design
+                  </button>
+                )}
               </div>
               <div style={{
                 display: 'flex',
@@ -724,81 +787,6 @@ const ConnectionsTab: React.FC = () => {
                 </div>
               </div>
             </div>
-
-            {/* Device Info Bar - topology cross-reference */}
-            {activeConnection && (() => {
-              const topoNode = activeConnection.nodeId
-                ? topologyNodes.find(n => n.id === activeConnection.nodeId)
-                : null;
-
-              if (activeConnection.connectionType === 'local') {
-                return (
-                  <div style={{
-                    margin: '0 8px',
-                    padding: `${theme.spacing.sm} ${theme.spacing.lg}`,
-                    background: theme.background.tertiary,
-                    border: `1px solid ${theme.border.default}`,
-                    borderRadius: theme.radius.sm,
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: theme.spacing.md,
-                  }}>
-                    <LocalTerminalIcon />
-                    <span style={{ fontSize: theme.fontSize.sm, color: theme.text.secondary }}>Local Terminal</span>
-                  </div>
-                );
-              }
-
-              if (!topoNode) return null;
-
-              return (
-                <div style={{
-                  margin: '0 8px',
-                  padding: `${theme.spacing.sm} ${theme.spacing.lg}`,
-                  background: theme.background.tertiary,
-                  border: `1px solid ${theme.border.default}`,
-                  borderRadius: theme.radius.sm,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: theme.spacing.md }}>
-                    <span style={{
-                      width: '8px',
-                      height: '8px',
-                      borderRadius: '50%',
-                      backgroundColor: topoNode.color,
-                      display: 'inline-block',
-                      flexShrink: 0,
-                    }} />
-                    <span style={{
-                      fontSize: theme.fontSize.sm,
-                      color: theme.text.primary,
-                      fontWeight: theme.fontWeight.semibold,
-                    }}>
-                      {topoNode.label}
-                    </span>
-                    <span style={{
-                      fontSize: theme.fontSize.xs,
-                      color: theme.text.tertiary,
-                      textTransform: 'capitalize',
-                    }}>
-                      {topoNode.type}
-                    </span>
-                  </div>
-                  <button
-                    onClick={() => focusNode(topoNode.id)}
-                    className="btn-secondary"
-                    style={{
-                      padding: `3px 10px`,
-                      fontSize: theme.fontSize.xs,
-                    }}
-                  >
-                    Show in Design
-                  </button>
-                </div>
-              );
-            })()}
 
             {/* Terminal Area - render all terminals but hide inactive ones */}
             <div style={{ flex: 1, overflow: 'hidden', padding: '8px', position: 'relative' }}>

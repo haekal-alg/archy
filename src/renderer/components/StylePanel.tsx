@@ -360,50 +360,51 @@ const StylePanel: React.FC<StylePanelProps> = ({
         position: 'relative',
         width: '100%'
       }}>
-        {/* Header */}
+        {/* Sticky header + tabs wrapper */}
         <div style={{
-          padding: `${theme.spacing.lg} ${theme.spacing.xl}`,
-          borderBottom: `1px solid ${theme.border.default}`,
-          background: theme.background.primary,
           position: 'sticky',
           top: 0,
-          zIndex: 10
+          zIndex: 10,
+          background: theme.background.primary,
+          borderBottom: `1px solid ${theme.border.default}`,
         }}>
-          <h3 style={{
-            margin: 0,
-            fontSize: theme.fontSize.base,
-            fontWeight: theme.fontWeight.semibold,
-            color: theme.text.primary
-          }}>
-            Settings
-          </h3>
-        </div>
-
-        {/* Tabs for non-text nodes (not for edges or text nodes) */}
-        {selectedNode && selectedNode.type !== 'text' && (
+          {/* Header */}
           <div style={{
-            display: 'flex',
-            borderBottom: `2px solid ${theme.border.default}`,
-            background: theme.background.primary,
-            position: 'sticky',
-            top: '49px',
-            zIndex: 10
+            padding: `${theme.spacing.md} ${theme.spacing.xl}`,
+            borderBottom: `1px solid ${theme.border.subtle}`,
           }}>
+            <h3 style={{
+              margin: 0,
+              fontSize: theme.fontSize.base,
+              fontWeight: theme.fontWeight.semibold,
+              color: theme.text.primary
+            }}>
+              Settings
+            </h3>
+          </div>
+
+          {/* Tabs for non-text nodes (not for edges or text nodes) */}
+          {selectedNode && selectedNode.type !== 'text' && (
+            <div style={{
+              display: 'flex',
+              width: '100%',
+              boxSizing: 'border-box',
+            }}>
             <button
               onClick={() => setActiveTab('connection')}
               style={{
                 flex: 1,
-                padding: `${theme.spacing.md} ${theme.spacing.xl}`,
+                padding: `${theme.spacing.md} 0`,
                 border: 'none',
-                background: activeTab === 'connection' ? theme.background.secondary : 'transparent',
+                background: 'transparent',
                 color: activeTab === 'connection' ? theme.accent.blue : theme.text.secondary,
                 cursor: 'pointer',
                 fontSize: theme.fontSize.sm,
                 fontWeight: activeTab === 'connection' ? theme.fontWeight.semibold : theme.fontWeight.medium,
-                borderBottom: activeTab === 'connection' ? `3px solid ${theme.accent.blue}` : '3px solid transparent',
+                borderBottom: activeTab === 'connection' ? `2px solid ${theme.accent.blue}` : '2px solid transparent',
                 transition: theme.transition.normal,
                 textTransform: 'uppercase',
-                letterSpacing: '0.5px'
+                letterSpacing: '0.5px',
               }}
               onMouseEnter={(e) => {
                 if (activeTab !== 'connection') {
@@ -422,17 +423,17 @@ const StylePanel: React.FC<StylePanelProps> = ({
               onClick={() => setActiveTab('property')}
               style={{
                 flex: 1,
-                padding: `${theme.spacing.md} ${theme.spacing.xl}`,
+                padding: `${theme.spacing.md} 0`,
                 border: 'none',
-                background: activeTab === 'property' ? theme.background.secondary : 'transparent',
+                background: 'transparent',
                 color: activeTab === 'property' ? theme.accent.blue : theme.text.secondary,
                 cursor: 'pointer',
                 fontSize: theme.fontSize.sm,
                 fontWeight: activeTab === 'property' ? theme.fontWeight.semibold : theme.fontWeight.medium,
-                borderBottom: activeTab === 'property' ? `3px solid ${theme.accent.blue}` : '3px solid transparent',
+                borderBottom: activeTab === 'property' ? `2px solid ${theme.accent.blue}` : '2px solid transparent',
                 transition: theme.transition.normal,
                 textTransform: 'uppercase',
-                letterSpacing: '0.5px'
+                letterSpacing: '0.5px',
               }}
               onMouseEnter={(e) => {
                 if (activeTab !== 'property') {
@@ -449,6 +450,7 @@ const StylePanel: React.FC<StylePanelProps> = ({
             </button>
           </div>
         )}
+        </div>
 
         {/* Node Styling */}
         {selectedNode && (

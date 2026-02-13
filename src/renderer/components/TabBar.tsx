@@ -6,7 +6,7 @@ import theme from '../../theme';
 const TabBar: React.FC = () => {
   const { activeTab, setActiveTab, connections } = useTabContext();
 
-  const connectedCount = connections.filter(c => c.status === 'connected').length;
+  const totalCount = connections.length;
   const errorCount = connections.filter(c => c.status === 'error').length;
   const connectingCount = connections.filter(c => c.status === 'connecting').length;
 
@@ -67,25 +67,21 @@ const TabBar: React.FC = () => {
         >
           {tab.label}
 
-          {/* Connection status badges - only on Connections tab */}
-          {tab.id === 'connections' && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-              {connectedCount > 0 && (
-                <span className="tab-badge" style={{ backgroundColor: theme.accent.greenDark }}>
-                  {connectedCount}
-                </span>
-              )}
-              {connectingCount > 0 && (
-                <span className="tab-badge" style={{ backgroundColor: theme.accent.orange, color: theme.text.inverted }}>
-                  {connectingCount}
-                </span>
-              )}
-              {errorCount > 0 && (
-                <span className="tab-badge pulse-red" style={{ backgroundColor: theme.accent.red }}>
-                  {errorCount}
-                </span>
-              )}
-            </div>
+          {/* Connection count badge - colored by most severe status */}
+          {tab.id === 'connections' && totalCount > 0 && (
+            <span
+              className={`tab-badge${errorCount > 0 ? ' pulse-red' : ''}`}
+              style={{
+                backgroundColor: errorCount > 0
+                  ? theme.accent.red
+                  : connectingCount > 0
+                    ? theme.accent.orange
+                    : theme.accent.greenDark,
+                color: theme.text.inverted,
+              }}
+            >
+              {totalCount}
+            </span>
           )}
 
           {/* Red alert dot when errors exist and user is on another tab */}
