@@ -3,7 +3,7 @@
  * Handles SFTP connections and file operations
  */
 
-import { ipcMain } from 'electron';
+import { ipcMain, BrowserWindow } from 'electron';
 import * as path from 'path';
 import { promises as fsPromises } from 'fs';
 import { getSSHSession, SSHSession } from './ssh-session';
@@ -209,9 +209,9 @@ export function registerSFTPIPCHandlers(): void {
     }
   });
 
-  // Upload file from local to remote
-  ipcMain.handle('upload-file', async (event, { connectionId, localPath, remotePath, fileName }) => {
-    console.log(`[SFTP] Upload file request:`, { connectionId, localPath, remotePath, fileName });
+  // Upload file from local to remote (with progress reporting)
+  ipcMain.handle('upload-file', async (event, { connectionId, localPath: localFilePath, remotePath, fileName }) => {
+    console.log(`[SFTP] Upload file request:`, { connectionId, localPath: localFilePath, remotePath, fileName });
 
     const sftp = sftpClients.get(connectionId);
     if (!sftp) {
@@ -221,9 +221,31 @@ export function registerSFTPIPCHandlers(): void {
 
     try {
       const remoteFilePath = path.posix.join(remotePath, fileName);
-      console.log(`[SFTP] Uploading from ${localPath} to ${remoteFilePath}`);
+      console.log(`[SFTP] Uploading from ${localFilePath} to ${remoteFilePath}`);
 
-      await sftp.put(localPath, remoteFilePath);
+      const mainWindow = BrowserWindow.getAllWindows()[0];
+      let lastProgressTime = 0;
+
+      try {
+        await sftp.fastPut(localFilePath, remoteFilePath, {
+          step: (transferred: number, _chunk: number, total: number) => {
+            const now = Date.now();
+            if (now - lastProgressTime < 100 && transferred < total) return;
+            lastProgressTime = now;
+            if (mainWindow && !mainWindow.isDestroyed()) {
+              mainWindow.webContents.send('sftp-progress', {
+                connectionId, fileName,
+                bytesTransferred: transferred,
+                totalBytes: total,
+                direction: 'upload',
+              });
+            }
+          },
+        });
+      } catch (fastPutError: any) {
+        console.log('[SFTP] fastPut failed, falling back to put:', fastPutError.message);
+        await sftp.put(localFilePath, remoteFilePath);
+      }
 
       console.log(`[SFTP] Upload successful: ${fileName}`);
       return { success: true };
@@ -233,7 +255,7 @@ export function registerSFTPIPCHandlers(): void {
     }
   });
 
-  // Download file from remote to local
+  // Download file from remote to local (with progress reporting)
   ipcMain.handle('download-file', async (event, { connectionId, remotePath, localPath, fileName }) => {
     console.log(`[SFTP] Download file request:`, { connectionId, remotePath, localPath, fileName });
 
@@ -247,13 +269,106 @@ export function registerSFTPIPCHandlers(): void {
       const localFilePath = path.join(localPath, fileName);
       console.log(`[SFTP] Downloading from ${remotePath} to ${localFilePath}`);
 
-      await sftp.get(remotePath, localFilePath);
+      const mainWindow = BrowserWindow.getAllWindows()[0];
+      let lastProgressTime = 0;
+
+      try {
+        await sftp.fastGet(remotePath, localFilePath, {
+          step: (transferred: number, _chunk: number, total: number) => {
+            const now = Date.now();
+            if (now - lastProgressTime < 100 && transferred < total) return;
+            lastProgressTime = now;
+            if (mainWindow && !mainWindow.isDestroyed()) {
+              mainWindow.webContents.send('sftp-progress', {
+                connectionId, fileName,
+                bytesTransferred: transferred,
+                totalBytes: total,
+                direction: 'download',
+              });
+            }
+          },
+        });
+      } catch (fastGetError: any) {
+        console.log('[SFTP] fastGet failed, falling back to get:', fastGetError.message);
+        await sftp.get(remotePath, localFilePath);
+      }
 
       console.log(`[SFTP] Download successful: ${fileName}`);
       return { success: true };
     } catch (error: any) {
       console.error('[SFTP] Download error:', error.message);
       throw new Error(`Failed to download file: ${error.message}`);
+    }
+  });
+
+  // Remote file operations
+  ipcMain.handle('sftp-delete', async (event, { connectionId, remotePath, isDirectory }) => {
+    const sftp = sftpClients.get(connectionId);
+    if (!sftp) throw new Error('No active SFTP connection.');
+    try {
+      if (isDirectory) {
+        await sftp.rmdir(remotePath, true);
+      } else {
+        await sftp.delete(remotePath);
+      }
+      return { success: true };
+    } catch (error: any) {
+      throw new Error(`Failed to delete: ${error.message}`);
+    }
+  });
+
+  ipcMain.handle('sftp-rename', async (event, { connectionId, oldPath, newPath }) => {
+    const sftp = sftpClients.get(connectionId);
+    if (!sftp) throw new Error('No active SFTP connection.');
+    try {
+      await sftp.rename(oldPath, newPath);
+      return { success: true };
+    } catch (error: any) {
+      throw new Error(`Failed to rename: ${error.message}`);
+    }
+  });
+
+  ipcMain.handle('sftp-mkdir', async (event, { connectionId, remotePath }) => {
+    const sftp = sftpClients.get(connectionId);
+    if (!sftp) throw new Error('No active SFTP connection.');
+    try {
+      await sftp.mkdir(remotePath, true);
+      return { success: true };
+    } catch (error: any) {
+      throw new Error(`Failed to create directory: ${error.message}`);
+    }
+  });
+
+  // Local file operations
+  ipcMain.handle('local-delete', async (event, filePath: string) => {
+    try {
+      const stats = await stat(filePath);
+      if (stats.isDirectory()) {
+        await fsPromises.rm(filePath, { recursive: true });
+      } else {
+        await fsPromises.unlink(filePath);
+      }
+      return { success: true };
+    } catch (error: any) {
+      throw new Error(`Failed to delete: ${error.message}`);
+    }
+  });
+
+  ipcMain.handle('local-rename', async (event, { oldPath, newPath }: { oldPath: string; newPath: string }) => {
+    try {
+      await fsPromises.rename(oldPath, newPath);
+      return { success: true };
+    } catch (error: any) {
+      throw new Error(`Failed to rename: ${error.message}`);
+    }
+  });
+
+  ipcMain.handle('local-mkdir', async (event, dirPath: string) => {
+    try {
+      await fsPromises.mkdir(dirPath, { recursive: true });
+      return { success: true };
+    } catch (error: any) {
+      throw new Error(`Failed to create directory: ${error.message}`);
     }
   });
 }

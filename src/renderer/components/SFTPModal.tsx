@@ -1,72 +1,78 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useReducer, useEffect, useCallback, useRef } from 'react';
 import { useTabContext } from '../contexts/TabContext';
-import { getMenuContainerStyle, getMenuItemStyle } from './ContextMenu';
 import { PlugIcon, AppleIcon, TerminalIcon } from './StatusIcons';
 import { DesktopIcon, LinuxIcon, ServerIcon } from './NetworkIcons';
 import theme from '../../theme';
+import { sftpReducer, initialState, FileItem, SSHHost, SortColumn } from './sftp/sftpReducer';
+import FilePane from './sftp/FilePane';
+import EditablePathBar from './sftp/EditablePathBar';
 
 interface SFTPModalProps {
   isOpen: boolean;
   onClose: () => void;
 }
 
-interface FileItem {
-  name: string;
-  type: 'file' | 'directory';
-  size: number;
-  modifiedTime: string;
-  path: string;
-}
+const isHiddenFile = (fileName: string) => fileName.startsWith('.') && fileName !== '..';
 
-interface SSHHost {
-  id: string;
-  label: string;
-  host: string;
-  port: number;
-  username: string;
-  hasSSH: boolean;
-}
+const filterAndSortFiles = (
+  files: FileItem[], showHidden: boolean, sortColumn: SortColumn, sortDirection: 'asc' | 'desc'
+): FileItem[] => {
+  const filtered = showHidden ? files : files.filter(f => !isHiddenFile(f.name));
+  return [...filtered].sort((a, b) => {
+    let cmp = 0;
+    switch (sortColumn) {
+      case 'name': cmp = a.name.localeCompare(b.name); break;
+      case 'modified': cmp = new Date(a.modifiedTime).getTime() - new Date(b.modifiedTime).getTime(); break;
+      case 'type': cmp = a.type.localeCompare(b.type); break;
+      case 'size': cmp = a.size - b.size; break;
+    }
+    return sortDirection === 'asc' ? cmp : -cmp;
+  });
+};
+
+const formatSize = (bytes: number) => {
+  if (!bytes) return '-';
+  const units = ['B', 'KB', 'MB', 'GB', 'TB'];
+  let value = bytes;
+  let unitIndex = 0;
+  while (value >= 1024 && unitIndex < units.length - 1) { value /= 1024; unitIndex++; }
+  return `${value.toFixed(value < 10 && unitIndex > 0 ? 1 : 0)} ${units[unitIndex]}`;
+};
+
+const formatDate = (dateString: string) => {
+  if (!dateString) return '-';
+  return new Date(dateString).toLocaleString('en-US', {
+    month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit',
+  });
+};
+
+const formatDuration = (ms: number) => {
+  const totalSeconds = Math.max(1, Math.round(ms / 1000));
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  if (minutes >= 60) return `${Math.floor(minutes / 60)}h ${minutes % 60}m`;
+  if (minutes > 0) return `${minutes}m ${seconds}s`;
+  return `${seconds}s`;
+};
+
+const getOSIcon = (host: SSHHost): React.ReactNode => {
+  const label = host.label.toLowerCase();
+  const iconColor = theme.text.secondary;
+  const iconSize = 16;
+  if (label.includes('windows') || label.includes('win')) return <DesktopIcon color={iconColor} />;
+  if (label.includes('linux') || label.includes('ubuntu') || label.includes('debian')) return <LinuxIcon color={iconColor} />;
+  if (label.includes('mac') || label.includes('darwin')) return <AppleIcon size={iconSize} color={iconColor} />;
+  if (label.includes('router') || label.includes('switch')) return <PlugIcon size={iconSize} color={iconColor} />;
+  if (label.includes('server')) return <ServerIcon color={iconColor} />;
+  return <TerminalIcon size={iconSize} color={iconColor} />;
+};
 
 const SFTPModal: React.FC<SFTPModalProps> = ({ isOpen, onClose }) => {
   const { connections } = useTabContext();
-  const [selectedHost, setSelectedHost] = useState<SSHHost | null>(null);
-  const [localPath, setLocalPath] = useState<string>('');
-  const [remotePath, setRemotePath] = useState<string>('');
-  const [localFiles, setLocalFiles] = useState<FileItem[]>([]);
-  const [remoteFiles, setRemoteFiles] = useState<FileItem[]>([]);
-  const [localLoading, setLocalLoading] = useState(false);
-  const [remoteLoading, setRemoteLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [selectedLocalFile, setSelectedLocalFile] = useState<string | null>(null);
-  const [selectedRemoteFile, setSelectedRemoteFile] = useState<string | null>(null);
-  const [dragOverPane, setDragOverPane] = useState<'local' | 'remote' | null>(null);
-  const [transferProgress, setTransferProgress] = useState<{
-    pane: 'local' | 'remote';
-    fileName: string;
-    progress: number;
-    sizeBytes?: number;
-    startedAt: number;
-  } | null>(null);
-  const [showLocalHidden, setShowLocalHidden] = useState(false);
-  const [showRemoteHidden, setShowRemoteHidden] = useState(false);
-  const [localContextMenu, setLocalContextMenu] = useState(false);
-  const [remoteContextMenu, setRemoteContextMenu] = useState(false);
-  const [localMenuPos, setLocalMenuPos] = useState<{ x: number; y: number } | null>(null);
-  const [remoteMenuPos, setRemoteMenuPos] = useState<{ x: number; y: number } | null>(null);
-  const [localMenuVisible, setLocalMenuVisible] = useState(false);
-  const [remoteMenuVisible, setRemoteMenuVisible] = useState(false);
-  const [localMenuHover, setLocalMenuHover] = useState<number | null>(null);
-  const [remoteMenuHover, setRemoteMenuHover] = useState<number | null>(null);
-  const [localSortColumn, setLocalSortColumn] = useState<'name' | 'modified' | 'type' | 'size'>('name');
-  const [localSortDirection, setLocalSortDirection] = useState<'asc' | 'desc'>('asc');
-  const [remoteSortColumn, setRemoteSortColumn] = useState<'name' | 'modified' | 'type' | 'size'>('name');
-  const [remoteSortDirection, setRemoteSortDirection] = useState<'asc' | 'desc'>('asc');
-  const [hostSearchQuery, setHostSearchQuery] = useState('');
-  const [modalVisible, setModalVisible] = useState(false);
-  const localGearRef = useRef<HTMLButtonElement | null>(null);
-  const remoteGearRef = useRef<HTMLButtonElement | null>(null);
+  const [state, dispatch] = useReducer(sftpReducer, initialState);
+  const hostRef = useRef(state.selectedHost);
+  hostRef.current = state.selectedHost;
 
-  // Get ALL hosts from connections (not just SSH)
   const allHosts: SSHHost[] = connections.map(conn => ({
     id: conn.id,
     label: conn.customLabel || conn.nodeName || `${conn.username}@${conn.host}:${conn.port}`,
@@ -76,1501 +82,641 @@ const SFTPModal: React.FC<SFTPModalProps> = ({ isOpen, onClose }) => {
     hasSSH: conn.connectionType === 'ssh',
   }));
 
-  // Filter hosts based on search query
   const filteredHosts = allHosts.filter(host =>
-    host.label.toLowerCase().includes(hostSearchQuery.toLowerCase()) ||
-    host.host.toLowerCase().includes(hostSearchQuery.toLowerCase()) ||
-    host.username.toLowerCase().includes(hostSearchQuery.toLowerCase())
+    host.label.toLowerCase().includes(state.hostSearchQuery.toLowerCase()) ||
+    host.host.toLowerCase().includes(state.hostSearchQuery.toLowerCase()) ||
+    host.username.toLowerCase().includes(state.hostSearchQuery.toLowerCase())
   );
 
-  // Helper function to check if file is hidden
-  const isHiddenFile = (fileName: string) => {
-    return fileName.startsWith('.') && fileName !== '..';
-  };
+  const displayLocalFiles = filterAndSortFiles(state.local.files, state.local.showHidden, state.local.sortColumn, state.local.sortDirection);
+  const displayRemoteFiles = filterAndSortFiles(state.remote.files, state.remote.showHidden, state.remote.sortColumn, state.remote.sortDirection);
 
-  // Helper function to get OS icon based on node type or OS
-  const getOSIcon = (host: SSHHost): React.ReactNode => {
-    const label = host.label.toLowerCase();
-    const iconColor = theme.text.secondary;
-    const iconSize = 16;
+  const transferActive = state.transfer !== null;
 
-    if (label.includes('windows') || label.includes('win')) return <DesktopIcon color={iconColor} />;
-    if (label.includes('linux') || label.includes('ubuntu') || label.includes('debian')) return <LinuxIcon color={iconColor} />;
-    if (label.includes('mac') || label.includes('darwin')) return <AppleIcon size={iconSize} color={iconColor} />;
-    if (label.includes('router') || label.includes('switch')) return <PlugIcon size={iconSize} color={iconColor} />;
-    if (label.includes('server')) return <ServerIcon color={iconColor} />;
+  // Detect local path separator
+  const localSep: '/' | '\\' = state.local.path.match(/^[A-Z]:\\/i) ? '\\' : '/';
 
-    return <TerminalIcon size={iconSize} color={iconColor} />;
-  };
-
-  // Helper function to filter and sort files
-  const filterAndSortFiles = (
-    files: FileItem[],
-    showHidden: boolean,
-    sortColumn: 'name' | 'modified' | 'type' | 'size',
-    sortDirection: 'asc' | 'desc'
-  ) => {
-    console.log('[SFTP] Filtering files - showHidden:', showHidden, 'sortColumn:', sortColumn, 'sortDirection:', sortDirection);
-
-    // Filter hidden files
-    let filtered = showHidden ? files : files.filter(f => !isHiddenFile(f.name));
-
-    // Sort files
-    const sorted = [...filtered].sort((a, b) => {
-      let comparison = 0;
-
-      switch (sortColumn) {
-        case 'name':
-          comparison = a.name.localeCompare(b.name);
-          break;
-        case 'modified':
-          comparison = new Date(a.modifiedTime).getTime() - new Date(b.modifiedTime).getTime();
-          break;
-        case 'type':
-          comparison = a.type.localeCompare(b.type);
-          break;
-        case 'size':
-          comparison = a.size - b.size;
-          break;
-      }
-
-      return sortDirection === 'asc' ? comparison : -comparison;
-    });
-
-    return sorted;
-  };
-
-  // Compute filtered and sorted files
-  const displayLocalFiles = filterAndSortFiles(localFiles, showLocalHidden, localSortColumn, localSortDirection);
-  const displayRemoteFiles = filterAndSortFiles(remoteFiles, showRemoteHidden, remoteSortColumn, remoteSortDirection);
-
-  // Log available hosts when modal opens
+  // --- Effects ---
   useEffect(() => {
-    if (isOpen) {
-      console.log('[Frontend] SFTP Modal opened');
-      console.log('[Frontend] Available connections:', connections.length);
-      console.log('[Frontend] Available hosts:', allHosts.length);
-      console.log('[Frontend] Hosts:', allHosts);
-      console.log('[Frontend] window.electron.listRemoteFiles exists?', !!window.electron.listRemoteFiles);
-    }
-  }, [isOpen]);
-
-  // Subtle entrance animation
-  useEffect(() => {
-    if (!isOpen) {
-      setModalVisible(false);
-      return;
-    }
-    setModalVisible(false);
-    const timer = setTimeout(() => setModalVisible(true), 10);
+    if (!isOpen) { dispatch({ type: 'SET_MODAL_VISIBLE', visible: false }); return; }
+    dispatch({ type: 'SET_MODAL_VISIBLE', visible: false });
+    const timer = setTimeout(() => dispatch({ type: 'SET_MODAL_VISIBLE', visible: true }), 10);
     return () => clearTimeout(timer);
   }, [isOpen]);
 
-  // Initialize local path to user's home directory
   useEffect(() => {
-    if (isOpen && !localPath) {
+    if (isOpen && !state.local.path) {
       window.electron.getHomeDirectory().then(homeDir => {
         if (homeDir) {
-          setLocalPath(homeDir);
+          dispatch({ type: 'SET_PANE_PATH', pane: 'local', path: homeDir });
           loadLocalFiles(homeDir);
         }
-      }).catch(err => {
-        console.error('Failed to get home directory:', err);
-        setError('Failed to get home directory');
-      });
+      }).catch(() => dispatch({ type: 'SET_ERROR', error: 'Failed to get home directory' }));
     }
   }, [isOpen]);
 
-  // Auto-dismiss error after 5 seconds
   useEffect(() => {
-    if (error) {
-      const timer = setTimeout(() => {
-        setError(null);
-      }, 5000);
+    if (state.error) {
+      const timer = setTimeout(() => dispatch({ type: 'SET_ERROR', error: null }), 5000);
       return () => clearTimeout(timer);
     }
-  }, [error]);
+  }, [state.error]);
 
-  // Cleanup SFTP connection when modal closes
   useEffect(() => {
     return () => {
-      if (selectedHost) {
-        console.log('[Frontend] Cleanup: Closing SFTP connection:', selectedHost.id);
-        window.electron.closeSFTPConnection(selectedHost.id).catch(err => {
-          console.error('[Frontend] Cleanup error:', err);
-        });
+      if (hostRef.current) {
+        window.electron.closeSFTPConnection(hostRef.current.id).catch(() => {});
       }
     };
-  }, [selectedHost]);
+  }, []);
 
-  // Close context menus when clicking outside
+  // Listen for real progress events
   useEffect(() => {
-    const handleClick = () => {
-      setLocalContextMenu(false);
-      setRemoteContextMenu(false);
-      setLocalMenuVisible(false);
-      setRemoteMenuVisible(false);
-      setLocalMenuHover(null);
-      setRemoteMenuHover(null);
-      setLocalMenuPos(null);
-      setRemoteMenuPos(null);
-    };
-    if (localContextMenu || remoteContextMenu) {
+    if (!window.electron.onSFTPProgress) return;
+    const cleanup = window.electron.onSFTPProgress((data) => {
+      dispatch({
+        type: 'UPDATE_TRANSFER_PROGRESS',
+        bytesTransferred: data.bytesTransferred,
+        totalBytes: data.totalBytes,
+        speedBps: data.bytesTransferred > 0 ? data.bytesTransferred / (Math.max(1, Date.now() - (state.transfer?.startedAt || Date.now())) / 1000) : 0,
+      });
+    });
+    return cleanup;
+  }, []);
+
+  // Close context menus on outside click
+  useEffect(() => {
+    if (state.local.contextMenuOpen || state.remote.contextMenuOpen) {
+      const handleClick = () => dispatch({ type: 'CLOSE_ALL_MENUS' });
       document.addEventListener('click', handleClick);
       return () => document.removeEventListener('click', handleClick);
     }
-  }, [localContextMenu, remoteContextMenu]);
+  }, [state.local.contextMenuOpen, state.remote.contextMenuOpen]);
 
-  // Trigger context menu entrance animations
-  useEffect(() => {
-    if (!localContextMenu) {
-      setLocalMenuVisible(false);
-      return;
-    }
-    setLocalMenuVisible(false);
-    const timer = setTimeout(() => setLocalMenuVisible(true), 10);
-    return () => clearTimeout(timer);
-  }, [localContextMenu]);
-
-  useEffect(() => {
-    if (!remoteContextMenu) {
-      setRemoteMenuVisible(false);
-      return;
-    }
-    setRemoteMenuVisible(false);
-    const timer = setTimeout(() => setRemoteMenuVisible(true), 10);
-    return () => clearTimeout(timer);
-  }, [remoteContextMenu]);
-
-  const SETTINGS_MENU_WIDTH = 200;
-  const SETTINGS_MENU_GAP = 6;
-
-  const getSettingsMenuPosition = (button: HTMLButtonElement | null) => {
-    if (!button) return null;
-    const rect = button.getBoundingClientRect();
-    const width = SETTINGS_MENU_WIDTH;
-    const maxX = Math.max(8, window.innerWidth - width - 8);
-    const x = Math.min(maxX, Math.max(8, rect.right - width));
-    const maxY = Math.max(8, window.innerHeight - 120);
-    const y = Math.min(maxY, rect.bottom + SETTINGS_MENU_GAP);
-    return { x, y };
-  };
-
-  const closeLocalMenu = () => {
-    setLocalContextMenu(false);
-    setLocalMenuVisible(false);
-    setLocalMenuPos(null);
-    setLocalMenuHover(null);
-  };
-
-  const closeRemoteMenu = () => {
-    setRemoteContextMenu(false);
-    setRemoteMenuVisible(false);
-    setRemoteMenuPos(null);
-    setRemoteMenuHover(null);
-  };
-
-  const loadLocalFiles = async (path: string) => {
+  // --- Data loading ---
+  const loadLocalFiles = useCallback(async (dirPath: string) => {
     try {
-      setLocalLoading(true);
-      setError(null);
-      console.log('[Frontend] Loading local files from:', path);
-      const files = await window.electron.listLocalFiles(path);
-      console.log('[Frontend] Local files loaded:', files.length);
-      setLocalFiles(files);
-      setLocalPath(path);
+      dispatch({ type: 'SET_PANE_LOADING', pane: 'local', loading: true });
+      dispatch({ type: 'SET_ERROR', error: null });
+      const files = await window.electron.listLocalFiles(dirPath);
+      dispatch({ type: 'SET_PANE_FILES', pane: 'local', files });
+      dispatch({ type: 'SET_PANE_PATH', pane: 'local', path: dirPath });
     } catch (err: any) {
-      setError(`Failed to load local files: ${err.message}`);
-      console.error('[Frontend] Local files error:', err);
+      dispatch({ type: 'SET_ERROR', error: `Failed to load local files: ${err.message}` });
     } finally {
-      setLocalLoading(false);
+      dispatch({ type: 'SET_PANE_LOADING', pane: 'local', loading: false });
     }
-  };
+  }, []);
 
-  const loadRemoteFiles = async (path: string, host?: SSHHost) => {
-    const targetHost = host || selectedHost;
-
-    console.log('[Frontend] loadRemoteFiles called with path:', path);
-    console.log('[Frontend] targetHost:', targetHost);
-    console.log('[Frontend] selectedHost state:', selectedHost);
-
-    if (!targetHost) {
-      console.log('[Frontend] No host available, returning');
-      return;
-    }
-
+  const loadRemoteFiles = useCallback(async (remotePath: string, host?: SSHHost) => {
+    const targetHost = host || hostRef.current;
+    if (!targetHost) return;
     try {
-      setRemoteLoading(true);
-      setError(null);
-      console.log('[Frontend] Calling window.electron.listRemoteFiles with:', {
-        connectionId: targetHost.id,
-        path,
-      });
-
-      const files = await window.electron.listRemoteFiles({
-        connectionId: targetHost.id,
-        path,
-      });
-
-      console.log('[Frontend] Received files:', files);
-      console.log('[Frontend] Number of files:', files.length);
-
-      setRemoteFiles(files);
-      setRemotePath(path);
-      console.log('Remote files loaded:', files.length, 'files');
+      dispatch({ type: 'SET_PANE_LOADING', pane: 'remote', loading: true });
+      dispatch({ type: 'SET_ERROR', error: null });
+      const files = await window.electron.listRemoteFiles({ connectionId: targetHost.id, path: remotePath });
+      dispatch({ type: 'SET_PANE_FILES', pane: 'remote', files });
+      dispatch({ type: 'SET_PANE_PATH', pane: 'remote', path: remotePath });
     } catch (err: any) {
-      setError(`Failed to load remote files: ${err.message}`);
-      console.error('[Frontend] Remote files error:', err);
+      dispatch({ type: 'SET_ERROR', error: `Failed to load remote files: ${err.message}` });
     } finally {
-      setRemoteLoading(false);
-      console.log('[Frontend] Loading complete');
+      dispatch({ type: 'SET_PANE_LOADING', pane: 'remote', loading: false });
     }
-  };
+  }, []);
 
-  const handleHostSelect = async (host: SSHHost) => {
-    console.log('[Frontend] handleHostSelect called with host:', host);
-
-    // Close previous SFTP connection if switching hosts
-    if (selectedHost && selectedHost.id !== host.id) {
-      console.log('[Frontend] Closing previous SFTP connection:', selectedHost.id);
-      try {
-        await window.electron.closeSFTPConnection(selectedHost.id);
-      } catch (err) {
-        console.error('[Frontend] Error closing previous connection:', err);
-      }
+  // --- Host selection ---
+  const handleHostSelect = useCallback(async (host: SSHHost) => {
+    if (state.selectedHost && state.selectedHost.id !== host.id) {
+      try { await window.electron.closeSFTPConnection(state.selectedHost.id); } catch {}
     }
-
-    setSelectedHost(host);
-    // Determine home directory based on username
+    dispatch({ type: 'SET_HOST', host });
     const homeDir = host.username === 'root' ? '/root' : `/home/${host.username}`;
-    console.log('[Frontend] Determined homeDir:', homeDir);
-    setRemotePath(homeDir);
-    console.log('[Frontend] Calling loadRemoteFiles with host directly...');
-    await loadRemoteFiles(homeDir, host); // Pass host directly to avoid state timing issue
-    console.log('[Frontend] loadRemoteFiles completed');
-  };
+    dispatch({ type: 'SET_PANE_PATH', pane: 'remote', path: homeDir });
+    await loadRemoteFiles(homeDir, host);
+  }, [state.selectedHost, loadRemoteFiles]);
 
-  const handleLocalNavigate = (path: string) => {
-    loadLocalFiles(path);
-  };
-
-  const handleRemoteNavigate = (path: string) => {
-    loadRemoteFiles(path);
-  };
-
-  const formatSize = (bytes: number) => {
-    if (!bytes) return '-';
-    const units = ['B', 'KB', 'MB', 'GB', 'TB'];
-    let value = bytes;
-    let unitIndex = 0;
-    while (value >= 1024 && unitIndex < units.length - 1) {
-      value /= 1024;
-      unitIndex += 1;
-    }
-    const precision = value < 10 && unitIndex > 0 ? 1 : 0;
-    return `${value.toFixed(precision)} ${units[unitIndex]}`;
-  };
-
-  const getFileExtension = (name: string) => {
-    const parts = name.toLowerCase().split('.');
-    if (parts.length <= 1) return '';
-    return parts.slice(1).join('.');
-  };
-
-  const isArchiveFile = (name: string) => {
-    const ext = getFileExtension(name);
-    const archiveExtensions = [
-      'zip', 'tar', 'gz', 'tgz', 'bz2', 'tbz2', 'xz', 'txz', '7z', 'rar',
-    ];
-    return archiveExtensions.some(a => ext === a || ext.endsWith(`.${a}`));
-  };
-
-  const FolderIcon = () => (
-    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-      <path d="M1.5 4.5C1.5 3.67 2.17 3 3 3h3l1.2 1.4h5.8c.83 0 1.5.67 1.5 1.5v6.6c0 .83-.67 1.5-1.5 1.5H3c-.83 0-1.5-.67-1.5-1.5V4.5Z" stroke="currentColor" strokeWidth="1.2" />
-      <path d="M1.5 6h13" stroke="currentColor" strokeWidth="1.2" />
-    </svg>
-  );
-
-  const FileIcon = () => (
-    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-      <path d="M4 1.5h5.2L12.5 4.8V14c0 .83-.67 1.5-1.5 1.5H4c-.83 0-1.5-.67-1.5-1.5V3c0-.83.67-1.5 1.5-1.5Z" stroke="currentColor" strokeWidth="1.2" />
-      <path d="M9 1.5V5h3.5" stroke="currentColor" strokeWidth="1.2" />
-    </svg>
-  );
-
-  const ArchiveIcon = () => (
-    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-      <rect x="2.5" y="2.5" width="11" height="11" rx="1.5" stroke="currentColor" strokeWidth="1.2" />
-      <path d="M5.5 2.5v11M8 5h3M8 8h3M8 11h3" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
-      <path d="M4.8 4.2h1.4M4.8 7.2h1.4M4.8 10.2h1.4" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
-    </svg>
-  );
-
-  const CheckIcon = ({ visible }: { visible: boolean }) => (
-    <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true" style={{ opacity: visible ? 1 : 0 }}>
-      <path d="M3 7.5l2.2 2.2L11 4.5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  );
-
-  const getFileIcon = (file: FileItem) => {
-    if (file.type === 'directory') {
-      return <FolderIcon />;
-    }
-    if (isArchiveFile(file.name)) {
-      return <ArchiveIcon />;
-    }
-    return <FileIcon />;
-  };
-
-  const formatDuration = (ms: number) => {
-    const totalSeconds = Math.max(1, Math.round(ms / 1000));
-    const minutes = Math.floor(totalSeconds / 60);
-    const seconds = totalSeconds % 60;
-    if (minutes >= 60) {
-      const hours = Math.floor(minutes / 60);
-      const remMinutes = minutes % 60;
-      return `${hours}h ${remMinutes}m`;
-    }
-    if (minutes > 0) {
-      return `${minutes}m ${seconds}s`;
-    }
-    return `${seconds}s`;
-  };
-
-  const estimateTransferTime = (sizeBytes?: number) => {
-    if (!sizeBytes) return null;
-    // Heuristic: assume ~8 MB/s average transfer speed
-    const assumedBytesPerSecond = 8 * 1024 * 1024;
-    const ms = (sizeBytes / assumedBytesPerSecond) * 1000;
-    return Math.max(1000, ms);
-  };
-
-  const findFileSize = (pane: 'local' | 'remote', fileName: string) => {
-    const sourceFiles = pane === 'local' ? localFiles : remoteFiles;
-    const match = sourceFiles.find(f => f.name === fileName);
-    return match?.size;
-  };
-
-  const startTransfer = (targetPane: 'local' | 'remote', fileName: string) => {
-    const sourcePane = targetPane === 'local' ? 'remote' : 'local';
-    const sizeBytes = findFileSize(sourcePane, fileName);
-    setTransferProgress({
-      pane: targetPane,
-      fileName,
-      progress: 0,
-      sizeBytes,
-      startedAt: Date.now(),
+  // --- Transfer handlers ---
+  const startSingleTransfer = useCallback(async (sourcePane: 'local' | 'remote', file: FileItem) => {
+    const targetPane = sourcePane === 'local' ? 'remote' : 'local';
+    dispatch({
+      type: 'SET_TRANSFER', transfer: {
+        pane: targetPane, fileName: file.name, progress: 0,
+        bytesTransferred: 0, totalBytes: file.size, startedAt: Date.now(), speedBps: 0,
+      },
     });
-  };
+    try {
+      if (sourcePane === 'local') {
+        await window.electron.uploadFile({
+          connectionId: state.selectedHost!.id, localPath: file.path,
+          remotePath: state.remote.path, fileName: file.name,
+        });
+      } else {
+        await window.electron.downloadFile({
+          connectionId: state.selectedHost!.id, remotePath: file.path,
+          localPath: state.local.path, fileName: file.name,
+        });
+      }
+      dispatch({ type: 'SET_TRANSFER', transfer: null });
+      if (sourcePane === 'local') loadRemoteFiles(state.remote.path);
+      else loadLocalFiles(state.local.path);
+    } catch (err: any) {
+      dispatch({ type: 'SET_ERROR', error: `Transfer failed: ${err.message}` });
+      dispatch({ type: 'SET_TRANSFER', transfer: null });
+    }
+  }, [state.selectedHost, state.local.path, state.remote.path, loadLocalFiles, loadRemoteFiles]);
 
-  const ArrowDownIcon = () => (
-    <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
-      <path d="M7 2.2v8.2M3.8 7.8 7 11.2l3.2-3.4" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  );
+  const transferSelectedFiles = useCallback(async (sourcePaths: string[], sourcePane: 'local' | 'remote') => {
+    const sourceFiles = sourcePane === 'local' ? state.local.files : state.remote.files;
+    const filesToTransfer = sourcePaths
+      .map(p => sourceFiles.find(f => f.path === p))
+      .filter((f): f is FileItem => f != null && f.type === 'file');
 
-  const ArrowUpIcon = () => (
-    <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
-      <path d="M7 11.8V3.6M10.2 6.2 7 2.8 3.8 6.2" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  );
+    if (filesToTransfer.length === 0) return;
 
-  const TRANSFER_FOOTER_HEIGHT = 78;
+    const totalBytesAllFiles = filesToTransfer.reduce((sum, f) => sum + f.size, 0);
+    let bytesTransferredAllFiles = 0;
+    const targetPane = sourcePane === 'local' ? 'remote' : 'local';
 
-  const renderTransferFooter = (pane: 'local' | 'remote') => {
-    const active = transferProgress && transferProgress.pane === pane;
-    const directionLabel = pane === 'local' ? 'Downloading' : 'Uploading';
-    const sizeLabel = active && transferProgress.sizeBytes ? formatSize(transferProgress.sizeBytes) : null;
-    const etaMs = active ? estimateTransferTime(transferProgress.sizeBytes) : null;
-    const etaLabel = etaMs ? formatDuration(etaMs) : 'Estimating...';
+    for (let i = 0; i < filesToTransfer.length; i++) {
+      const file = filesToTransfer[i];
+      dispatch({
+        type: 'SET_TRANSFER', transfer: {
+          pane: targetPane, fileName: file.name, progress: 0,
+          bytesTransferred: 0, totalBytes: file.size, startedAt: Date.now(), speedBps: 0,
+          currentFileIndex: i + 1, totalFiles: filesToTransfer.length,
+          totalBytesAllFiles, bytesTransferredAllFiles,
+        },
+      });
 
-    return (
-      <div style={{
-        height: `${TRANSFER_FOOTER_HEIGHT}px`,
-        borderTop: '1px solid #3a4556',
-        background: 'linear-gradient(180deg, rgba(31, 36, 48, 0.92), rgba(26, 31, 46, 0.98))',
-        padding: '10px 14px',
-        display: 'flex',
-        flexDirection: 'column',
-        justifyContent: 'center',
-        gap: '8px',
-        opacity: active ? 1 : 0.6,
-        transition: 'opacity 0.2s ease',
-      }}>
-        {active ? (
-          <>
-            <div style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              gap: '12px',
-            }}>
-              <div style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px',
-                minWidth: 0,
-                color: '#c9d1d9',
-                fontSize: '12px',
-                fontWeight: 600,
-              }}>
-                <span style={{ color: pane === 'local' ? '#4d7cfe' : '#3dd68c', display: 'flex' }}>
-                  {pane === 'local' ? <ArrowDownIcon /> : <ArrowUpIcon />}
-                </span>
-                <span style={{ whiteSpace: 'nowrap' }}>{directionLabel}</span>
-                <span style={{ color: '#e8ecf4', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                  {transferProgress.fileName}
-                </span>
-              </div>
-              <div style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '10px',
-                fontSize: '11px',
-                color: '#8b949e',
-                flexShrink: 0,
-              }}>
-                {sizeLabel && <span>{sizeLabel}</span>}
-                <span>ETA ~{etaLabel}</span>
-              </div>
-            </div>
-            <div style={{
-              position: 'relative',
-              width: '100%',
-              height: '8px',
-              borderRadius: '999px',
-              background: '#222a3a',
-              border: '1px solid #2d374a',
-              overflow: 'hidden',
-              boxShadow: 'inset 0 1px 2px rgba(0, 0, 0, 0.45)',
-            }}>
-              <div style={{
-                position: 'absolute',
-                top: 0,
-                left: '-35%',
-                width: '35%',
-                height: '100%',
-                borderRadius: '999px',
-                background: pane === 'local'
-                  ? 'linear-gradient(90deg, rgba(77, 124, 254, 0.15), #4d7cfe, rgba(77, 124, 254, 0.15))'
-                  : 'linear-gradient(90deg, rgba(22, 130, 93, 0.15), #1ea672, rgba(22, 130, 93, 0.15))',
-                boxShadow: pane === 'local'
-                  ? '0 0 12px rgba(77, 124, 254, 0.45)'
-                  : '0 0 12px rgba(30, 166, 114, 0.45)',
-                animation: 'sftp-progress-slide 1.6s ease-in-out infinite',
-              }} />
-            </div>
-          </>
-        ) : (
-          <div style={{
-            fontSize: '11px',
-            color: '#6b7280',
-            textAlign: 'center',
-            letterSpacing: '0.2px',
-          }}>
-            No active transfers
-          </div>
-        )}
-      </div>
-    );
-  };
-
-  // Helper to format date
-  const formatDate = (dateString: string) => {
-    if (!dateString) return '-';
-    const date = new Date(dateString);
-    return date.toLocaleString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-    });
-  };
-
-  const handleClose = async () => {
-    // Close SFTP connection when modal closes
-    if (selectedHost) {
-      console.log('[Frontend] Closing SFTP connection on modal close:', selectedHost.id);
       try {
-        await window.electron.closeSFTPConnection(selectedHost.id);
-      } catch (err) {
-        console.error('[Frontend] Error closing SFTP connection:', err);
+        if (sourcePane === 'local') {
+          await window.electron.uploadFile({
+            connectionId: state.selectedHost!.id, localPath: file.path,
+            remotePath: state.remote.path, fileName: file.name,
+          });
+        } else {
+          await window.electron.downloadFile({
+            connectionId: state.selectedHost!.id, remotePath: file.path,
+            localPath: state.local.path, fileName: file.name,
+          });
+        }
+        bytesTransferredAllFiles += file.size;
+      } catch (err: any) {
+        dispatch({ type: 'SET_ERROR', error: `Transfer failed: ${file.name}: ${err.message}` });
+        break;
       }
     }
 
-    setSelectedHost(null);
-    setLocalPath('');
-    setRemotePath('');
-    setLocalFiles([]);
-    setRemoteFiles([]);
-    setError(null);
+    dispatch({ type: 'SET_TRANSFER', transfer: null });
+    dispatch({ type: 'DESELECT_ALL_FILES', pane: sourcePane });
+    if (sourcePane === 'local') loadRemoteFiles(state.remote.path);
+    else loadLocalFiles(state.local.path);
+  }, [state.selectedHost, state.local.files, state.remote.files, state.local.path, state.remote.path, loadLocalFiles, loadRemoteFiles]);
+
+  // --- File operation handlers ---
+  const handleDeleteFile = useCallback(async (pane: 'local' | 'remote', file: FileItem) => {
+    try {
+      if (pane === 'remote') {
+        await window.electron.sftpDelete({ connectionId: state.selectedHost!.id, remotePath: file.path, isDirectory: file.type === 'directory' });
+        loadRemoteFiles(state.remote.path);
+      } else {
+        await window.electron.localDelete(file.path);
+        loadLocalFiles(state.local.path);
+      }
+    } catch (err: any) {
+      dispatch({ type: 'SET_ERROR', error: `Delete failed: ${err.message}` });
+    }
+  }, [state.selectedHost, state.local.path, state.remote.path, loadLocalFiles, loadRemoteFiles]);
+
+  const handleRenameFile = useCallback(async (pane: 'local' | 'remote', file: FileItem, newName: string) => {
+    try {
+      if (pane === 'remote') {
+        const parentDir = file.path.substring(0, file.path.lastIndexOf('/'));
+        const newPath = parentDir + '/' + newName;
+        await window.electron.sftpRename({ connectionId: state.selectedHost!.id, oldPath: file.path, newPath });
+        loadRemoteFiles(state.remote.path);
+      } else {
+        const sep = localSep;
+        const parentDir = file.path.substring(0, file.path.lastIndexOf(sep));
+        const newPath = parentDir + sep + newName;
+        await window.electron.localRename({ oldPath: file.path, newPath });
+        loadLocalFiles(state.local.path);
+      }
+    } catch (err: any) {
+      dispatch({ type: 'SET_ERROR', error: `Rename failed: ${err.message}` });
+    }
+  }, [state.selectedHost, state.local.path, state.remote.path, localSep, loadLocalFiles, loadRemoteFiles]);
+
+  const handleCreateFolder = useCallback(async (pane: 'local' | 'remote', name: string) => {
+    try {
+      if (pane === 'remote') {
+        const fullPath = state.remote.path + '/' + name;
+        await window.electron.sftpMkdir({ connectionId: state.selectedHost!.id, remotePath: fullPath });
+        loadRemoteFiles(state.remote.path);
+      } else {
+        const sep = localSep;
+        const fullPath = state.local.path + sep + name;
+        await window.electron.localMkdir(fullPath);
+        loadLocalFiles(state.local.path);
+      }
+    } catch (err: any) {
+      dispatch({ type: 'SET_ERROR', error: `Create folder failed: ${err.message}` });
+    }
+  }, [state.selectedHost, state.local.path, state.remote.path, localSep, loadLocalFiles, loadRemoteFiles]);
+
+  // --- Drop handlers ---
+  const handleLocalDrop = useCallback(async (e: React.DragEvent) => {
+    e.preventDefault();
+    dispatch({ type: 'SET_DRAG_OVER', pane: null });
+    const sourcePane = e.dataTransfer.getData('sourcePane');
+    const filePath = e.dataTransfer.getData('filePath');
+    const fileName = e.dataTransfer.getData('fileName');
+    if (sourcePane !== 'remote' || !state.selectedHost) return;
+
+    const sourceFile = state.remote.files.find(f => f.path === filePath);
+    if (sourceFile) await startSingleTransfer('remote', sourceFile);
+  }, [state.selectedHost, state.remote.files, startSingleTransfer]);
+
+  const handleRemoteDrop = useCallback(async (e: React.DragEvent) => {
+    e.preventDefault();
+    dispatch({ type: 'SET_DRAG_OVER', pane: null });
+    const sourcePane = e.dataTransfer.getData('sourcePane');
+    const filePath = e.dataTransfer.getData('filePath');
+    if (sourcePane !== 'local' || !state.selectedHost) return;
+
+    const sourceFile = state.local.files.find(f => f.path === filePath);
+    if (sourceFile) await startSingleTransfer('local', sourceFile);
+  }, [state.selectedHost, state.local.files, startSingleTransfer]);
+
+  // --- Sort handler ---
+  const handleSortChange = useCallback((pane: 'local' | 'remote', column: SortColumn) => {
+    const currentState = pane === 'local' ? state.local : state.remote;
+    if (currentState.sortColumn === column) {
+      dispatch({ type: 'SET_PANE_SORT', pane, column, direction: currentState.sortDirection === 'asc' ? 'desc' : 'asc' });
+    } else {
+      dispatch({ type: 'SET_PANE_SORT', pane, column, direction: 'asc' });
+    }
+  }, [state.local.sortColumn, state.local.sortDirection, state.remote.sortColumn, state.remote.sortDirection]);
+
+  // --- File selection handler ---
+  const handleFileSelect = useCallback((pane: 'local' | 'remote', filePath: string, ctrlKey: boolean) => {
+    if (ctrlKey) {
+      dispatch({ type: 'TOGGLE_FILE_SELECTION', pane, filePath });
+    } else {
+      dispatch({ type: 'SET_PANE_SELECTED_FILE', pane, file: filePath });
+    }
+  }, []);
+
+  // --- Close ---
+  const handleClose = useCallback(async () => {
+    if (state.selectedHost) {
+      try { await window.electron.closeSFTPConnection(state.selectedHost.id); } catch {}
+    }
+    dispatch({ type: 'RESET' });
     onClose();
-  };
+  }, [state.selectedHost, onClose]);
 
   if (!isOpen) return null;
+
+  // --- Remote pane path bar / host selector ---
+  const remotePathBar = !state.selectedHost ? (
+    <div style={{
+      padding: '12px 16px',
+      background: theme.background.secondary,
+      borderBottom: `1px solid ${theme.border.default}`,
+    }}>
+      <input
+        type="text"
+        placeholder="Search hosts..."
+        value={state.hostSearchQuery}
+        onChange={(e) => dispatch({ type: 'SET_HOST_SEARCH', query: e.target.value })}
+        style={{
+          width: '100%',
+          padding: '8px 12px',
+          background: theme.background.tertiary,
+          border: `1px solid ${theme.border.default}`,
+          borderRadius: '6px',
+          color: theme.text.primary,
+          fontSize: '13px',
+          outline: 'none',
+        }}
+        onFocus={(e) => { e.currentTarget.style.borderColor = theme.accent.greenDark; }}
+        onBlur={(e) => { e.currentTarget.style.borderColor = theme.border.default; }}
+      />
+    </div>
+  ) : (
+    <EditablePathBar
+      path={state.remote.path}
+      separator="/"
+      onNavigate={(p) => loadRemoteFiles(p)}
+      disabled={transferActive}
+    />
+  );
 
   return (
     <div style={{
       position: 'fixed',
-      top: 0,
-      left: 0,
-      right: 0,
-      bottom: 0,
-      background: '#1a1f2e',
+      top: 0, left: 0, right: 0, bottom: 0,
+      background: theme.background.primary,
       zIndex: 10000,
       display: 'flex',
       flexDirection: 'column',
-      opacity: modalVisible ? 1 : 0,
-      transform: modalVisible ? 'translateY(0) scale(1)' : 'translateY(6px) scale(0.995)',
+      opacity: state.modalVisible ? 1 : 0,
+      transform: state.modalVisible ? 'translateY(0) scale(1)' : 'translateY(6px) scale(0.995)',
       transition: 'opacity 0.18s ease-out, transform 0.22s ease-out',
     }}>
-        {/* Header */}
+      {/* Header */}
+      <div style={{
+        padding: '16px 20px',
+        borderBottom: `1px solid ${theme.border.default}`,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+            <path d="M12 2L17 7M12 2L7 7M12 2V16" stroke={theme.accent.greenDark} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+            <path d="M3 12V20C3 21.1046 3.89543 22 5 22H19C20.1046 22 21 21.1046 21 20V12" stroke={theme.accent.greenDark} strokeWidth="2" strokeLinecap="round" />
+            <path d="M12 8L17 13M12 8L7 13M12 8V22" stroke={theme.accent.greenDark} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" opacity="0.5" />
+          </svg>
+          <h2 style={{ margin: 0, fontSize: '18px', fontWeight: 600, color: theme.text.primary }}>
+            SFTP File Transfer
+          </h2>
+          {state.selectedHost && (
+            <span style={{ fontSize: '13px', color: theme.text.tertiary, marginLeft: '8px' }}>
+              {'\u2192'} {state.selectedHost.label}
+            </span>
+          )}
+        </div>
+        <button
+          onClick={handleClose}
+          disabled={transferActive}
+          style={{
+            background: 'transparent',
+            border: 'none',
+            color: theme.text.tertiary,
+            cursor: transferActive ? 'not-allowed' : 'pointer',
+            fontSize: '24px',
+            padding: '0',
+            width: '32px',
+            height: '32px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            borderRadius: '6px',
+            transition: 'all 0.2s',
+            opacity: transferActive ? 0.5 : 1,
+          }}
+          onMouseEnter={(e) => {
+            if (!transferActive) {
+              e.currentTarget.style.background = theme.background.hover;
+              e.currentTarget.style.color = theme.text.primary;
+            }
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.background = 'transparent';
+            e.currentTarget.style.color = theme.text.tertiary;
+          }}
+        >
+          {'\u00d7'}
+        </button>
+      </div>
+
+      {/* Content - Two panes */}
+      <div style={{ flex: 1, overflow: 'hidden', position: 'relative' }}>
+        <div style={{ display: 'flex', height: '100%' }}>
+          {/* Local pane */}
+          <FilePane
+            side="local"
+            title="Local Machine"
+            paneState={state.local}
+            transfer={state.transfer}
+            dragOverPane={state.dragOverPane}
+            transferActive={transferActive}
+            onNavigate={(p) => { if (!transferActive) loadLocalFiles(p); }}
+            onFileClick={(fp) => dispatch({ type: 'SET_PANE_SELECTED_FILE', pane: 'local', file: fp })}
+            onFileSelect={(fp, ctrl) => handleFileSelect('local', fp, ctrl)}
+            onSelectAll={() => {
+              const selectableFiles = displayLocalFiles.filter(f => f.type === 'file' && f.name !== '..');
+              dispatch({ type: 'SELECT_ALL_FILES', pane: 'local', filePaths: selectableFiles.map(f => f.path) });
+            }}
+            onDeselectAll={() => dispatch({ type: 'DESELECT_ALL_FILES', pane: 'local' })}
+            onDragStart={(file, e) => {
+              e.dataTransfer.setData('sourcePane', 'local');
+              e.dataTransfer.setData('filePath', file.path);
+              e.dataTransfer.setData('fileName', file.name);
+              e.dataTransfer.effectAllowed = 'copy';
+            }}
+            onDrop={handleLocalDrop}
+            onDragEnter={() => dispatch({ type: 'SET_DRAG_OVER', pane: 'local' })}
+            onDragLeave={() => dispatch({ type: 'SET_DRAG_OVER', pane: null })}
+            onSortChange={(col) => handleSortChange('local', col)}
+            onToggleHidden={() => dispatch({ type: 'SET_PANE_SHOW_HIDDEN', pane: 'local', showHidden: !state.local.showHidden })}
+            onOpenSettingsMenu={(pos) => dispatch({ type: 'SET_PANE_CONTEXT_MENU', pane: 'local', open: true, pos })}
+            onCloseSettingsMenu={() => dispatch({ type: 'SET_PANE_CONTEXT_MENU', pane: 'local', open: false })}
+            onSettingsMenuHover={(i) => dispatch({ type: 'SET_PANE_MENU_HOVER', pane: 'local', index: i })}
+            onSettingsMenuVisible={(v) => dispatch({ type: 'SET_PANE_MENU_VISIBLE', pane: 'local', visible: v })}
+            onDeleteFile={(file) => handleDeleteFile('local', file)}
+            onRenameFile={(file, newName) => handleRenameFile('local', file, newName)}
+            onCreateFolder={(name) => handleCreateFolder('local', name)}
+            onTransferSelected={state.selectedHost ? (paths) => transferSelectedFiles(paths, 'local') : undefined}
+            displayFiles={displayLocalFiles}
+            formatSize={formatSize}
+            formatDate={formatDate}
+            formatDuration={formatDuration}
+            pathSeparator={localSep}
+          />
+
+          {/* Remote pane */}
+          {!state.selectedHost ? (
+            // Host selection view
+            <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+              <div style={{
+                padding: '12px 16px',
+                background: theme.background.tertiary,
+                borderBottom: `1px solid ${theme.border.default}`,
+                fontSize: '12px',
+                fontWeight: 600,
+                color: theme.text.primary,
+                textTransform: 'uppercase',
+                letterSpacing: '0.5px',
+              }}>
+                Remote Machine
+              </div>
+              {remotePathBar}
+              <div style={{ flex: 1, overflow: 'auto', padding: '16px' }}>
+                {filteredHosts.length === 0 ? (
+                  <div style={{ textAlign: 'center', padding: '60px 20px', color: theme.text.secondary }}>
+                    <div style={{ fontSize: '48px', marginBottom: '16px', display: 'flex', justifyContent: 'center' }}>
+                      <svg width="48" height="48" viewBox="0 0 16 16" fill="none">
+                        <circle cx="7" cy="7" r="5" stroke={theme.text.tertiary} strokeWidth="1.3" />
+                        <path d="M11 11L14 14" stroke={theme.text.tertiary} strokeWidth="1.3" strokeLinecap="round" />
+                      </svg>
+                    </div>
+                    <div style={{ fontSize: '14px', marginBottom: '8px' }}>
+                      {state.hostSearchQuery ? 'No hosts found matching your search' : 'No hosts available'}
+                    </div>
+                    <div style={{ fontSize: '12px', color: theme.text.tertiary }}>
+                      {state.hostSearchQuery ? 'Try a different search term' : 'Create a connection from the Design tab'}
+                    </div>
+                  </div>
+                ) : (
+                  <div style={{
+                    display: 'grid',
+                    gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))',
+                    gap: '12px',
+                  }}>
+                    {filteredHosts.map((host) => (
+                      <button
+                        key={host.id}
+                        onClick={() => host.hasSSH && handleHostSelect(host)}
+                        disabled={!host.hasSSH}
+                        style={{
+                          background: host.hasSSH ? theme.background.tertiary : theme.background.secondary,
+                          border: `1px solid ${theme.border.default}`,
+                          borderRadius: '8px',
+                          padding: '16px',
+                          cursor: host.hasSSH ? 'pointer' : 'not-allowed',
+                          opacity: host.hasSSH ? 1 : 0.5,
+                          transition: 'all 0.2s',
+                          textAlign: 'center',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          alignItems: 'center',
+                          gap: '8px',
+                        }}
+                        onMouseEnter={(e) => {
+                          if (host.hasSSH) {
+                            e.currentTarget.style.background = theme.background.elevated;
+                            e.currentTarget.style.borderColor = theme.accent.greenDark;
+                          }
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.background = host.hasSSH ? theme.background.tertiary : theme.background.secondary;
+                          e.currentTarget.style.borderColor = theme.border.default;
+                        }}
+                      >
+                        <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', width: '32px', height: '32px' }}>
+                          {getOSIcon(host)}
+                        </div>
+                        <div style={{
+                          fontSize: '13px',
+                          fontWeight: 600,
+                          color: host.hasSSH ? theme.text.primary : theme.text.tertiary,
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                          whiteSpace: 'nowrap',
+                          width: '100%',
+                        }}>
+                          {host.label}
+                        </div>
+                        {!host.hasSSH && (
+                          <div style={{ fontSize: '10px', color: theme.text.tertiary, fontStyle: 'italic' }}>
+                            SSH not available
+                          </div>
+                        )}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          ) : (
+            <FilePane
+              side="remote"
+              title={`Remote Machine (${state.selectedHost.username}@${state.selectedHost.host})`}
+              paneState={state.remote}
+              transfer={state.transfer}
+              dragOverPane={state.dragOverPane}
+              transferActive={transferActive}
+              onNavigate={(p) => { if (!transferActive) loadRemoteFiles(p); }}
+              onFileClick={(fp) => dispatch({ type: 'SET_PANE_SELECTED_FILE', pane: 'remote', file: fp })}
+              onFileSelect={(fp, ctrl) => handleFileSelect('remote', fp, ctrl)}
+              onSelectAll={() => {
+                const selectableFiles = displayRemoteFiles.filter(f => f.type === 'file' && f.name !== '..');
+                dispatch({ type: 'SELECT_ALL_FILES', pane: 'remote', filePaths: selectableFiles.map(f => f.path) });
+              }}
+              onDeselectAll={() => dispatch({ type: 'DESELECT_ALL_FILES', pane: 'remote' })}
+              onDragStart={(file, e) => {
+                e.dataTransfer.setData('sourcePane', 'remote');
+                e.dataTransfer.setData('filePath', file.path);
+                e.dataTransfer.setData('fileName', file.name);
+                e.dataTransfer.effectAllowed = 'copy';
+              }}
+              onDrop={handleRemoteDrop}
+              onDragEnter={() => dispatch({ type: 'SET_DRAG_OVER', pane: 'remote' })}
+              onDragLeave={() => dispatch({ type: 'SET_DRAG_OVER', pane: null })}
+              onSortChange={(col) => handleSortChange('remote', col)}
+              onToggleHidden={() => dispatch({ type: 'SET_PANE_SHOW_HIDDEN', pane: 'remote', showHidden: !state.remote.showHidden })}
+              onOpenSettingsMenu={(pos) => dispatch({ type: 'SET_PANE_CONTEXT_MENU', pane: 'remote', open: true, pos })}
+              onCloseSettingsMenu={() => dispatch({ type: 'SET_PANE_CONTEXT_MENU', pane: 'remote', open: false })}
+              onSettingsMenuHover={(i) => dispatch({ type: 'SET_PANE_MENU_HOVER', pane: 'remote', index: i })}
+              onSettingsMenuVisible={(v) => dispatch({ type: 'SET_PANE_MENU_VISIBLE', pane: 'remote', visible: v })}
+              onDeleteFile={(file) => handleDeleteFile('remote', file)}
+              onRenameFile={(file, newName) => handleRenameFile('remote', file, newName)}
+              onCreateFolder={(name) => handleCreateFolder('remote', name)}
+              onTransferSelected={(paths) => transferSelectedFiles(paths, 'remote')}
+              displayFiles={displayRemoteFiles}
+              formatSize={formatSize}
+              formatDate={formatDate}
+              formatDuration={formatDuration}
+              pathSeparator="/"
+              pathBarSlot={remotePathBar}
+            />
+          )}
+        </div>
+      </div>
+
+      <style>{`
+        @keyframes spin {
+          0% { transform: rotate(0deg); }
+          100% { transform: rotate(360deg); }
+        }
+      `}</style>
+
+      {/* Error Toast */}
+      {state.error && (
         <div style={{
-          padding: '16px 20px',
-          borderBottom: '1px solid #3a4556',
+          position: 'absolute',
+          bottom: '20px',
+          left: '50%',
+          transform: 'translateX(-50%)',
+          background: theme.accent.red,
+          color: '#fff',
+          padding: '12px 20px',
+          borderRadius: '8px',
+          fontSize: '13px',
+          boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3)',
           display: 'flex',
           alignItems: 'center',
-          justifyContent: 'space-between',
+          gap: '12px',
+          maxWidth: '600px',
+          zIndex: 10001,
         }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-              <path d="M12 2L17 7M12 2L7 7M12 2V16" stroke="#16825d" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-              <path d="M3 12V20C3 21.1046 3.89543 22 5 22H19C20.1046 22 21 21.1046 21 20V12" stroke="#16825d" strokeWidth="2" strokeLinecap="round" />
-              <path d="M12 8L17 13M12 8L7 13M12 8V22" stroke="#16825d" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" opacity="0.5" />
-            </svg>
-            <h2 style={{
-              margin: 0,
-              fontSize: '18px',
-              fontWeight: 600,
-              color: '#e8ecf4',
-            }}>
-              SFTP File Transfer
-            </h2>
-            {selectedHost && (
-              <span style={{
-                fontSize: '13px',
-                color: '#8892a6',
-                marginLeft: '8px',
-              }}>
-                → {selectedHost.label}
-              </span>
-            )}
-          </div>
+          <span style={{ flex: 1 }}>{state.error}</span>
           <button
-            onClick={handleClose}
+            onClick={() => dispatch({ type: 'SET_ERROR', error: null })}
             style={{
               background: 'transparent',
               border: 'none',
-              color: '#8892a6',
+              color: '#fff',
               cursor: 'pointer',
-              fontSize: '24px',
+              fontSize: '18px',
               padding: '0',
-              width: '32px',
-              height: '32px',
+              width: '24px',
+              height: '24px',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              borderRadius: '6px',
-              transition: 'all 0.2s',
+              borderRadius: '4px',
             }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.background = '#303948';
-              e.currentTarget.style.color = '#e8ecf4';
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.background = 'transparent';
-              e.currentTarget.style.color = '#8892a6';
-            }}
+            onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(255, 255, 255, 0.2)'; }}
+            onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
           >
-            ×
+            {'\u00d7'}
           </button>
         </div>
-
-        {/* Content */}
-        <div style={{ flex: 1, overflow: 'hidden', position: 'relative' }}>
-          {/* Two-Pane File Browser - Always Visible */}
-          <div style={{
-            display: 'flex',
-            height: '100%',
-          }}>
-              {/* Left Pane - Local Files */}
-              <div style={{
-                flex: 1,
-                borderRight: '1px solid #3a4556',
-                display: 'flex',
-                flexDirection: 'column',
-              }}>
-                <div style={{
-                  padding: '12px 16px',
-                  background: '#252d3f',
-                  borderBottom: '1px solid #3a4556',
-                  fontSize: '12px',
-                  fontWeight: 600,
-                  color: '#e8ecf4',
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.5px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  position: 'relative',
-                }}>
-                  <span>Local Machine</span>
-                  <button
-                    ref={localGearRef}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      const nextOpen = !localContextMenu;
-                      if (nextOpen) {
-                        setLocalMenuPos(getSettingsMenuPosition(e.currentTarget));
-                      } else {
-                        setLocalMenuPos(null);
-                      }
-                      setLocalContextMenu(nextOpen);
-                      setLocalMenuHover(null);
-                      setRemoteContextMenu(false);
-                      setRemoteMenuPos(null);
-                    }}
-                    style={{
-                      background: 'transparent',
-                      border: 'none',
-                      color: '#e8ecf4',
-                      cursor: 'pointer',
-                      padding: '4px',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      borderRadius: '4px',
-                      transition: 'all 0.2s',
-                    }}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.background = '#1f2430';
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.background = 'transparent';
-                    }}
-                  >
-                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                      <circle cx="8" cy="8" r="2.2" />
-                      <path d="M8 1.6v1.4M8 13v1.4M1.6 8h1.4M13 8h1.4M3.2 3.2l1 1M11.8 11.8l1 1M12.8 3.2l-1 1M4.2 11.8l-1 1" />
-                      <circle cx="8" cy="8" r="5.4" strokeOpacity="0.55" />
-                    </svg>
-                  </button>
-                  
-                </div>
-                <div style={{
-                  padding: '8px 16px',
-                  background: '#1f2430',
-                  borderBottom: '1px solid #3a4556',
-                  fontSize: '11px',
-                  color: '#8892a6',
-                  fontFamily: 'monospace',
-                }}>
-                  {localPath}
-                </div>
-                <div
-                  onDragOver={(e) => {
-                    e.preventDefault();
-                    e.dataTransfer.dropEffect = 'copy';
-                  }}
-                  onDragEnter={(e) => {
-                    e.preventDefault();
-                    console.log('[SFTP] Drag enter local pane');
-                    setDragOverPane('local');
-                  }}
-                  onDragLeave={(e) => {
-                    // Only clear if leaving the pane completely
-                    const rect = e.currentTarget.getBoundingClientRect();
-                    if (
-                      e.clientX < rect.left ||
-                      e.clientX >= rect.right ||
-                      e.clientY < rect.top ||
-                      e.clientY >= rect.bottom
-                    ) {
-                      console.log('[SFTP] Drag leave local pane');
-                      setDragOverPane(null);
-                    }
-                  }}
-                  onDrop={async (e) => {
-                    e.preventDefault();
-                    setDragOverPane(null);
-                    const sourcePane = e.dataTransfer.getData('sourcePane');
-                    const filePath = e.dataTransfer.getData('filePath');
-                    const fileName = e.dataTransfer.getData('fileName');
-
-                    console.log('[SFTP] File dropped on local pane:', { sourcePane, filePath, fileName });
-
-                    if (sourcePane === 'remote') {
-                      // Download from remote to local
-                      console.log('[SFTP] Initiating download:', fileName);
-                      startTransfer('local', fileName);
-                      try {
-                        await window.electron.downloadFile({
-                          connectionId: selectedHost!.id,
-                          remotePath: filePath,
-                          localPath: localPath,
-                          fileName,
-                        });
-                        console.log('[SFTP] Download complete:', fileName);
-                        setTransferProgress(null);
-                        // Refresh local files
-                        loadLocalFiles(localPath);
-                      } catch (err: any) {
-                        console.error('[SFTP] Download failed:', err);
-                        setError(`Download failed: ${err.message}`);
-                        setTransferProgress(null);
-                      }
-                    }
-                  }}
-                  style={{
-                    flex: 1,
-                    overflow: 'auto',
-                    padding: '8px',
-                    paddingBottom: `${TRANSFER_FOOTER_HEIGHT + 16}px`,
-                    position: 'relative',
-                    background: dragOverPane === 'local' ? 'rgba(22, 130, 93, 0.1)' : 'transparent',
-                    border: dragOverPane === 'local' ? '2px dashed #16825d' : '2px dashed transparent',
-                    transition: 'all 0.2s',
-                  }}>
-                  {displayLocalFiles.length === 0 && !localLoading ? (
-                    <div style={{ textAlign: 'center', padding: '40px', color: '#8892a6' }}>
-                      No files found
-                    </div>
-                  ) : (
-                    <table style={{ width: '100%', borderCollapse: 'collapse', tableLayout: 'fixed' }}>
-                      <colgroup>
-                        <col style={{ width: '45%' }} />
-                        <col style={{ width: '28%' }} />
-                        <col style={{ width: '12%' }} />
-                        <col style={{ width: '15%' }} />
-                      </colgroup>
-                      <thead>
-                        <tr style={{ borderBottom: '1px solid #3a4556' }}>
-                          {['name', 'modified', 'type', 'size'].map((col) => (
-                            <th
-                              key={col}
-                              onClick={() => {
-                                console.log('[SFTP] Local sort column clicked:', col);
-                                if (localSortColumn === col) {
-                                  setLocalSortDirection(localSortDirection === 'asc' ? 'desc' : 'asc');
-                                } else {
-                                  setLocalSortColumn(col as any);
-                                  setLocalSortDirection('asc');
-                                }
-                              }}
-                              style={{
-                                padding: '8px 12px',
-                                textAlign: 'left',
-                                fontSize: '11px',
-                                fontWeight: 600,
-                                color: '#8b949e',
-                                textTransform: 'uppercase',
-                                letterSpacing: '0.5px',
-                                cursor: 'pointer',
-                                userSelect: 'none',
-                                position: 'relative',
-                                overflow: 'hidden',
-                                textOverflow: 'ellipsis',
-                                whiteSpace: 'nowrap',
-                              }}
-                              onMouseEnter={(e) => {
-                                e.currentTarget.style.background = '#252d3f';
-                              }}
-                              onMouseLeave={(e) => {
-                                e.currentTarget.style.background = 'transparent';
-                              }}
-                            >
-                              {col.charAt(0).toUpperCase() + col.slice(1)}
-                              {localSortColumn === col && (
-                                <span style={{ marginLeft: '4px' }}>
-                                  {localSortDirection === 'asc' ? '↑' : '↓'}
-                                </span>
-                              )}
-                            </th>
-                          ))}
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {displayLocalFiles.map((file, index) => (
-                          <tr
-                            key={index}
-                            draggable={file.type === 'file'}
-                            onClick={() => {
-                              console.log('[SFTP] Local file clicked:', file.name);
-                              setSelectedLocalFile(file.path);
-                            }}
-                            onDoubleClick={() => {
-                              console.log('[SFTP] Local file double-clicked:', file.name);
-                              if (file.type === 'directory') {
-                                handleLocalNavigate(file.path);
-                              }
-                            }}
-                            onDragStart={(e) => {
-                              console.log('[SFTP] Drag started - local file:', file.name);
-                              e.dataTransfer.setData('sourcePane', 'local');
-                              e.dataTransfer.setData('filePath', file.path);
-                              e.dataTransfer.setData('fileName', file.name);
-                              e.dataTransfer.effectAllowed = 'copy';
-                            }}
-                            style={{
-                              cursor: 'pointer',
-                              background: selectedLocalFile === file.path ? '#1e3a5f' : 'transparent',
-                              transition: 'background 0.15s',
-                              opacity: isHiddenFile(file.name) ? 0.5 : 1,
-                              filter: isHiddenFile(file.name) ? 'grayscale(50%)' : 'none',
-                            }}
-                            onMouseEnter={(e) => {
-                              if (selectedLocalFile !== file.path) {
-                                e.currentTarget.style.background = '#252d3f';
-                              }
-                            }}
-                            onMouseLeave={(e) => {
-                              if (selectedLocalFile !== file.path) {
-                                e.currentTarget.style.background = 'transparent';
-                              }
-                            }}
-                          >
-                            <td style={{ padding: '8px 12px', fontSize: '13px', color: '#e8ecf4' }}>
-                              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', overflow: 'hidden' }}>
-                                <span style={{
-                                  flexShrink: 0,
-                                  display: 'flex',
-                                  alignItems: 'center',
-                                  color: file.type === 'directory'
-                                    ? '#4d7cfe'
-                                    : isArchiveFile(file.name)
-                                      ? '#f59e0b'
-                                      : '#b4bcc9',
-                                }}>
-                                  {getFileIcon(file)}
-                                </span>
-                                <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{file.name}</span>
-                              </div>
-                            </td>
-                            <td style={{ padding: '8px 12px', fontSize: '12px', color: '#8892a6', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                              {formatDate(file.modifiedTime)}
-                            </td>
-                            <td style={{ padding: '8px 12px', fontSize: '12px', color: '#8892a6', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                              {file.type === 'directory' ? 'Folder' : 'File'}
-                            </td>
-                            <td style={{ padding: '8px 12px', fontSize: '12px', color: '#8892a6', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                              {file.type === 'file' ? formatSize(file.size) : '-'}
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  )}
-
-                  {/* Loading Overlay for Local Pane */}
-                  {localLoading && (
-                    <div style={{
-                      position: 'absolute',
-                      top: 0,
-                      left: 0,
-                      right: 0,
-                      bottom: 0,
-                      background: 'rgba(26, 31, 46, 0.85)',
-                      backdropFilter: 'blur(4px)',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      zIndex: 10,
-                    }}>
-                      <div style={{
-                        width: '40px',
-                        height: '40px',
-                        border: '3px solid rgba(58, 69, 86, 0.3)',
-                        borderTop: '3px solid #16825d',
-                        borderRadius: '50%',
-                        animation: 'spin 0.8s linear infinite',
-                      }} />
-                    </div>
-                  )}
-
-                  <div style={{ position: 'sticky', bottom: 0, paddingTop: '8px', zIndex: 15 }}>
-                    {renderTransferFooter('local')}
-                  </div>
-                  </div>
-              </div>
-
-              {/* Right Pane - Remote Files */}
-              <div style={{
-                flex: 1,
-                display: 'flex',
-                flexDirection: 'column',
-              }}>
-                <div style={{
-                  padding: '12px 16px',
-                  background: '#252d3f',
-                  borderBottom: '1px solid #3a4556',
-                  fontSize: '12px',
-                  fontWeight: 600,
-                  color: '#e8ecf4',
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.5px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  position: 'relative',
-                }}>
-                  <span>Remote Machine{selectedHost && ` (${selectedHost.username}@${selectedHost.host})`}</span>
-                  {selectedHost && (
-                    <button
-                        ref={remoteGearRef}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          const nextOpen = !remoteContextMenu;
-                          if (nextOpen) {
-                            setRemoteMenuPos(getSettingsMenuPosition(e.currentTarget));
-                          } else {
-                            setRemoteMenuPos(null);
-                          }
-                          setRemoteContextMenu(nextOpen);
-                          setRemoteMenuHover(null);
-                          setLocalContextMenu(false);
-                          setLocalMenuPos(null);
-                        }}
-                        style={{
-                          background: 'transparent',
-                          border: 'none',
-                          color: '#e8ecf4',
-                          cursor: 'pointer',
-                          padding: '4px',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          borderRadius: '4px',
-                          transition: 'all 0.2s',
-                        }}
-                        onMouseEnter={(e) => {
-                          e.currentTarget.style.background = '#1f2430';
-                        }}
-                        onMouseLeave={(e) => {
-                          e.currentTarget.style.background = 'transparent';
-                        }}
-                      >
-                        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                          <circle cx="8" cy="8" r="2.2" />
-                          <path d="M8 1.6v1.4M8 13v1.4M1.6 8h1.4M13 8h1.4M3.2 3.2l1 1M11.8 11.8l1 1M12.8 3.2l-1 1M4.2 11.8l-1 1" />
-                          <circle cx="8" cy="8" r="5.4" strokeOpacity="0.55" />
-                        </svg>
-                      </button>
-                  )}
-                </div>
-
-                {/* Search bar when no host selected, path when host selected */}
-                {!selectedHost ? (
-                  <div style={{
-                    padding: '12px 16px',
-                    background: '#1f2430',
-                    borderBottom: '1px solid #3a4556',
-                  }}>
-                    <input
-                      type="text"
-                      placeholder="Search hosts..."
-                      value={hostSearchQuery}
-                      onChange={(e) => setHostSearchQuery(e.target.value)}
-                      style={{
-                        width: '100%',
-                        padding: '8px 12px',
-                        background: '#252d3f',
-                        border: '1px solid #3a4556',
-                        borderRadius: '6px',
-                        color: '#e8ecf4',
-                        fontSize: '13px',
-                        outline: 'none',
-                      }}
-                      onFocus={(e) => {
-                        e.currentTarget.style.borderColor = '#16825d';
-                      }}
-                      onBlur={(e) => {
-                        e.currentTarget.style.borderColor = '#3a4556';
-                      }}
-                    />
-                  </div>
-                ) : (
-                  <div style={{
-                    padding: '8px 16px',
-                    background: '#1f2430',
-                    borderBottom: '1px solid #3a4556',
-                    fontSize: '11px',
-                    color: '#c9d1d9',
-                    fontFamily: 'monospace',
-                  }}>
-                    {remotePath}
-                  </div>
-                )}
-
-                {/* Remote Pane Content: Host Selection or File Browser */}
-                {!selectedHost ? (
-                  /* Show host cards when no host selected */
-                  <div style={{
-                    flex: 1,
-                    overflow: 'auto',
-                    padding: '16px',
-                  }}>
-                    {filteredHosts.length === 0 ? (
-                      <div style={{ textAlign: 'center', padding: '60px 20px', color: '#c9d1d9' }}>
-                        <div style={{ fontSize: '48px', marginBottom: '16px', display: 'flex', justifyContent: 'center' }}>
-                          <svg width="48" height="48" viewBox="0 0 16 16" fill="none"><circle cx="7" cy="7" r="5" stroke={theme.text.tertiary} strokeWidth="1.3" /><path d="M11 11L14 14" stroke={theme.text.tertiary} strokeWidth="1.3" strokeLinecap="round" /></svg>
-                        </div>
-                        <div style={{ fontSize: '14px', marginBottom: '8px' }}>
-                          {hostSearchQuery ? 'No hosts found matching your search' : 'No hosts available'}
-                        </div>
-                        <div style={{ fontSize: '12px', color: '#8b949e' }}>
-                          {hostSearchQuery ? 'Try a different search term' : 'Create a connection from the Design tab'}
-                        </div>
-                      </div>
-                    ) : (
-                      <div style={{
-                        display: 'grid',
-                        gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))',
-                        gap: '12px',
-                      }}>
-                        {filteredHosts.map((host) => (
-                          <button
-                            key={host.id}
-                            onClick={() => host.hasSSH && handleHostSelect(host)}
-                            disabled={!host.hasSSH}
-                            style={{
-                              background: host.hasSSH ? '#252d3f' : '#1f2430',
-                              border: '1px solid #3a4556',
-                              borderRadius: '8px',
-                              padding: '16px',
-                              cursor: host.hasSSH ? 'pointer' : 'not-allowed',
-                              opacity: host.hasSSH ? 1 : 0.5,
-                              transition: 'all 0.2s',
-                              textAlign: 'center',
-                              display: 'flex',
-                              flexDirection: 'column',
-                              alignItems: 'center',
-                              gap: '8px',
-                            }}
-                            onMouseEnter={(e) => {
-                              if (host.hasSSH) {
-                                e.currentTarget.style.background = '#2a3347';
-                                e.currentTarget.style.borderColor = '#16825d';
-                              }
-                            }}
-                            onMouseLeave={(e) => {
-                              e.currentTarget.style.background = host.hasSSH ? '#252d3f' : '#1f2430';
-                              e.currentTarget.style.borderColor = '#3a4556';
-                            }}
-                          >
-                            <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', width: '32px', height: '32px' }}>{getOSIcon(host)}</div>
-                            <div style={{
-                              fontSize: '13px',
-                              fontWeight: 600,
-                              color: host.hasSSH ? '#e8ecf4' : '#8b949e',
-                              overflow: 'hidden',
-                              textOverflow: 'ellipsis',
-                              whiteSpace: 'nowrap',
-                              width: '100%',
-                            }}>
-                              {host.label}
-                            </div>
-                            {!host.hasSSH && (
-                              <div style={{
-                                fontSize: '10px',
-                                color: '#8b949e',
-                                fontStyle: 'italic',
-                              }}>
-                                SSH not available
-                              </div>
-                            )}
-                          </button>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                ) : (
-                  /* Show file browser when host selected */
-                  <div
-                    onDragOver={(e) => {
-                      e.preventDefault();
-                      e.dataTransfer.dropEffect = 'copy';
-                    }}
-                    onDragEnter={(e) => {
-                      e.preventDefault();
-                      console.log('[SFTP] Drag enter remote pane');
-                      setDragOverPane('remote');
-                    }}
-                    onDragLeave={(e) => {
-                      // Only clear if leaving the pane completely
-                      const rect = e.currentTarget.getBoundingClientRect();
-                      if (
-                        e.clientX < rect.left ||
-                        e.clientX >= rect.right ||
-                        e.clientY < rect.top ||
-                        e.clientY >= rect.bottom
-                      ) {
-                        console.log('[SFTP] Drag leave remote pane');
-                        setDragOverPane(null);
-                      }
-                    }}
-                    onDrop={async (e) => {
-                      e.preventDefault();
-                      setDragOverPane(null);
-                      const sourcePane = e.dataTransfer.getData('sourcePane');
-                      const filePath = e.dataTransfer.getData('filePath');
-                      const fileName = e.dataTransfer.getData('fileName');
-
-                      console.log('[SFTP] File dropped on remote pane:', { sourcePane, filePath, fileName });
-
-                      if (sourcePane === 'local') {
-                        // Upload from local to remote
-                        console.log('[SFTP] Initiating upload:', fileName);
-                        startTransfer('remote', fileName);
-                        try {
-                          await window.electron.uploadFile({
-                            connectionId: selectedHost!.id,
-                            localPath: filePath,
-                            remotePath: remotePath,
-                            fileName,
-                          });
-                          console.log('[SFTP] Upload complete:', fileName);
-                          setTransferProgress(null);
-                          // Refresh remote files
-                          loadRemoteFiles(remotePath);
-                        } catch (err: any) {
-                          console.error('[SFTP] Upload failed:', err);
-                          setError(`Upload failed: ${err.message}`);
-                          setTransferProgress(null);
-                        }
-                      }
-                    }}
-                    style={{
-                      flex: 1,
-                      overflow: 'auto',
-                      padding: '8px',
-                      paddingBottom: `${TRANSFER_FOOTER_HEIGHT + 16}px`,
-                      position: 'relative',
-                      background: dragOverPane === 'remote' ? 'rgba(22, 130, 93, 0.1)' : 'transparent',
-                      border: dragOverPane === 'remote' ? '2px dashed #16825d' : '2px dashed transparent',
-                      transition: 'all 0.2s',
-                    }}>
-                    {displayRemoteFiles.length === 0 && !remoteLoading ? (
-                    <div style={{ textAlign: 'center', padding: '40px', color: '#8892a6' }}>
-                      <div style={{ marginBottom: '12px', display: 'flex', justifyContent: 'center' }}>
-                        <svg width="24" height="24" viewBox="0 0 16 16" fill="none"><path d="M2 4V13C2 13.5523 2.44772 14 3 14H13C13.5523 14 14 13.5523 14 13V6C14 5.44772 13.5523 5 13 5H8L6 3H3C2.44772 3 2 3.44772 2 4Z" stroke={theme.text.tertiary} strokeWidth="1.2" /></svg>
-                      </div>
-                      {error ? 'Failed to load files' : 'No files found'}
-                    </div>
-                  ) : (
-                    <table style={{ width: '100%', borderCollapse: 'collapse', tableLayout: 'fixed' }}>
-                      <colgroup>
-                        <col style={{ width: '45%' }} />
-                        <col style={{ width: '28%' }} />
-                        <col style={{ width: '12%' }} />
-                        <col style={{ width: '15%' }} />
-                      </colgroup>
-                      <thead>
-                        <tr style={{ borderBottom: '1px solid #3a4556' }}>
-                          {['name', 'modified', 'type', 'size'].map((col) => (
-                            <th
-                              key={col}
-                              onClick={() => {
-                                console.log('[SFTP] Remote sort column clicked:', col);
-                                if (remoteSortColumn === col) {
-                                  setRemoteSortDirection(remoteSortDirection === 'asc' ? 'desc' : 'asc');
-                                } else {
-                                  setRemoteSortColumn(col as any);
-                                  setRemoteSortDirection('asc');
-                                }
-                              }}
-                              style={{
-                                padding: '8px 12px',
-                                textAlign: 'left',
-                                fontSize: '11px',
-                                fontWeight: 600,
-                                color: '#8b949e',
-                                textTransform: 'uppercase',
-                                letterSpacing: '0.5px',
-                                cursor: 'pointer',
-                                userSelect: 'none',
-                                position: 'relative',
-                                overflow: 'hidden',
-                                textOverflow: 'ellipsis',
-                                whiteSpace: 'nowrap',
-                              }}
-                              onMouseEnter={(e) => {
-                                e.currentTarget.style.background = '#252d3f';
-                              }}
-                              onMouseLeave={(e) => {
-                                e.currentTarget.style.background = 'transparent';
-                              }}
-                            >
-                              {col.charAt(0).toUpperCase() + col.slice(1)}
-                              {remoteSortColumn === col && (
-                                <span style={{ marginLeft: '4px' }}>
-                                  {remoteSortDirection === 'asc' ? '↑' : '↓'}
-                                </span>
-                              )}
-                            </th>
-                          ))}
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {displayRemoteFiles.map((file, index) => (
-                          <tr
-                            key={index}
-                            draggable={file.type === 'file'}
-                            onClick={() => {
-                              console.log('[SFTP] Remote file clicked:', file.name);
-                              setSelectedRemoteFile(file.path);
-                            }}
-                            onDoubleClick={() => {
-                              console.log('[SFTP] Remote file double-clicked:', file.name);
-                              if (file.type === 'directory') {
-                                handleRemoteNavigate(file.path);
-                              }
-                            }}
-                            onDragStart={(e) => {
-                              console.log('[SFTP] Drag started - remote file:', file.name);
-                              e.dataTransfer.setData('sourcePane', 'remote');
-                              e.dataTransfer.setData('filePath', file.path);
-                              e.dataTransfer.setData('fileName', file.name);
-                              e.dataTransfer.effectAllowed = 'copy';
-                            }}
-                            style={{
-                              cursor: 'pointer',
-                              background: selectedRemoteFile === file.path ? '#1e3a5f' : 'transparent',
-                              transition: 'background 0.15s',
-                              opacity: isHiddenFile(file.name) ? 0.5 : 1,
-                              filter: isHiddenFile(file.name) ? 'grayscale(50%)' : 'none',
-                            }}
-                            onMouseEnter={(e) => {
-                              if (selectedRemoteFile !== file.path) {
-                                e.currentTarget.style.background = '#252d3f';
-                              }
-                            }}
-                            onMouseLeave={(e) => {
-                              if (selectedRemoteFile !== file.path) {
-                                e.currentTarget.style.background = 'transparent';
-                              }
-                            }}
-                          >
-                            <td style={{ padding: '8px 12px', fontSize: '13px', color: '#e8ecf4' }}>
-                              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', overflow: 'hidden' }}>
-                                <span style={{
-                                  flexShrink: 0,
-                                  display: 'flex',
-                                  alignItems: 'center',
-                                  color: file.type === 'directory'
-                                    ? '#4d7cfe'
-                                    : isArchiveFile(file.name)
-                                      ? '#f59e0b'
-                                      : '#b4bcc9',
-                                }}>
-                                  {getFileIcon(file)}
-                                </span>
-                                <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{file.name}</span>
-                              </div>
-                            </td>
-                            <td style={{ padding: '8px 12px', fontSize: '12px', color: '#8892a6', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                              {formatDate(file.modifiedTime)}
-                            </td>
-                            <td style={{ padding: '8px 12px', fontSize: '12px', color: '#8892a6', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                              {file.type === 'directory' ? 'Folder' : 'File'}
-                            </td>
-                            <td style={{ padding: '8px 12px', fontSize: '12px', color: '#8892a6', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                              {file.type === 'file' ? formatSize(file.size) : '-'}
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  )}
-
-                  {/* Loading Overlay for Remote Pane */}
-                  {remoteLoading && (
-                    <div style={{
-                      position: 'absolute',
-                      top: 0,
-                      left: 0,
-                      right: 0,
-                      bottom: 0,
-                      background: 'rgba(26, 31, 46, 0.85)',
-                      backdropFilter: 'blur(4px)',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      zIndex: 10,
-                    }}>
-                      <div style={{
-                        width: '50px',
-                        height: '50px',
-                        border: '4px solid rgba(58, 69, 86, 0.2)',
-                        borderTop: '4px solid #4d7cfe',
-                        borderRadius: '50%',
-                        animation: 'spin 0.8s linear infinite',
-                        boxShadow: '0 0 25px rgba(77, 124, 254, 0.6), 0 0 50px rgba(77, 124, 254, 0.3), inset 0 0 10px rgba(77, 124, 254, 0.2)',
-                      }} />
-                    </div>
-                  )}
-
-                  <div style={{ position: 'sticky', bottom: 0, paddingTop: '8px', zIndex: 15 }}>
-                    {renderTransferFooter('remote')}
-                  </div>
-                  </div>
-                )}
-              </div>
-            </div>
-        </div>
-
-        {localContextMenu && localMenuPos && (
-          <>
-            <div
-              style={{
-                position: 'fixed',
-                inset: 0,
-                zIndex: 1200,
-              }}
-              onClick={closeLocalMenu}
-              onContextMenu={(e) => {
-                e.preventDefault();
-                closeLocalMenu();
-              }}
-            />
-            <div
-              style={{
-                position: 'fixed',
-                top: localMenuPos.y,
-                left: localMenuPos.x,
-                width: `${SETTINGS_MENU_WIDTH}px`,
-                padding: '4px',
-                zIndex: 1201,
-                pointerEvents: 'auto',
-                ...getMenuContainerStyle(localMenuVisible),
-              }}
-            >
-              <button
-                onClick={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  setShowLocalHidden(!showLocalHidden);
-                  closeLocalMenu();
-                }}
-                onMouseEnter={() => setLocalMenuHover(0)}
-                onMouseLeave={() => setLocalMenuHover(null)}
-                style={getMenuItemStyle(localMenuHover === 0)}
-              >
-                <span style={{ width: '18px', display: 'flex', justifyContent: 'center' }}>
-                  <CheckIcon visible={showLocalHidden} />
-                </span>
-                Show Hidden Files
-              </button>
-            </div>
-          </>
-        )}
-
-        {remoteContextMenu && remoteMenuPos && (
-          <>
-            <div
-              style={{
-                position: 'fixed',
-                inset: 0,
-                zIndex: 1200,
-              }}
-              onClick={closeRemoteMenu}
-              onContextMenu={(e) => {
-                e.preventDefault();
-                closeRemoteMenu();
-              }}
-            />
-            <div
-              style={{
-                position: 'fixed',
-                top: remoteMenuPos.y,
-                left: remoteMenuPos.x,
-                width: `${SETTINGS_MENU_WIDTH}px`,
-                padding: '4px',
-                zIndex: 1201,
-                pointerEvents: 'auto',
-                ...getMenuContainerStyle(remoteMenuVisible),
-              }}
-            >
-              <button
-                onClick={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  setShowRemoteHidden(!showRemoteHidden);
-                  closeRemoteMenu();
-                }}
-                onMouseEnter={() => setRemoteMenuHover(0)}
-                onMouseLeave={() => setRemoteMenuHover(null)}
-                style={getMenuItemStyle(remoteMenuHover === 0)}
-              >
-                <span style={{ width: '18px', display: 'flex', justifyContent: 'center' }}>
-                  <CheckIcon visible={showRemoteHidden} />
-                </span>
-                Show Hidden Files
-              </button>
-            </div>
-          </>
-        )}
-
-        <style>{`
-          @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-          }
-          @keyframes sftp-progress-slide {
-            0% { transform: translateX(-120%); }
-            60% { transform: translateX(220%); }
-            100% { transform: translateX(220%); }
-          }
-        `}</style>
-
-        {/* Error Toast */}
-        {error && (
-          <div style={{
-            position: 'absolute',
-            bottom: '20px',
-            left: '50%',
-            transform: 'translateX(-50%)',
-            background: '#ff5c5c',
-            color: '#fff',
-            padding: '12px 20px',
-            borderRadius: '8px',
-            fontSize: '13px',
-            boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3)',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '12px',
-            maxWidth: '600px',
-            zIndex: 10001,
-          }}>
-            <span style={{ flex: 1 }}>{error}</span>
-            <button
-              onClick={() => setError(null)}
-              style={{
-                background: 'transparent',
-                border: 'none',
-                color: '#fff',
-                cursor: 'pointer',
-                fontSize: '18px',
-                padding: '0',
-                width: '24px',
-                height: '24px',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                borderRadius: '4px',
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.background = 'rgba(255, 255, 255, 0.2)';
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.background = 'transparent';
-              }}
-            >
-              ×
-            </button>
-          </div>
-        )}
+      )}
     </div>
   );
 };

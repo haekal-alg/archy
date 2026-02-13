@@ -93,6 +93,25 @@ export interface ElectronAPI {
     localPath: string;
     fileName: string;
   }) => Promise<{ success: boolean }>;
+
+  // SFTP progress events
+  onSFTPProgress: (callback: (data: {
+    connectionId: string;
+    fileName: string;
+    bytesTransferred: number;
+    totalBytes: number;
+    direction: 'upload' | 'download';
+  }) => void) => () => void;
+
+  // Remote file operations
+  sftpDelete: (config: { connectionId: string; remotePath: string; isDirectory: boolean }) => Promise<{ success: boolean }>;
+  sftpRename: (config: { connectionId: string; oldPath: string; newPath: string }) => Promise<{ success: boolean }>;
+  sftpMkdir: (config: { connectionId: string; remotePath: string }) => Promise<{ success: boolean }>;
+
+  // Local file operations
+  localDelete: (filePath: string) => Promise<{ success: boolean }>;
+  localRename: (config: { oldPath: string; newPath: string }) => Promise<{ success: boolean }>;
+  localMkdir: (dirPath: string) => Promise<{ success: boolean }>;
 }
 
 declare global {

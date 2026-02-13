@@ -122,4 +122,24 @@ contextBridge.exposeInMainWorld('electron', {
     ipcRenderer.invoke('upload-file', config),
   downloadFile: (config: { connectionId: string; remotePath: string; localPath: string; fileName: string }) =>
     ipcRenderer.invoke('download-file', config),
+
+  // SFTP progress events
+  onSFTPProgress: (callback: (data: { connectionId: string; fileName: string; bytesTransferred: number; totalBytes: number; direction: 'upload' | 'download' }) => void) => {
+    const subscription = (_event: any, data: any) => callback(data);
+    ipcRenderer.on('sftp-progress', subscription);
+    return () => ipcRenderer.removeListener('sftp-progress', subscription);
+  },
+
+  // Remote file operations
+  sftpDelete: (config: { connectionId: string; remotePath: string; isDirectory: boolean }) =>
+    ipcRenderer.invoke('sftp-delete', config),
+  sftpRename: (config: { connectionId: string; oldPath: string; newPath: string }) =>
+    ipcRenderer.invoke('sftp-rename', config),
+  sftpMkdir: (config: { connectionId: string; remotePath: string }) =>
+    ipcRenderer.invoke('sftp-mkdir', config),
+
+  // Local file operations
+  localDelete: (filePath: string) => ipcRenderer.invoke('local-delete', filePath),
+  localRename: (config: { oldPath: string; newPath: string }) => ipcRenderer.invoke('local-rename', config),
+  localMkdir: (dirPath: string) => ipcRenderer.invoke('local-mkdir', dirPath),
 });
