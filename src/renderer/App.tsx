@@ -22,7 +22,7 @@ import DeviceNode from './components/DeviceNode';
 import EnhancedDeviceNode, { EnhancedDeviceData } from './components/EnhancedDeviceNode';
 import GroupNode from './components/GroupNode';
 import TextNode from './components/TextNode';
-import EditNodeModal from './components/EditNodeModal';
+// EditNodeModal removed — editing done via StylePanel
 import ShapeLibrary from './components/ShapeLibrary';
 import StylePanel from './components/StylePanel';
 import ContextMenu from './components/ContextMenu';
@@ -36,7 +36,10 @@ import { TabProvider, useTabContext } from './contexts/TabContext';
 import { ToolPalette } from './components/ToolPalette';
 import { ToolType } from './types/tools';
 import { useToast } from './hooks/useToast';
+import { ExportIcon } from './components/StatusIcons';
 import './App.css';
+import './styles/theme-vars.css';
+import './styles/common.css';
 import { toPng, toJpeg } from 'html-to-image';
 import theme from '../theme';
 
@@ -62,12 +65,12 @@ interface HistoryState {
 }
 
 const AppContent: React.FC = () => {
-  const { activeTab, createConnection } = useTabContext();
+  const { activeTab, setActiveTab, createConnection, setTopologyNodes, setOnFocusNode } = useTabContext();
   const [nodes, setNodes, onNodesChange] = useNodesState<Node>([] as Node[]);
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([] as Edge[]);
   const [selectedNode, setSelectedNode] = useState<Node | null>(null);
   const [selectedEdge, setSelectedEdge] = useState<Edge | null>(null);
-  const [isModalOpen, setIsModalOpen] = useState(false);
+  // isModalOpen removed — EditNodeModal eliminated
   const reactFlowWrapper = useRef<HTMLDivElement>(null);
   const [reactFlowInstance, setReactFlowInstance] = useState<ReactFlowInstance | null>(null);
   const [diagramName, setDiagramName] = useState('Untitled');
@@ -125,6 +128,37 @@ const AppContent: React.FC = () => {
   useEffect(() => {
     currentFilePathRef.current = currentFilePath;
   }, [currentFilePath]);
+
+  // Sync lightweight topology node data to TabContext for ConnectionsTab cross-reference
+  useEffect(() => {
+    const topologyInfo = nodes
+      .filter(n => n.type === 'enhanced' || n.type === 'group')
+      .map(n => {
+        const data = n.data as unknown as EnhancedDeviceData;
+        return {
+          id: n.id,
+          label: data.label || 'Unknown',
+          type: data.type || 'generic',
+          color: data.color || (theme.device as Record<string, string>)[data.type] || theme.text.tertiary,
+        };
+      });
+    setTopologyNodes(topologyInfo);
+  }, [nodes, setTopologyNodes]);
+
+  // Register focusNode handler so ConnectionsTab can navigate to a node on the design canvas
+  useEffect(() => {
+    setOnFocusNode((nodeId: string) => {
+      const node = nodes.find(n => n.id === nodeId);
+      if (node && reactFlowInstance) {
+        reactFlowInstance.setCenter(
+          node.position.x + (node.measured?.width ?? 140) / 2,
+          node.position.y + (node.measured?.height ?? 100) / 2,
+          { zoom: reactFlowInstance.getZoom(), duration: 400 }
+        );
+        setSelectedNode(node);
+      }
+    });
+  }, [nodes, reactFlowInstance, setOnFocusNode, setSelectedNode]);
 
   // Memoize unique edge colors to avoid recalculating on every render
   const uniqueEdgeColors = useMemo(() => {
@@ -365,6 +399,14 @@ const AppContent: React.FC = () => {
           setSelectedEdge(null);
           setContextMenu(null);
         }
+      } else if ((event.ctrlKey || event.metaKey) && event.key === '1') {
+        // Switch to Design tab
+        event.preventDefault();
+        setActiveTab('design');
+      } else if ((event.ctrlKey || event.metaKey) && event.key === '2') {
+        // Switch to Connections tab
+        event.preventDefault();
+        setActiveTab('connections');
       } else if ((event.ctrlKey || event.metaKey) && event.shiftKey && event.key === 'Z') {
         event.preventDefault();
         handleRedo();
@@ -387,7 +429,7 @@ const AppContent: React.FC = () => {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [handleUndo, handleRedo, handleToolChange, showKeyboardShortcuts]);
+  }, [handleUndo, handleRedo, handleToolChange, showKeyboardShortcuts, setActiveTab]);
 
   // Track node position changes and save to history when dragging ends
   const nodesMoveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -604,9 +646,8 @@ const AppContent: React.FC = () => {
   }, []);
 
   const onNodeDoubleClick = useCallback((event: React.MouseEvent, node: Node) => {
-    // Removed modal - asset editing now done in right side panel
-    // Just select the node to open the style panel
     setSelectedNode(node);
+    setIsStylePanelOpen(true);
   }, []);
 
   const onNodeContextMenu = useCallback((event: React.MouseEvent, node: Node) => {
@@ -667,9 +708,19 @@ const AppContent: React.FC = () => {
 
   const handleConnectToDevice = async (node: Node, connection?: any) => {
     if (!connection) {
-      alert('No connection configuration provided');
+      showWarning('No connection configuration provided');
       return;
     }
+
+    // Flash the node to provide visual feedback before switching tabs
+    setNodes((nds: Node[]) =>
+      nds.map((n) => (n.id === node.id ? { ...n, className: 'node-connect-flash' } : n))
+    );
+    setTimeout(() => {
+      setNodes((nds: Node[]) =>
+        nds.map((n) => (n.id === node.id ? { ...n, className: '' } : n))
+      );
+    }, 600);
 
     const { type, host, port, username, password, customCommand, privateKeyPath, portForwards } = connection;
 
@@ -684,6 +735,7 @@ const AppContent: React.FC = () => {
         // SSH connection: Use new terminal emulator
         const nodeData = node.data as unknown as EnhancedDeviceData;
         await createConnection({
+          nodeId: node.id,
           nodeName: nodeData.label || 'Unknown',
           nodeType: nodeData.type || 'generic',
           host,
@@ -708,31 +760,13 @@ const AppContent: React.FC = () => {
           await window.electron.executeCommand(command);
           console.log('Custom command executed in CMD');
         } else {
-          alert('No custom command specified');
+          showWarning('No custom command specified');
         }
       }
     } catch (error) {
       console.error('Connection failed:', error);
-      alert(`Failed to connect: ${error}`);
+      showError(`Failed to connect: ${error}`);
     }
-  };
-
-  const handleSaveNode = (nodeData: DeviceData) => {
-    if (selectedNode) {
-      setNodes((nds: Node[]) =>
-        nds.map((node: Node) => {
-          if (node.id === selectedNode.id) {
-            return {
-              ...node,
-              data: nodeData as unknown as Record<string, unknown>,
-            };
-          }
-          return node;
-        })
-      );
-    }
-    setIsModalOpen(false);
-    setSelectedNode(null);
   };
 
   const addEnhancedNode = (type: string) => {
@@ -1468,7 +1502,7 @@ const AppContent: React.FC = () => {
                 opacity: !isExporting && nodes.length > 0 ? 1 : 0.5
               }}
             >
-              {isExporting ? 'Exporting...' : '📥 Export'} ▾
+              {isExporting ? 'Exporting...' : <><ExportIcon size={14} /> Export</>} {'\u25BE'}
             </button>
 
             {showExportMenu && !isExporting && (
@@ -1583,25 +1617,6 @@ const AppContent: React.FC = () => {
               }
             }}
             onClose={() => setContextMenu(null)}
-          />
-        )}
-
-        {isModalOpen && selectedNode && selectedNode.type !== 'group' && (
-          <EditNodeModal
-            node={selectedNode}
-            onSave={handleSaveNode}
-            onClose={() => {
-              setIsModalOpen(false);
-              setSelectedNode(null);
-            }}
-            onConnect={() => {
-              const connections = (selectedNode.data as any).connections || [];
-              if (connections.length > 0) {
-                handleConnectToDevice(selectedNode, connections[0]);
-              } else {
-                alert('No connections configured for this node');
-              }
-            }}
           />
         )}
 

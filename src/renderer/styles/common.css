@@ -1,0 +1,159 @@
+/* Common utility classes for Archy UI components */
+/* These extract the most-repeated inline style patterns */
+
+/* ===== Form Field Styles ===== */
+
+.field-label {
+  display: block;
+  font-size: var(--fs-sm);
+  margin-bottom: var(--sp-xs);
+  font-weight: 500;
+  color: var(--text-secondary);
+}
+
+.field-input {
+  width: 100%;
+  padding: var(--sp-sm) var(--sp-md);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-sm);
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
+  font-size: var(--fs-sm);
+  box-sizing: border-box;
+  outline: none;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.field-input:focus {
+  border-color: var(--accent-blue) !important;
+  box-shadow: 0 0 0 3px rgba(77, 124, 254, 0.25);
+}
+
+.field-group {
+  margin-bottom: var(--sp-lg);
+}
+
+.color-input {
+  width: 100%;
+  height: 32px;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  background: var(--bg-tertiary);
+}
+
+/* ===== Button Styles ===== */
+
+.btn-secondary {
+  padding: var(--sp-md) var(--sp-xl);
+  background: var(--bg-hover);
+  color: var(--text-primary);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-sm);
+  font-size: var(--fs-md);
+  cursor: pointer;
+  font-weight: 500;
+  transition: background-color 0.2s ease;
+}
+
+.btn-secondary:hover {
+  background: var(--bg-active);
+}
+
+.btn-primary {
+  padding: var(--sp-md) var(--sp-xl);
+  background: var(--accent-blue);
+  color: var(--text-primary);
+  border: 1px solid var(--accent-blue-dark);
+  border-radius: var(--radius-sm);
+  font-size: var(--fs-md);
+  cursor: pointer;
+  font-weight: 500;
+  transition: background-color 0.2s ease;
+}
+
+.btn-primary:hover {
+  background: var(--accent-blue-light);
+}
+
+.btn-icon {
+  background: var(--bg-hover);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-sm);
+  color: var(--text-tertiary);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+.btn-icon:hover {
+  background: var(--bg-active);
+  color: var(--text-primary);
+}
+
+/* ===== Flex Utilities ===== */
+
+.flex-row { display: flex; flex-direction: row; }
+.flex-col { display: flex; flex-direction: column; }
+.flex-center { display: flex; align-items: center; justify-content: center; }
+.flex-between { display: flex; justify-content: space-between; align-items: center; }
+
+/* ===== Panel & Card Styles ===== */
+
+.panel-glass {
+  background: rgba(30, 33, 51, 0.65);
+  backdrop-filter: blur(60px) saturate(200%) brightness(1.1);
+  -webkit-backdrop-filter: blur(60px) saturate(200%) brightness(1.1);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  color: var(--text-primary);
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+}
+
+.panel-glass:hover {
+  background: rgba(40, 44, 68, 0.8);
+}
+
+.card {
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-sm);
+  padding: var(--sp-lg) var(--sp-xl);
+  transition: background-color 0.2s ease;
+}
+
+/* ===== Badge Styles ===== */
+
+.tab-badge {
+  color: var(--text-primary);
+  border-radius: var(--radius-full);
+  padding: 2px var(--sp-md);
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  min-width: 20px;
+  text-align: center;
+  display: inline-block;
+  line-height: 1.4;
+}
+
+/* ===== Animations ===== */
+
+@keyframes pulse-red {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.6; }
+}
+
+.pulse-red {
+  animation: pulse-red 2s ease-in-out infinite;
+}
+
+@keyframes pulse-dot {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.2); opacity: 0.7; }
+}
+
+.pulse-dot {
+  animation: pulse-dot 2s ease-in-out infinite;
+}

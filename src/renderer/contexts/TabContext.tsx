@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useCallback, useRef, ReactNode } from 'react';
-import { TabType, SSHConnection, TabContextType, SSHPortForward, DisconnectReason } from '../types/terminal';
+import { TabType, SSHConnection, TabContextType, SSHPortForward, DisconnectReason, TopologyNodeInfo } from '../types/terminal';
 import { cleanupTerminal } from '../components/TerminalEmulator';
 
 const TabContext = createContext<TabContextType | undefined>(undefined);
@@ -32,6 +32,21 @@ export const TabProvider: React.FC<TabProviderProps> = ({ children }) => {
   const [connections, setConnections] = useState<SSHConnection[]>([]);
   const [activeConnectionId, setActiveConnectionId] = useState<string | null>(null);
 
+  // Topology cross-reference
+  const [topologyNodes, setTopologyNodes] = useState<TopologyNodeInfo[]>([]);
+  const onFocusNodeRef = useRef<((nodeId: string) => void) | undefined>(undefined);
+
+  const focusNode = useCallback((nodeId: string) => {
+    setActiveTab('design');
+    setTimeout(() => {
+      onFocusNodeRef.current?.(nodeId);
+    }, 100);
+  }, []);
+
+  const setOnFocusNode = useCallback((handler: (nodeId: string) => void) => {
+    onFocusNodeRef.current = handler;
+  }, []);
+
   // Track connection timeouts to prevent memory leaks
   const connectionTimeouts = useRef<Map<string, NodeJS.Timeout>>(new Map());
 
@@ -49,6 +64,7 @@ export const TabProvider: React.FC<TabProviderProps> = ({ children }) => {
   }, []);
 
   const createConnection = useCallback(async (config: {
+    nodeId?: string;
     nodeName: string;
     nodeType: string;
     host: string;
@@ -76,6 +92,7 @@ export const TabProvider: React.FC<TabProviderProps> = ({ children }) => {
 
     const newConnection: SSHConnection = {
       id: connectionId,
+      nodeId: config.nodeId,
       nodeName: config.nodeName,
       nodeType: config.nodeType,
       host: config.host,
@@ -599,6 +616,10 @@ export const TabProvider: React.FC<TabProviderProps> = ({ children }) => {
     removeConnection,
     retryConnection,
     cancelAutoReconnect,
+    topologyNodes,
+    setTopologyNodes,
+    focusNode,
+    setOnFocusNode,
   };
 
   return <TabContext.Provider value={value}>{children}</TabContext.Provider>;

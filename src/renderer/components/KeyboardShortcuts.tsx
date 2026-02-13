@@ -1,4 +1,5 @@
 import React from 'react';
+import { KeyboardIcon } from './StatusIcons';
 import theme from '../../theme';
 
 interface Shortcut {
@@ -14,6 +15,8 @@ interface KeyboardShortcutsProps {
 
 const shortcuts: Shortcut[] = [
   // Navigation
+  { key: 'Ctrl/⌘ + 1', description: 'Switch to Design tab', category: 'Navigation' },
+  { key: 'Ctrl/⌘ + 2', description: 'Switch to Connections tab', category: 'Navigation' },
   { key: 'Space + Drag', description: 'Pan canvas', category: 'Navigation' },
   { key: 'Mouse Wheel', description: 'Zoom in/out', category: 'Navigation' },
   { key: 'Middle Click + Drag', description: 'Pan canvas', category: 'Navigation' },
@@ -110,7 +113,7 @@ const KeyboardShortcuts: React.FC<KeyboardShortcutsProps> = ({ isOpen, onClose }
             alignItems: 'center',
             gap: theme.spacing.lg,
           }}>
-            <span>⌨️</span>
+            <KeyboardIcon size={24} color={theme.text.primary} />
             Keyboard Shortcuts
           </h2>
         </div>

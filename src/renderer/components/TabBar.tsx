@@ -1,41 +1,44 @@
 import React from 'react';
 import { useTabContext } from '../contexts/TabContext';
 import { TabType } from '../types/terminal';
+import theme from '../../theme';
 
 const TabBar: React.FC = () => {
   const { activeTab, setActiveTab, connections } = useTabContext();
 
-  const activeConnections = connections.filter(c => c.status === 'connected').length;
+  const connectedCount = connections.filter(c => c.status === 'connected').length;
+  const errorCount = connections.filter(c => c.status === 'error').length;
+  const connectingCount = connections.filter(c => c.status === 'connecting').length;
 
-  const tabs: { id: TabType; label: string; badge?: number }[] = [
+  const tabs: { id: TabType; label: string }[] = [
     { id: 'design', label: 'Design' },
-    { id: 'connections', label: 'Connections', badge: activeConnections > 0 ? activeConnections : undefined },
+    { id: 'connections', label: 'Connections' },
   ];
 
   return (
     <div style={{
       display: 'flex',
-      backgroundColor: '#1a1f25',
-      borderBottom: '1px solid #2a333d',
-      padding: '0 16px',
-      gap: '4px',
+      backgroundColor: theme.background.primary,
+      borderBottom: `1px solid ${theme.border.subtle}`,
+      padding: `0 ${theme.spacing.xl}`,
+      gap: theme.spacing.xs,
     }}>
       {tabs.map(tab => (
         <button
           key={tab.id}
           onClick={() => setActiveTab(tab.id)}
           style={{
-            padding: '12px 24px',
-            backgroundColor: activeTab === tab.id ? '#242c34' : 'transparent',
-            color: activeTab === tab.id ? '#e6edf3' : '#8b97a3',
+            padding: `${theme.spacing.lg} ${theme.spacing.xxxl}`,
+            backgroundColor: activeTab === tab.id ? theme.background.secondary : 'transparent',
+            color: activeTab === tab.id ? theme.text.primary : theme.text.tertiary,
             border: 'none',
             cursor: 'pointer',
-            fontSize: '14px',
-            fontWeight: activeTab === tab.id ? '600' : '400',
+            fontSize: theme.fontSize.base,
+            fontWeight: activeTab === tab.id ? theme.fontWeight.semibold : theme.fontWeight.normal,
             transition: 'background-color 160ms ease, color 160ms ease, transform 120ms ease, border-bottom-color 160ms ease, box-shadow 160ms ease',
             display: 'flex',
             alignItems: 'center',
-            gap: '8px',
+            gap: theme.spacing.md,
             outline: 'none',
             position: 'relative',
           }}
@@ -49,8 +52,8 @@ const TabBar: React.FC = () => {
           }}
           onMouseEnter={(e) => {
             if (activeTab !== tab.id) {
-              e.currentTarget.style.backgroundColor = '#2a323b';
-              e.currentTarget.style.color = '#c4ced8';
+              e.currentTarget.style.backgroundColor = theme.background.hover;
+              e.currentTarget.style.color = theme.text.secondary;
             }
           }}
           onMouseLeave={(e) => {
@@ -58,35 +61,59 @@ const TabBar: React.FC = () => {
             e.currentTarget.style.boxShadow = 'none';
             if (activeTab !== tab.id) {
               e.currentTarget.style.backgroundColor = 'transparent';
-              e.currentTarget.style.color = '#8b97a3';
+              e.currentTarget.style.color = theme.text.tertiary;
             }
           }}
         >
           {tab.label}
-          {tab.badge !== undefined && tab.badge > 0 && (
-            <span style={{
-              backgroundColor: '#1f6f5c',
-              color: '#fff',
-              borderRadius: '10px',
-              padding: '2px 8px',
-              fontSize: '11px',
-              fontWeight: '600',
-              minWidth: '20px',
-              textAlign: 'center',
-            }}>
-              {tab.badge}
-            </span>
+
+          {/* Connection status badges - only on Connections tab */}
+          {tab.id === 'connections' && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+              {connectedCount > 0 && (
+                <span className="tab-badge" style={{ backgroundColor: theme.accent.greenDark }}>
+                  {connectedCount}
+                </span>
+              )}
+              {connectingCount > 0 && (
+                <span className="tab-badge" style={{ backgroundColor: theme.accent.orange, color: theme.text.inverted }}>
+                  {connectingCount}
+                </span>
+              )}
+              {errorCount > 0 && (
+                <span className="tab-badge pulse-red" style={{ backgroundColor: theme.accent.red }}>
+                  {errorCount}
+                </span>
+              )}
+            </div>
           )}
+
+          {/* Red alert dot when errors exist and user is on another tab */}
+          {tab.id === 'connections' && errorCount > 0 && activeTab !== 'connections' && (
+            <span
+              className="pulse-dot"
+              style={{
+                position: 'absolute',
+                top: '6px',
+                right: '6px',
+                width: '6px',
+                height: '6px',
+                borderRadius: '50%',
+                backgroundColor: theme.accent.red,
+              }}
+            />
+          )}
+
           <span
             aria-hidden
             style={{
               position: 'absolute',
-              left: '12px',
-              right: '12px',
+              left: theme.spacing.lg,
+              right: theme.spacing.lg,
               bottom: '0',
               height: '2px',
-              backgroundColor: '#2f81f7',
-              borderRadius: '2px',
+              backgroundColor: theme.accent.blue,
+              borderRadius: theme.radius.xs,
               transform: activeTab === tab.id ? 'scaleX(1)' : 'scaleX(0)',
               transformOrigin: 'center',
               transition: 'transform 180ms ease',

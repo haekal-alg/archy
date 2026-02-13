@@ -23,8 +23,19 @@ export interface ReconnectState {
   reason: DisconnectReason;
 }
 
+/**
+ * Lightweight topology node info for cross-tab reference
+ */
+export interface TopologyNodeInfo {
+  id: string;
+  label: string;
+  type: string;
+  color: string;
+}
+
 export interface SSHConnection {
   id: string;
+  nodeId?: string; // ID of the React Flow node this connection originated from
   nodeName: string;
   nodeType: string;
   host: string;
@@ -57,6 +68,7 @@ export interface TabContextType {
   activeConnectionId: string | null;
   setActiveConnectionId: (id: string | null) => void;
   createConnection: (config: {
+    nodeId?: string;
     nodeName: string;
     nodeType: string;
     host: string;
@@ -72,4 +84,9 @@ export interface TabContextType {
   removeConnection: (id: string) => void;
   retryConnection: (id: string) => Promise<void>;
   cancelAutoReconnect: (id: string) => void;
+  // Topology cross-reference
+  topologyNodes: TopologyNodeInfo[];
+  setTopologyNodes: (nodes: TopologyNodeInfo[]) => void;
+  focusNode: (nodeId: string) => void;
+  setOnFocusNode: (handler: (nodeId: string) => void) => void;
 }

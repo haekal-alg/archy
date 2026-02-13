@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useRef } from 'react';
+import { CheckIcon, CrossIcon, WarningIcon, InfoIcon } from './StatusIcons';
 import theme from '../../theme';
 
 export type ToastType = 'success' | 'error' | 'warning' | 'info';
@@ -66,25 +67,25 @@ const Toast: React.FC<ToastProps> = ({
     switch (type) {
       case 'success':
         return {
-          icon: '✓',
+          icon: <CheckIcon size={14} color={theme.status.success} />,
           color: theme.status.success,
           bgColor: theme.status.successBg,
         };
       case 'error':
         return {
-          icon: '✕',
+          icon: <CrossIcon size={14} color={theme.status.error} />,
           color: theme.status.error,
           bgColor: theme.status.errorBg,
         };
       case 'warning':
         return {
-          icon: '⚠',
+          icon: <WarningIcon size={14} color={theme.status.warning} />,
           color: theme.status.warning,
           bgColor: theme.status.warningBg,
         };
       case 'info':
         return {
-          icon: 'ℹ',
+          icon: <InfoIcon size={14} color={theme.status.info} />,
           color: theme.status.info,
           bgColor: theme.status.infoBg,
         };

@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Handle, Position, NodeProps } from '@xyflow/react';
 import CONFIG from '../../config';
 import theme from '../../theme';
+import { CheckIcon, WarningIcon } from './StatusIcons';
 import {
   RouterIcon,
   ServerIcon,
@@ -288,7 +289,7 @@ const EnhancedDeviceNode: React.FC<NodeProps> = ({ data, selected }) => {
             justifyContent: 'center',
             gap: theme.spacing.xs
           }}>
-            <span style={{ fontSize: theme.fontSize.md }}>✓</span>
+            <CheckIcon size={13} color={theme.accent.green} />
             <span>{deviceData.connections.length} connection{deviceData.connections.length > 1 ? 's' : ''}</span>
           </div>
         ) : (
@@ -301,7 +302,7 @@ const EnhancedDeviceNode: React.FC<NodeProps> = ({ data, selected }) => {
             justifyContent: 'center',
             gap: theme.spacing.xs
           }}>
-            <span style={{ fontSize: theme.fontSize.md }}>⚠️</span>
+            <WarningIcon size={13} color={theme.text.tertiary} />
             <span>No connection</span>
           </div>
         )}

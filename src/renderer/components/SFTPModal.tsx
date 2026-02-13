@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useTabContext } from '../contexts/TabContext';
 import { getMenuContainerStyle, getMenuItemStyle } from './ContextMenu';
+import { PlugIcon, AppleIcon, TerminalIcon } from './StatusIcons';
+import { DesktopIcon, LinuxIcon, ServerIcon } from './NetworkIcons';
 import theme from '../../theme';
 
 interface SFTPModalProps {
@@ -87,19 +89,18 @@ const SFTPModal: React.FC<SFTPModalProps> = ({ isOpen, onClose }) => {
   };
 
   // Helper function to get OS icon based on node type or OS
-  const getOSIcon = (host: SSHHost) => {
-    // This is a placeholder - ideally we'd detect the actual OS
-    // For now, return different icons based on common patterns
+  const getOSIcon = (host: SSHHost): React.ReactNode => {
     const label = host.label.toLowerCase();
+    const iconColor = theme.text.secondary;
+    const iconSize = 16;
 
-    if (label.includes('windows') || label.includes('win')) return '🪟';
-    if (label.includes('linux') || label.includes('ubuntu') || label.includes('debian')) return '🐧';
-    if (label.includes('mac') || label.includes('darwin')) return '🍎';
-    if (label.includes('router') || label.includes('switch')) return '🔌';
-    if (label.includes('server')) return '🖥️';
+    if (label.includes('windows') || label.includes('win')) return <DesktopIcon color={iconColor} />;
+    if (label.includes('linux') || label.includes('ubuntu') || label.includes('debian')) return <LinuxIcon color={iconColor} />;
+    if (label.includes('mac') || label.includes('darwin')) return <AppleIcon size={iconSize} color={iconColor} />;
+    if (label.includes('router') || label.includes('switch')) return <PlugIcon size={iconSize} color={iconColor} />;
+    if (label.includes('server')) return <ServerIcon color={iconColor} />;
 
-    // Default icon
-    return '💻';
+    return <TerminalIcon size={iconSize} color={iconColor} />;
   };
 
   // Helper function to filter and sort files
@@ -1112,7 +1113,9 @@ const SFTPModal: React.FC<SFTPModalProps> = ({ isOpen, onClose }) => {
                   }}>
                     {filteredHosts.length === 0 ? (
                       <div style={{ textAlign: 'center', padding: '60px 20px', color: '#c9d1d9' }}>
-                        <div style={{ fontSize: '48px', marginBottom: '16px' }}>🔍</div>
+                        <div style={{ fontSize: '48px', marginBottom: '16px', display: 'flex', justifyContent: 'center' }}>
+                          <svg width="48" height="48" viewBox="0 0 16 16" fill="none"><circle cx="7" cy="7" r="5" stroke={theme.text.tertiary} strokeWidth="1.3" /><path d="M11 11L14 14" stroke={theme.text.tertiary} strokeWidth="1.3" strokeLinecap="round" /></svg>
+                        </div>
                         <div style={{ fontSize: '14px', marginBottom: '8px' }}>
                           {hostSearchQuery ? 'No hosts found matching your search' : 'No hosts available'}
                         </div>
@@ -1156,7 +1159,7 @@ const SFTPModal: React.FC<SFTPModalProps> = ({ isOpen, onClose }) => {
                               e.currentTarget.style.borderColor = '#3a4556';
                             }}
                           >
-                            <div style={{ fontSize: '32px' }}>{getOSIcon(host)}</div>
+                            <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', width: '32px', height: '32px' }}>{getOSIcon(host)}</div>
                             <div style={{
                               fontSize: '13px',
                               fontWeight: 600,
@@ -1250,7 +1253,9 @@ const SFTPModal: React.FC<SFTPModalProps> = ({ isOpen, onClose }) => {
                     }}>
                     {displayRemoteFiles.length === 0 && !remoteLoading ? (
                     <div style={{ textAlign: 'center', padding: '40px', color: '#8892a6' }}>
-                      <div style={{ marginBottom: '12px' }}>📂</div>
+                      <div style={{ marginBottom: '12px', display: 'flex', justifyContent: 'center' }}>
+                        <svg width="24" height="24" viewBox="0 0 16 16" fill="none"><path d="M2 4V13C2 13.5523 2.44772 14 3 14H13C13.5523 14 14 13.5523 14 13V6C14 5.44772 13.5523 5 13 5H8L6 3H3C2.44772 3 2 3.44772 2 4Z" stroke={theme.text.tertiary} strokeWidth="1.2" /></svg>
+                      </div>
                       {error ? 'Failed to load files' : 'No files found'}
                     </div>
                   ) : (

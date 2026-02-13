@@ -4,6 +4,8 @@ import TerminalEmulator from './TerminalEmulator';
 import ConnectionContextMenu from './ConnectionContextMenu';
 import SFTPModal from './SFTPModal';
 import { ClimbingBoxLoader } from 'react-spinners';
+import { PlugIcon, LatencyDot, LightningIcon } from './StatusIcons';
+import theme from '../../theme';
 
 // Icon for local terminal connections
 const LocalTerminalIcon = () => (
@@ -25,7 +27,7 @@ const RemoteSSHIcon = () => (
 );
 
 const ConnectionsTab: React.FC = () => {
-  const { connections, activeConnectionId, setActiveConnectionId, disconnectConnection, removeConnection, retryConnection, createLocalTerminal, renameConnection, cancelAutoReconnect } = useTabContext();
+  const { connections, activeConnectionId, setActiveConnectionId, disconnectConnection, removeConnection, retryConnection, createLocalTerminal, renameConnection, cancelAutoReconnect, topologyNodes, focusNode } = useTabContext();
   const [sidePanelCollapsed, setSidePanelCollapsed] = useState(false);
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; connectionId: string } | null>(null);
   const [renameModal, setRenameModal] = useState<{ connectionId: string; currentName: string } | null>(null);
@@ -41,11 +43,11 @@ const ConnectionsTab: React.FC = () => {
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'connected': return '#16825d';
-      case 'connecting': return '#f59e0b';
-      case 'disconnected': return '#6b7280';
-      case 'error': return '#dc2626';
-      default: return '#6b7280';
+      case 'connected': return theme.accent.greenDark;
+      case 'connecting': return theme.accent.orange;
+      case 'disconnected': return theme.text.disabled;
+      case 'error': return theme.accent.red;
+      default: return theme.text.disabled;
     }
   };
 
@@ -195,8 +197,8 @@ const ConnectionsTab: React.FC = () => {
       {/* Side Panel - Always rendered for animation */}
       <div style={{
         width: sidePanelCollapsed ? '0px' : '320px',
-        background: '#151923',
-        borderRight: sidePanelCollapsed ? 'none' : '1px solid #3a4556',
+        background: theme.background.primary,
+        borderRight: sidePanelCollapsed ? 'none' : `1px solid ${theme.border.default}`,
         display: 'flex',
         flexDirection: 'column',
         overflow: 'hidden',
@@ -208,12 +210,12 @@ const ConnectionsTab: React.FC = () => {
         {/* Side Panel Header */}
         <div style={{
           minWidth: '320px',
-          padding: '12px 16px',
-          borderBottom: '1px solid #3a4556',
+          padding: `${theme.spacing.lg} ${theme.spacing.xl}`,
+          borderBottom: `1px solid ${theme.border.default}`,
           display: 'flex',
           flexDirection: 'column',
           gap: '10px',
-          background: '#151923',
+          background: theme.background.primary,
           position: 'sticky',
           top: 0,
           zIndex: 10,
@@ -225,41 +227,41 @@ const ConnectionsTab: React.FC = () => {
           }}>
             <h3 style={{
               margin: 0,
-              fontSize: '13px',
-              fontWeight: 600,
-              color: '#e8ecf4',
+              fontSize: theme.fontSize.md,
+              fontWeight: theme.fontWeight.semibold,
+              color: theme.text.primary,
             }}>
               Active Connections
             </h3>
           </div>
 
           {/* Action Buttons Container */}
-          <div style={{ display: 'flex', gap: '8px' }}>
+          <div style={{ display: 'flex', gap: theme.spacing.md }}>
             {/* New Local Terminal Button */}
             <button
               onClick={() => createLocalTerminal()}
               style={{
-                padding: '6px 10px',
-                background: '#303948',
-                color: '#e8ecf4',
-                border: '1px solid #3a4556',
-                borderRadius: '4px',
-                fontSize: '11px',
+                padding: `${theme.spacing.sm} 10px`,
+                background: theme.background.hover,
+                color: theme.text.primary,
+                border: `1px solid ${theme.border.default}`,
+                borderRadius: theme.radius.sm,
+                fontSize: theme.fontSize.sm,
                 cursor: 'pointer',
-                fontWeight: 600,
+                fontWeight: theme.fontWeight.semibold,
                 letterSpacing: '0.3px',
-                transition: 'all 0.2s ease',
+                transition: theme.transition.normal,
                 textTransform: 'uppercase',
                 display: 'flex',
                 alignItems: 'center',
-                gap: '6px',
+                gap: theme.spacing.sm,
                 width: 'fit-content',
               }}
               onMouseEnter={(e) => {
-                e.currentTarget.style.background = '#3a4556';
+                e.currentTarget.style.background = theme.background.active;
               }}
               onMouseLeave={(e) => {
-                e.currentTarget.style.background = '#303948';
+                e.currentTarget.style.background = theme.background.hover;
               }}
             >
               <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
@@ -273,27 +275,27 @@ const ConnectionsTab: React.FC = () => {
             <button
               onClick={() => setSftpModalOpen(true)}
               style={{
-                padding: '6px 10px',
-                background: '#303948',
-                color: '#e8ecf4',
-                border: '1px solid #3a4556',
-                borderRadius: '4px',
-                fontSize: '11px',
+                padding: `${theme.spacing.sm} 10px`,
+                background: theme.background.hover,
+                color: theme.text.primary,
+                border: `1px solid ${theme.border.default}`,
+                borderRadius: theme.radius.sm,
+                fontSize: theme.fontSize.sm,
                 cursor: 'pointer',
-                fontWeight: 600,
+                fontWeight: theme.fontWeight.semibold,
                 letterSpacing: '0.3px',
-                transition: 'all 0.2s ease',
+                transition: theme.transition.normal,
                 textTransform: 'uppercase',
                 display: 'flex',
                 alignItems: 'center',
-                gap: '6px',
+                gap: theme.spacing.sm,
                 width: 'fit-content',
               }}
               onMouseEnter={(e) => {
-                e.currentTarget.style.background = '#3a4556';
+                e.currentTarget.style.background = theme.background.active;
               }}
               onMouseLeave={(e) => {
-                e.currentTarget.style.background = '#303948';
+                e.currentTarget.style.background = theme.background.hover;
               }}
             >
               <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
@@ -311,21 +313,21 @@ const ConnectionsTab: React.FC = () => {
           flex: 1,
           overflow: 'auto',
           minWidth: '320px',
-          padding: '16px',
+          padding: theme.spacing.xl,
         }}>
           {connections.length === 0 ? (
             <div style={{
-              padding: '48px 20px',
+              padding: `48px ${theme.spacing.xxl}`,
               textAlign: 'center',
-              background: '#252d3f',
-              border: '1px solid #3a4556',
-              borderRadius: '4px',
+              background: theme.background.tertiary,
+              border: `1px solid ${theme.border.default}`,
+              borderRadius: theme.radius.sm,
             }}>
-              <div style={{ fontSize: '36px', marginBottom: '12px' }}>🔌</div>
-              <div style={{ fontSize: '11px', color: '#b4bcc9', marginBottom: '4px' }}>
+              <div style={{ marginBottom: theme.spacing.lg }}><PlugIcon size={36} color={theme.text.tertiary} /></div>
+              <div style={{ fontSize: theme.fontSize.sm, color: theme.text.secondary, marginBottom: theme.spacing.xs }}>
                 No active connections
               </div>
-              <div style={{ fontSize: '10px', color: '#8892a6' }}>
+              <div style={{ fontSize: theme.fontSize.xs, color: theme.text.tertiary }}>
                 Connect to a device from the Design tab
               </div>
             </div>
@@ -337,22 +339,22 @@ const ConnectionsTab: React.FC = () => {
                 onContextMenu={(e) => handleContextMenu(e, conn.id)}
                 style={{
                   position: 'relative',
-                  marginBottom: '8px',
-                  padding: '12px 16px',
-                  borderRadius: '4px',
+                  marginBottom: theme.spacing.md,
+                  padding: `${theme.spacing.lg} ${theme.spacing.xl}`,
+                  borderRadius: theme.radius.sm,
                   cursor: 'pointer',
-                  background: activeConnectionId === conn.id ? '#1e2433' : '#252d3f',
-                  border: activeConnectionId === conn.id ? '1px solid #4d7cfe' : '1px solid #3a4556',
-                  transition: 'all 0.2s ease',
+                  background: activeConnectionId === conn.id ? theme.background.secondary : theme.background.tertiary,
+                  border: activeConnectionId === conn.id ? `1px solid ${theme.accent.blue}` : `1px solid ${theme.border.default}`,
+                  transition: theme.transition.normal,
                 }}
                 onMouseEnter={(e) => {
                   if (activeConnectionId !== conn.id) {
-                    e.currentTarget.style.background = '#303948';
+                    e.currentTarget.style.background = theme.background.hover;
                   }
                 }}
                 onMouseLeave={(e) => {
                   if (activeConnectionId !== conn.id) {
-                    e.currentTarget.style.background = '#252d3f';
+                    e.currentTarget.style.background = theme.background.tertiary;
                   }
                 }}
               >
@@ -360,17 +362,28 @@ const ConnectionsTab: React.FC = () => {
                 <div style={{
                   display: 'flex',
                   alignItems: 'center',
-                  gap: '8px',
-                  marginBottom: '8px',
+                  gap: theme.spacing.md,
+                  marginBottom: theme.spacing.md,
                   paddingRight: conn.status === 'connected' ? '32px' : '0',
                 }}>
-                  <span style={{ color: conn.connectionType === 'local' ? '#3dd68c' : '#4d7cfe' }}>
+                  <span style={{ color: conn.connectionType === 'local' ? theme.accent.green : theme.accent.blue }}>
                     {conn.connectionType === 'local' ? <LocalTerminalIcon /> : <RemoteSSHIcon />}
                   </span>
+                  {/* Device type color indicator */}
+                  {conn.nodeType && conn.nodeType !== 'local' && (
+                    <span style={{
+                      width: '6px',
+                      height: '6px',
+                      borderRadius: '50%',
+                      background: (theme.device as Record<string, string>)[conn.nodeType] || theme.text.tertiary,
+                      flexShrink: 0,
+                      marginLeft: `-${theme.spacing.xs}`,
+                    }} title={conn.nodeType} />
+                  )}
                   <span style={{
-                    fontSize: '11px',
-                    fontWeight: 600,
-                    color: '#e8ecf4',
+                    fontSize: theme.fontSize.sm,
+                    fontWeight: theme.fontWeight.semibold,
+                    color: theme.text.primary,
                     overflow: 'hidden',
                     textOverflow: 'ellipsis',
                     whiteSpace: 'nowrap',
@@ -382,14 +395,14 @@ const ConnectionsTab: React.FC = () => {
 
                 {/* Connection Details */}
                 <div style={{
-                  fontSize: '10px',
-                  color: '#8892a6',
-                  marginBottom: '8px',
+                  fontSize: theme.fontSize.xs,
+                  color: theme.text.tertiary,
+                  marginBottom: theme.spacing.md,
                   fontFamily: 'Consolas, "Courier New", monospace',
-                  background: '#2a3347',
-                  padding: '6px 8px',
-                  borderRadius: '4px',
-                  border: '1px solid #3a4556',
+                  background: theme.background.elevated,
+                  padding: `${theme.spacing.sm} ${theme.spacing.md}`,
+                  borderRadius: theme.radius.sm,
+                  border: `1px solid ${theme.border.default}`,
                 }}>
                   {conn.username}@{conn.host}:{conn.port}
                 </div>
@@ -403,33 +416,33 @@ const ConnectionsTab: React.FC = () => {
                   <div style={{
                     display: 'flex',
                     alignItems: 'center',
-                    gap: '6px',
+                    gap: theme.spacing.sm,
                   }}>
                     <span style={{
                       width: '8px',
                       height: '8px',
                       borderRadius: '50%',
                       background: conn.status === 'connected'
-                        ? '#3dd68c'
+                        ? theme.accent.green
                         : conn.status === 'connecting'
-                          ? '#ffab40'
+                          ? theme.accent.orange
                           : conn.status === 'error'
-                            ? '#ff5c5c'
-                            : '#6b7280',
+                            ? theme.accent.red
+                            : theme.text.disabled,
                       display: 'inline-block',
                     }} />
                     <span style={{
-                      fontSize: '10px',
-                      fontWeight: 500,
-                      color: conn.status === 'connected' ? '#3dd68c' : '#b4bcc9',
+                      fontSize: theme.fontSize.xs,
+                      fontWeight: theme.fontWeight.medium,
+                      color: conn.status === 'connected' ? theme.accent.green : theme.text.secondary,
                     }}>
                       {getStatusText(conn.status)}
                     </span>
                   </div>
                   <span style={{
-                    fontSize: '10px',
-                    color: '#8892a6',
-                    fontWeight: 500,
+                    fontSize: theme.fontSize.xs,
+                    color: theme.text.tertiary,
+                    fontWeight: theme.fontWeight.medium,
                   }}>
                     {formatLastActivity(conn.lastActivity)}
                   </span>
@@ -438,13 +451,13 @@ const ConnectionsTab: React.FC = () => {
                 {/* Error Message */}
                 {conn.error && !conn.reconnectState && (
                   <div style={{
-                    marginTop: '8px',
-                    fontSize: '10px',
-                    color: '#ff7878',
-                    background: '#2a3347',
-                    padding: '6px 8px',
-                    borderRadius: '4px',
-                    border: '1px solid #ff5c5c',
+                    marginTop: theme.spacing.md,
+                    fontSize: theme.fontSize.xs,
+                    color: theme.accent.redLight,
+                    background: theme.background.elevated,
+                    padding: `${theme.spacing.sm} ${theme.spacing.md}`,
+                    borderRadius: theme.radius.sm,
+                    border: `1px solid ${theme.accent.red}`,
                     lineHeight: '1.4',
                   }}>
                     {conn.error}
@@ -454,14 +467,14 @@ const ConnectionsTab: React.FC = () => {
                 {/* Auto-Reconnect Status */}
                 {conn.reconnectState?.isReconnecting && (
                   <div style={{
-                    marginTop: '8px',
-                    padding: '8px',
-                    background: '#2a3347',
-                    borderRadius: '4px',
-                    border: '1px solid #f59e0b',
+                    marginTop: theme.spacing.md,
+                    padding: theme.spacing.md,
+                    background: theme.background.elevated,
+                    borderRadius: theme.radius.sm,
+                    border: `1px solid ${theme.accent.orange}`,
                   }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <div style={{ fontSize: '11px', color: '#f59e0b', fontWeight: 500 }}>
+                      <div style={{ fontSize: theme.fontSize.sm, color: theme.accent.orange, fontWeight: theme.fontWeight.medium }}>
                         Reconnecting... Attempt {conn.reconnectState.attemptNumber}/{conn.reconnectState.maxAttempts}
                       </div>
                       <button
@@ -470,41 +483,41 @@ const ConnectionsTab: React.FC = () => {
                           cancelAutoReconnect(conn.id);
                         }}
                         style={{
-                          padding: '3px 8px',
-                          background: '#303948',
-                          border: '1px solid #3a4556',
+                          padding: `3px ${theme.spacing.md}`,
+                          background: theme.background.hover,
+                          border: `1px solid ${theme.border.default}`,
                           borderRadius: '3px',
-                          color: '#e8ecf4',
-                          fontSize: '10px',
+                          color: theme.text.primary,
+                          fontSize: theme.fontSize.xs,
                           cursor: 'pointer',
-                          fontWeight: 500,
-                          transition: 'all 0.2s ease',
+                          fontWeight: theme.fontWeight.medium,
+                          transition: theme.transition.normal,
                         }}
                         onMouseEnter={(e) => {
-                          e.currentTarget.style.background = '#3a4556';
+                          e.currentTarget.style.background = theme.background.active;
                         }}
                         onMouseLeave={(e) => {
-                          e.currentTarget.style.background = '#303948';
+                          e.currentTarget.style.background = theme.background.hover;
                         }}
                       >
                         Cancel
                       </button>
                     </div>
-                    <div style={{ fontSize: '10px', color: '#8892a6', marginTop: '4px' }}>
+                    <div style={{ fontSize: theme.fontSize.xs, color: theme.text.tertiary, marginTop: theme.spacing.xs }}>
                       Next attempt in {Math.ceil(conn.reconnectState.nextAttemptIn / 1000)}s
                     </div>
                     {/* Progress bar for countdown */}
                     <div style={{
-                      marginTop: '6px',
+                      marginTop: theme.spacing.sm,
                       height: '3px',
-                      background: '#1e2433',
-                      borderRadius: '2px',
+                      background: theme.background.secondary,
+                      borderRadius: theme.radius.xs,
                       overflow: 'hidden',
                     }}>
                       <div style={{
                         height: '100%',
                         width: `${Math.max(0, (conn.reconnectState.nextAttemptIn / (1000 * Math.pow(2, conn.reconnectState.attemptNumber - 1))) * 100)}%`,
-                        background: '#f59e0b',
+                        background: theme.accent.orange,
                         transition: 'width 1s linear',
                       }} />
                     </div>
@@ -520,34 +533,34 @@ const ConnectionsTab: React.FC = () => {
                     }}
                     style={{
                       position: 'absolute',
-                      top: '12px',
-                      right: '12px',
+                      top: theme.spacing.lg,
+                      right: theme.spacing.lg,
                       width: '18px',
                       height: '18px',
                       padding: '0',
-                      background: '#303948',
-                      color: '#8892a6',
-                      border: '1px solid #3a4556',
-                      borderRadius: '4px',
-                      fontSize: '14px',
+                      background: theme.background.hover,
+                      color: theme.text.tertiary,
+                      border: `1px solid ${theme.border.default}`,
+                      borderRadius: theme.radius.sm,
+                      fontSize: theme.fontSize.base,
                       cursor: 'pointer',
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
-                      fontWeight: 600,
+                      fontWeight: theme.fontWeight.semibold,
                       lineHeight: '1',
-                      transition: 'all 0.2s ease',
+                      transition: theme.transition.normal,
                     }}
                     title="Disconnect and Remove"
                     onMouseEnter={(e) => {
-                      e.currentTarget.style.background = '#ff5c5c';
-                      e.currentTarget.style.color = '#0a0e1a';
-                      e.currentTarget.style.border = '1px solid #e84545';
+                      e.currentTarget.style.background = theme.accent.red;
+                      e.currentTarget.style.color = theme.text.inverted;
+                      e.currentTarget.style.border = `1px solid ${theme.accent.redDark}`;
                     }}
                     onMouseLeave={(e) => {
-                      e.currentTarget.style.background = '#303948';
-                      e.currentTarget.style.color = '#8892a6';
-                      e.currentTarget.style.border = '1px solid #3a4556';
+                      e.currentTarget.style.background = theme.background.hover;
+                      e.currentTarget.style.color = theme.text.tertiary;
+                      e.currentTarget.style.border = `1px solid ${theme.border.default}`;
                     }}
                   >
                     ×
@@ -563,42 +576,29 @@ const ConnectionsTab: React.FC = () => {
       {/* Unified Toggle Button */}
       <button
         onClick={() => setSidePanelCollapsed(!sidePanelCollapsed)}
+        className="panel-glass"
         style={{
           position: 'absolute',
-          left: sidePanelCollapsed ? '0' : '290px', // Inside sidebar when expanded
-          top: '10px', // Aligned with header
+          left: sidePanelCollapsed ? '0' : '290px',
+          top: '10px',
           width: '30px',
-          height: '40px', // Smaller height to fit header
-          border: '1px solid rgba(255, 255, 255, 0.25)',
-          // Dynamic borders based on state
-          borderRight: sidePanelCollapsed ? '1px solid rgba(255, 255, 255, 0.25)' : 'none',
-          borderLeft: sidePanelCollapsed ? 'none' : '1px solid rgba(255, 255, 255, 0.25)',
+          height: '40px',
+          borderRight: sidePanelCollapsed ? undefined : 'none',
+          borderLeft: sidePanelCollapsed ? 'none' : undefined,
           borderTopRightRadius: sidePanelCollapsed ? '8px' : '0',
           borderBottomRightRadius: sidePanelCollapsed ? '8px' : '0',
           borderTopLeftRadius: sidePanelCollapsed ? '0' : '8px',
           borderBottomLeftRadius: sidePanelCollapsed ? '0' : '8px',
-
-          background: 'rgba(30, 33, 51, 0.65)',
-          backdropFilter: 'blur(60px) saturate(200%) brightness(1.1)',
-          WebkitBackdropFilter: 'blur(60px) saturate(200%) brightness(1.1)',
-          color: '#e8ecf4',
-          cursor: 'pointer',
           fontSize: '18px',
           boxShadow: '4px 0 16px rgba(0, 0, 0, 0.3)',
-          transition: 'all 0.3s ease',
+          transition: theme.transition.slow,
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
           zIndex: 100,
         }}
-        onMouseEnter={(e) => {
-          e.currentTarget.style.background = 'rgba(40, 44, 68, 0.8)';
-        }}
-        onMouseLeave={(e) => {
-          e.currentTarget.style.background = 'rgba(30, 33, 51, 0.65)';
-        }}
       >
-        {sidePanelCollapsed ? '›' : '‹'}
+        {sidePanelCollapsed ? '\u203A' : '\u2039'}
       </button>
 
       {/* Main Terminal Canvas */}
@@ -613,16 +613,16 @@ const ConnectionsTab: React.FC = () => {
           <>
             {/* Terminal Header with Zoom Controls */}
             <div style={{
-              padding: '8px 16px',
-              borderBottom: '1px solid #333',
-              backgroundColor: '#1a1a1a',
+              padding: `${theme.spacing.md} ${theme.spacing.xl}`,
+              borderBottom: `1px solid ${theme.border.subtle}`,
+              backgroundColor: theme.background.primary,
               display: 'flex',
               justifyContent: 'space-between',
               alignItems: 'center',
             }}>
               <div style={{
-                fontSize: '13px',
-                color: '#e0e0e0',
+                fontSize: theme.fontSize.md,
+                color: theme.text.primary,
                 fontFamily: 'Consolas, monospace',
               }}>
                 {activeConnection.username}@{activeConnection.host} — {activeConnection.customLabel || activeConnection.nodeName}
@@ -630,29 +630,28 @@ const ConnectionsTab: React.FC = () => {
               <div style={{
                 display: 'flex',
                 alignItems: 'center',
-                gap: '12px',
+                gap: theme.spacing.lg,
               }}>
                 {/* Latency Indicator */}
                 <div style={{
                   display: 'flex',
                   alignItems: 'center',
-                  gap: '6px',
-                  padding: '4px 10px',
-                  backgroundColor: '#252d3f',
-                  borderRadius: '4px',
-                  border: '1px solid #3a4556',
+                  gap: theme.spacing.sm,
+                  padding: `${theme.spacing.xs} 10px`,
+                  backgroundColor: theme.background.tertiary,
+                  borderRadius: theme.radius.sm,
+                  border: `1px solid ${theme.border.default}`,
                 }}>
                   {activeConnection.latency !== undefined ? (
                     <>
-                      <span style={{
-                        fontSize: '14px',
-                      }}>
-                        {activeConnection.latency < 100 ? '🟢' : activeConnection.latency < 300 ? '🟡' : '🔴'}
-                      </span>
+                      <LatencyDot
+                        size={10}
+                        color={activeConnection.latency < 100 ? theme.accent.green : activeConnection.latency < 300 ? theme.accent.orange : theme.accent.red}
+                      />
                       <span style={{
                         fontSize: '12px',
-                        color: activeConnection.latency < 100 ? '#3dd68c' : activeConnection.latency < 300 ? '#ffab40' : '#ff5c5c',
-                        fontWeight: 500,
+                        color: activeConnection.latency < 100 ? theme.accent.green : activeConnection.latency < 300 ? theme.accent.orange : theme.accent.red,
+                        fontWeight: theme.fontWeight.medium,
                         fontFamily: 'Consolas, monospace',
                         minWidth: '45px',
                       }}>
@@ -662,7 +661,7 @@ const ConnectionsTab: React.FC = () => {
                   ) : (
                     <span style={{
                       fontSize: '12px',
-                      color: '#666',
+                      color: theme.text.disabled,
                       fontFamily: 'Consolas, monospace',
                       minWidth: '45px',
                     }}>
@@ -674,30 +673,30 @@ const ConnectionsTab: React.FC = () => {
                 <div style={{
                   display: 'flex',
                   alignItems: 'center',
-                  gap: '8px',
+                  gap: theme.spacing.md,
                 }}>
                   <button
                     onClick={() => handleZoomChange(activeConnection.id, -0.1)}
                     style={{
-                      padding: '4px 8px',
-                      backgroundColor: '#333',
-                      color: '#fff',
+                      padding: `${theme.spacing.xs} ${theme.spacing.md}`,
+                      backgroundColor: theme.background.hover,
+                      color: theme.text.primary,
                       border: 'none',
                       borderRadius: '3px',
-                      fontSize: '16px',
+                      fontSize: theme.fontSize.lg,
                       cursor: 'pointer',
                       lineHeight: '1',
                       transition: 'background-color 0.2s ease',
                     }}
                     title="Zoom out"
-                    onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#444'}
-                    onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#333'}
+                    onMouseEnter={(e) => e.currentTarget.style.backgroundColor = theme.background.active}
+                    onMouseLeave={(e) => e.currentTarget.style.backgroundColor = theme.background.hover}
                   >
                     −
                   </button>
                   <span style={{
                     fontSize: '12px',
-                    color: '#aaa',
+                    color: theme.text.secondary,
                     minWidth: '45px',
                     textAlign: 'center',
                   }}>
@@ -706,25 +705,100 @@ const ConnectionsTab: React.FC = () => {
                   <button
                     onClick={() => handleZoomChange(activeConnection.id, 0.1)}
                     style={{
-                      padding: '4px 8px',
-                      backgroundColor: '#333',
-                      color: '#fff',
+                      padding: `${theme.spacing.xs} ${theme.spacing.md}`,
+                      backgroundColor: theme.background.hover,
+                      color: theme.text.primary,
                       border: 'none',
                       borderRadius: '3px',
-                      fontSize: '16px',
+                      fontSize: theme.fontSize.lg,
                       cursor: 'pointer',
                       lineHeight: '1',
                       transition: 'background-color 0.2s ease',
                     }}
                     title="Zoom in"
-                    onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#444'}
-                    onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#333'}
+                    onMouseEnter={(e) => e.currentTarget.style.backgroundColor = theme.background.active}
+                    onMouseLeave={(e) => e.currentTarget.style.backgroundColor = theme.background.hover}
                   >
                     +
                   </button>
                 </div>
               </div>
             </div>
+
+            {/* Device Info Bar - topology cross-reference */}
+            {activeConnection && (() => {
+              const topoNode = activeConnection.nodeId
+                ? topologyNodes.find(n => n.id === activeConnection.nodeId)
+                : null;
+
+              if (activeConnection.connectionType === 'local') {
+                return (
+                  <div style={{
+                    margin: '0 8px',
+                    padding: `${theme.spacing.sm} ${theme.spacing.lg}`,
+                    background: theme.background.tertiary,
+                    border: `1px solid ${theme.border.default}`,
+                    borderRadius: theme.radius.sm,
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: theme.spacing.md,
+                  }}>
+                    <LocalTerminalIcon />
+                    <span style={{ fontSize: theme.fontSize.sm, color: theme.text.secondary }}>Local Terminal</span>
+                  </div>
+                );
+              }
+
+              if (!topoNode) return null;
+
+              return (
+                <div style={{
+                  margin: '0 8px',
+                  padding: `${theme.spacing.sm} ${theme.spacing.lg}`,
+                  background: theme.background.tertiary,
+                  border: `1px solid ${theme.border.default}`,
+                  borderRadius: theme.radius.sm,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: theme.spacing.md }}>
+                    <span style={{
+                      width: '8px',
+                      height: '8px',
+                      borderRadius: '50%',
+                      backgroundColor: topoNode.color,
+                      display: 'inline-block',
+                      flexShrink: 0,
+                    }} />
+                    <span style={{
+                      fontSize: theme.fontSize.sm,
+                      color: theme.text.primary,
+                      fontWeight: theme.fontWeight.semibold,
+                    }}>
+                      {topoNode.label}
+                    </span>
+                    <span style={{
+                      fontSize: theme.fontSize.xs,
+                      color: theme.text.tertiary,
+                      textTransform: 'capitalize',
+                    }}>
+                      {topoNode.type}
+                    </span>
+                  </div>
+                  <button
+                    onClick={() => focusNode(topoNode.id)}
+                    className="btn-secondary"
+                    style={{
+                      padding: `3px 10px`,
+                      fontSize: theme.fontSize.xs,
+                    }}
+                  >
+                    Show in Design
+                  </button>
+                </div>
+              );
+            })()}
 
             {/* Terminal Area - render all terminals but hide inactive ones */}
             <div style={{ flex: 1, overflow: 'hidden', padding: '8px', position: 'relative' }}>
@@ -755,19 +829,19 @@ const ConnectionsTab: React.FC = () => {
                   alignItems: 'center',
                   justifyContent: 'center',
                   height: '100%',
-                  color: '#e8ecf4',
-                  fontSize: '14px',
-                  gap: '24px',
+                  color: theme.text.primary,
+                  fontSize: theme.fontSize.base,
+                  gap: theme.spacing.xxxl,
                 }}>
                   {/* Modern Loading Spinner with Glow */}
                   <div style={{
                     filter: 'drop-shadow(0 0 15px rgba(77, 124, 254, 1)) drop-shadow(0 0 30px rgba(77, 124, 254, 0.8)) drop-shadow(0 0 50px rgba(77, 124, 254, 0.6)) drop-shadow(0 0 80px rgba(77, 124, 254, 0.4))',
                   }}>
-                    <ClimbingBoxLoader color="#4d7cfe" size={18} />
+                    <ClimbingBoxLoader color={theme.accent.blue} size={18} />
                   </div>
                   <div style={{
                     textShadow: '0 0 10px rgba(77, 124, 254, 0.5)',
-                    fontWeight: 500,
+                    fontWeight: theme.fontWeight.medium,
                   }}>Connecting to {activeConnection.host}...</div>
                 </div>
               )}
@@ -778,12 +852,12 @@ const ConnectionsTab: React.FC = () => {
                   alignItems: 'center',
                   justifyContent: 'center',
                   height: '100%',
-                  color: '#dc2626',
-                  fontSize: '14px',
-                  gap: '8px',
+                  color: theme.accent.red,
+                  fontSize: theme.fontSize.base,
+                  gap: theme.spacing.md,
                 }}>
                   <div>Connection failed</div>
-                  <div style={{ fontSize: '12px', color: '#888' }}>
+                  <div style={{ fontSize: '12px', color: theme.text.tertiary }}>
                     {activeConnection.error}
                   </div>
                 </div>
@@ -794,8 +868,8 @@ const ConnectionsTab: React.FC = () => {
                   alignItems: 'center',
                   justifyContent: 'center',
                   height: '100%',
-                  color: '#888',
-                  fontSize: '14px',
+                  color: theme.text.tertiary,
+                  fontSize: theme.fontSize.base,
                 }}>
                   Connection closed
                 </div>
@@ -809,13 +883,13 @@ const ConnectionsTab: React.FC = () => {
             alignItems: 'center',
             justifyContent: 'center',
             height: '100%',
-            color: '#888',
-            fontSize: '14px',
-            gap: '8px',
+            color: theme.text.tertiary,
+            fontSize: theme.fontSize.base,
+            gap: theme.spacing.md,
           }}>
-            <div style={{ fontSize: '48px', marginBottom: '16px' }}>⚡</div>
+            <div style={{ marginBottom: theme.spacing.xl }}><LightningIcon size={48} color={theme.text.disabled} /></div>
             <div>No active connection selected</div>
-            <div style={{ fontSize: '12px', color: '#666' }}>
+            <div style={{ fontSize: '12px', color: theme.text.disabled }}>
               {connections.length > 0
                 ? 'Select a connection from the sidebar'
                 : 'Connect to a device from the Design tab'}
@@ -864,20 +938,20 @@ const ConnectionsTab: React.FC = () => {
         >
           <div
             style={{
-              background: '#1e2433',
-              border: '1px solid #3a4556',
-              borderRadius: '8px',
-              padding: '24px',
+              background: theme.background.secondary,
+              border: `1px solid ${theme.border.default}`,
+              borderRadius: theme.radius.lg,
+              padding: theme.spacing.xxxl,
               minWidth: '400px',
-              boxShadow: '0 8px 32px rgba(0, 0, 0, 0.5)',
+              boxShadow: theme.shadow.xl,
             }}
             onClick={(e) => e.stopPropagation()}
           >
             <h3 style={{
-              margin: '0 0 16px 0',
-              fontSize: '16px',
-              fontWeight: 600,
-              color: '#e8ecf4',
+              margin: `0 0 ${theme.spacing.xl} 0`,
+              fontSize: theme.fontSize.lg,
+              fontWeight: theme.fontWeight.semibold,
+              color: theme.text.primary,
             }}>
               Rename Connection
             </h3>
@@ -895,30 +969,30 @@ const ConnectionsTab: React.FC = () => {
                 autoFocus
                 style={{
                   width: '100%',
-                  padding: '10px 12px',
-                  background: '#252d3f',
-                  border: '1px solid #3a4556',
-                  borderRadius: '4px',
-                  color: '#e8ecf4',
-                  fontSize: '14px',
-                  marginBottom: '16px',
+                  padding: `10px ${theme.spacing.lg}`,
+                  background: theme.background.tertiary,
+                  border: `1px solid ${theme.border.default}`,
+                  borderRadius: theme.radius.sm,
+                  color: theme.text.primary,
+                  fontSize: theme.fontSize.base,
+                  marginBottom: theme.spacing.xl,
                   outline: 'none',
                 }}
                 onFocus={(e) => e.target.select()}
               />
-              <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
+              <div style={{ display: 'flex', gap: theme.spacing.md, justifyContent: 'flex-end' }}>
                 <button
                   type="button"
                   onClick={() => setRenameModal(null)}
                   style={{
-                    padding: '8px 16px',
-                    background: '#303948',
-                    color: '#e8ecf4',
-                    border: '1px solid #3a4556',
-                    borderRadius: '4px',
-                    fontSize: '13px',
+                    padding: `${theme.spacing.md} ${theme.spacing.xl}`,
+                    background: theme.background.hover,
+                    color: theme.text.primary,
+                    border: `1px solid ${theme.border.default}`,
+                    borderRadius: theme.radius.sm,
+                    fontSize: theme.fontSize.md,
                     cursor: 'pointer',
-                    fontWeight: 500,
+                    fontWeight: theme.fontWeight.medium,
                   }}
                 >
                   Cancel
@@ -926,14 +1000,14 @@ const ConnectionsTab: React.FC = () => {
                 <button
                   type="submit"
                   style={{
-                    padding: '8px 16px',
-                    background: '#4d7cfe',
-                    color: '#e8ecf4',
-                    border: '1px solid #3461e8',
-                    borderRadius: '4px',
-                    fontSize: '13px',
+                    padding: `${theme.spacing.md} ${theme.spacing.xl}`,
+                    background: theme.accent.blue,
+                    color: theme.text.primary,
+                    border: `1px solid ${theme.accent.blueDark}`,
+                    borderRadius: theme.radius.sm,
+                    fontSize: theme.fontSize.md,
                     cursor: 'pointer',
-                    fontWeight: 500,
+                    fontWeight: theme.fontWeight.medium,
                   }}
                 >
                   Rename

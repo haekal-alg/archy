@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Handle, Position, NodeProps, NodeResizer } from '@xyflow/react';
 import CONFIG from '../../config';
 import { ConnectionConfig } from './EnhancedDeviceNode';
+import { WarningIcon } from './StatusIcons';
 import theme from '../../theme';
 
 export interface GroupNodeData {
@@ -236,7 +237,7 @@ const GroupNode: React.FC<NodeProps> = ({ data, selected }) => {
               border: 'none'
             }}
           >
-            <span style={{ fontSize: '12px' }}>⚠️</span>
+            <WarningIcon size={12} color={theme.text.primary} />
             <span>No connection</span>
           </div>
         )}

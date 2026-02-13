@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { ChevronLeftIcon, ChevronRightIcon } from './StatusIcons';
 import {
   RouterIcon,
   ServerIcon,
@@ -252,6 +253,7 @@ const ShapeLibrary: React.FC<ShapeLibraryProps> = ({ onAddNode, onAddGroup, onAd
       {/* Toggle Button */}
       <button
         onClick={onToggle}
+        className="panel-glass"
         style={{
           position: 'absolute',
           right: '-30px',
@@ -259,30 +261,17 @@ const ShapeLibrary: React.FC<ShapeLibraryProps> = ({ onAddNode, onAddGroup, onAd
           transform: 'translateY(-50%)',
           width: '30px',
           height: '60px',
-          border: '1px solid rgba(255, 255, 255, 0.25)',
           borderLeft: 'none',
           borderTopRightRadius: theme.radius.md,
           borderBottomRightRadius: theme.radius.md,
-          background: 'rgba(30, 33, 51, 0.65)',
-          backdropFilter: 'blur(60px) saturate(200%) brightness(1.1)',
-          WebkitBackdropFilter: 'blur(60px) saturate(200%) brightness(1.1)',
-          color: theme.text.primary,
-          cursor: 'pointer',
           fontSize: theme.fontSize.lg,
           boxShadow: theme.shadow.md,
-          transition: theme.transition.normal,
           display: 'flex',
           alignItems: 'center',
-          justifyContent: 'center'
-        }}
-        onMouseEnter={(e) => {
-          e.currentTarget.style.background = theme.background.hover;
-        }}
-        onMouseLeave={(e) => {
-          e.currentTarget.style.background = theme.background.secondary;
+          justifyContent: 'center',
         }}
       >
-        {isOpen ? '◀' : '▶'}
+        {isOpen ? <ChevronLeftIcon size={14} /> : <ChevronRightIcon size={14} />}
       </button>
     </div>
   );
