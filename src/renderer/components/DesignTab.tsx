@@ -16,6 +16,7 @@ import {
 import '@xyflow/react/dist/style.css';
 import { ToolType } from '../types/tools';
 import CustomEdge from './CustomEdge';
+import theme from '../../theme';
 
 interface DesignTabProps {
   nodes: Node[];
@@ -29,6 +30,8 @@ interface DesignTabProps {
   onNodeDoubleClick: (event: React.MouseEvent, node: Node) => void;
   onNodeContextMenu: (event: React.MouseEvent, node: Node) => void;
   onEdgeContextMenu: (event: React.MouseEvent, edge: Edge) => void;
+  onNodesDelete?: (nodes: Node[]) => void;
+  onEdgesDelete?: (edges: Edge[]) => void;
   onInit: (instance: ReactFlowInstance) => void;
   onDrop: (event: React.DragEvent) => void;
   onDragOver: (event: React.DragEvent) => void;
@@ -57,6 +60,8 @@ const DesignTab: React.FC<DesignTabProps> = ({
   onNodeDoubleClick,
   onNodeContextMenu,
   onEdgeContextMenu,
+  onNodesDelete,
+  onEdgesDelete,
   onInit,
   onDrop,
   onDragOver,
@@ -79,6 +84,9 @@ const DesignTab: React.FC<DesignTabProps> = ({
   const nodesDraggable = isSelectionTool;
   const nodesConnectable = isSelectionTool;
   const elementsSelectable = isSelectionTool;
+
+  // Drop zone highlight for drag-and-drop from ShapeLibrary
+  const [isDragOver, setIsDragOver] = useState(false);
 
   // Set cursor based on tool - using state-based cursor
   const [currentCursor, setCurrentCursor] = useState<string>('default');
@@ -151,9 +159,20 @@ const DesignTab: React.FC<DesignTabProps> = ({
         width: '100%',
         height: '100%',
         cursor: currentCursor,
+        outline: isDragOver ? '2px dashed rgba(77, 124, 254, 0.6)' : 'none',
+        outlineOffset: '-2px',
+        transition: 'outline 0.15s ease',
       }}
       ref={reactFlowWrapper}
       className={isMiddleMouseDragging ? 'middle-mouse-dragging' : ''}
+      onDragEnter={() => setIsDragOver(true)}
+      onDragLeave={(e) => {
+        // Only hide if leaving the wrapper entirely
+        if (!e.currentTarget.contains(e.relatedTarget as HTMLElement)) {
+          setIsDragOver(false);
+        }
+      }}
+      onDrop={() => setIsDragOver(false)}
     >
       {children}
       <ReactFlow
@@ -168,6 +187,8 @@ const DesignTab: React.FC<DesignTabProps> = ({
         onNodeDoubleClick={onNodeDoubleClick}
         onNodeContextMenu={onNodeContextMenu}
         onEdgeContextMenu={onEdgeContextMenu}
+        onNodesDelete={onNodesDelete}
+        onEdgesDelete={onEdgesDelete}
         onInit={onInit}
         onDrop={onDrop}
         onDragOver={onDragOver}
@@ -199,7 +220,7 @@ const DesignTab: React.FC<DesignTabProps> = ({
       >
         <Background
           color="rgba(77, 124, 254, 0.05)"
-          gap={20}
+          gap={15}
           style={{
             opacity: 0.4,
           }}
@@ -210,9 +231,9 @@ const DesignTab: React.FC<DesignTabProps> = ({
           zoomable
           pannable
           style={{
-            backgroundColor: '#1e1e1e',
+            backgroundColor: theme.background.primary,
             borderRadius: '8px',
-            border: '1px solid #333',
+            border: `1px solid ${theme.border.default}`,
           }}
         />
       </ReactFlow>

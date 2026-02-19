@@ -91,13 +91,6 @@ const AppContent: React.FC = () => {
     edge?: Edge;
   } | null>(null);
 
-  // Debug logging for tool changes
-  useEffect(() => {
-    console.log('===== ACTIVE TOOL CHANGED =====');
-    console.log('New activeTool:', activeTool);
-    console.log('isHandToolTemporary:', isHandToolTemporary);
-    console.log('===============================');
-  }, [activeTool, isHandToolTemporary]);
 
   // History state for Undo/Redo
   const [history, setHistory] = useState<HistoryState[]>([]);
@@ -106,6 +99,7 @@ const AppContent: React.FC = () => {
   // Export state
   const [isExporting, setIsExporting] = useState(false);
   const [showExportMenu, setShowExportMenu] = useState(false);
+  const [showClearConfirm, setShowClearConfirm] = useState(false);
 
   // Setup menu event listeners with refs to avoid stale closures
   const nodesRef = useRef(nodes);
@@ -355,26 +349,16 @@ const AppContent: React.FC = () => {
 
   // Handle temporary hand tool activation (middle mouse button)
   const handleTemporaryHandToolStart = useCallback(() => {
-    console.log('handleTemporaryHandToolStart called - Current tool:', activeTool);
     if (activeTool !== 'hand') {
-      // Only activate temporary hand tool if not already in hand tool mode
-      console.log('Setting activeTool to HAND (temporary)');
       setActiveTool('hand');
       setIsHandToolTemporary(true);
-    } else {
-      console.log('Already in hand tool mode, not changing');
     }
   }, [activeTool]);
 
   const handleTemporaryHandToolEnd = useCallback(() => {
-    console.log('handleTemporaryHandToolEnd called - isHandToolTemporary:', isHandToolTemporary);
     if (isHandToolTemporary) {
-      // Only revert if it was temporary
-      console.log('Setting activeTool back to SELECTION');
       setActiveTool('selection');
       setIsHandToolTemporary(false);
-    } else {
-      console.log('Not temporary mode, not reverting');
     }
   }, [isHandToolTemporary]);
 
@@ -386,7 +370,7 @@ const AppContent: React.FC = () => {
       const isInputField = target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable;
 
       // Toggle keyboard shortcuts modal with ?
-      if (!isInputField && event.key === '?' && !event.shiftKey) {
+      if (!isInputField && event.key === '?') {
         event.preventDefault();
         setShowKeyboardShortcuts(true);
       } else if (event.key === 'Escape') {
@@ -407,6 +391,14 @@ const AppContent: React.FC = () => {
         // Switch to Connections tab
         event.preventDefault();
         setActiveTab('connections');
+      } else if ((event.ctrlKey || event.metaKey) && event.key === 's') {
+        // Save diagram
+        event.preventDefault();
+        document.dispatchEvent(new Event('menu-save-trigger'));
+      } else if ((event.ctrlKey || event.metaKey) && event.key === 'o') {
+        // Open diagram
+        event.preventDefault();
+        document.dispatchEvent(new Event('menu-load-trigger'));
       } else if ((event.ctrlKey || event.metaKey) && event.shiftKey && event.key === 'Z') {
         event.preventDefault();
         handleRedo();
@@ -555,7 +547,7 @@ const AppContent: React.FC = () => {
       );
 
       toPng(reactFlowWrapper.current, {
-        backgroundColor: '#ffffff',
+        backgroundColor: theme.background.canvas || '#1a1b2e',
         width: nodesBounds.width + 200,
         height: nodesBounds.height + 200,
         style: {
@@ -579,13 +571,7 @@ const AppContent: React.FC = () => {
     };
 
     const handleClear = () => {
-      if (confirm('Are you sure you want to clear the canvas?')) {
-        setNodes([]);
-        setEdges([]);
-        setDiagramName('Untitled');
-        setCurrentFilePath(null);
-        setHasUnsavedChanges(false);
-      }
+      setShowClearConfirm(true);
     };
 
     // Register menu listeners and capture cleanup functions
@@ -594,12 +580,20 @@ const AppContent: React.FC = () => {
     const cleanupExport = window.electron.onMenuExport(handleExport);
     const cleanupClear = window.electron.onMenuClear(handleClear);
 
+    // Wire Ctrl+S / Ctrl+O keyboard shortcut events
+    const handleSaveTrigger = () => handleSave();
+    const handleLoadTrigger = () => handleLoad();
+    document.addEventListener('menu-save-trigger', handleSaveTrigger);
+    document.addEventListener('menu-load-trigger', handleLoadTrigger);
+
     // Cleanup on unmount to prevent memory leaks
     return () => {
       cleanupSave?.();
       cleanupLoad?.();
       cleanupExport?.();
       cleanupClear?.();
+      document.removeEventListener('menu-save-trigger', handleSaveTrigger);
+      document.removeEventListener('menu-load-trigger', handleLoadTrigger);
     };
   }, []); // Empty dependency array - only run once
 
@@ -627,6 +621,19 @@ const AppContent: React.FC = () => {
     },
     [setEdges, saveToHistory]
   );
+
+  // Save to history when nodes/edges are deleted via keyboard (Delete key)
+  const onNodesDelete = useCallback((deletedNodes: Node[]) => {
+    if (deletedNodes.length > 0) {
+      setTimeout(() => saveToHistory(), 0);
+    }
+  }, [saveToHistory]);
+
+  const onEdgesDelete = useCallback((deletedEdges: Edge[]) => {
+    if (deletedEdges.length > 0) {
+      setTimeout(() => saveToHistory(), 0);
+    }
+  }, [saveToHistory]);
 
   const onNodeClick = useCallback((event: React.MouseEvent, node: Node) => {
     setSelectedNode(node);
@@ -980,6 +987,10 @@ const AppContent: React.FC = () => {
             newStyle.stroke = data.color;
           }
 
+          if (data.strokeWidth !== undefined) {
+            newStyle.strokeWidth = data.strokeWidth;
+          }
+
           // Handle line style (solid, dashed, dotted)
           if (data.style !== undefined) {
             const dashMap: Record<string, string | undefined> = {
@@ -997,6 +1008,7 @@ const AppContent: React.FC = () => {
             ...edge.data,
             ...(data.label !== undefined && { label: data.label }),
             ...(data.color !== undefined && { customColor: data.color, color: data.color }),
+            ...(data.strokeWidth !== undefined && { strokeWidth: data.strokeWidth }),
             ...(data.routingType !== undefined && { routingType: data.routingType }),
             ...(data.style !== undefined && { lineStyle: data.style }),
             ...(data.animated !== undefined && { animated: data.animated }),
@@ -1061,11 +1073,11 @@ const AppContent: React.FC = () => {
   // Export functions with proper error handling
   const handleExportPNG = async () => {
     if (!reactFlowInstance) {
-      alert('Diagram is still initializing, please wait a moment');
+      showWarning('Diagram is still initializing, please wait a moment');
       return;
     }
     if (nodes.length === 0) {
-      alert('Please add some nodes to the diagram first');
+      showWarning('Please add some nodes to the diagram first');
       return;
     }
 
@@ -1095,7 +1107,7 @@ const AppContent: React.FC = () => {
 
       // Export only the viewport (canvas area) with proper transform
       const dataUrl = await toPng(viewportElement, {
-        backgroundColor: '#ffffff',
+        backgroundColor: theme.background.canvas || '#1a1b2e',
         width: imageWidth,
         height: imageHeight,
         pixelRatio: 3, // Higher quality
@@ -1113,7 +1125,7 @@ const AppContent: React.FC = () => {
       link.click();
     } catch (error) {
       console.error('PNG export failed:', error);
-      alert(`Export failed: ${error}`);
+      showError(`Export failed: ${error}`);
     } finally {
       setIsExporting(false);
     }
@@ -1121,11 +1133,11 @@ const AppContent: React.FC = () => {
 
   const handleExportJPG = async () => {
     if (!reactFlowInstance) {
-      alert('Diagram is still initializing, please wait a moment');
+      showWarning('Diagram is still initializing, please wait a moment');
       return;
     }
     if (nodes.length === 0) {
-      alert('Please add some nodes to the diagram first');
+      showWarning('Please add some nodes to the diagram first');
       return;
     }
 
@@ -1152,7 +1164,7 @@ const AppContent: React.FC = () => {
       );
 
       const dataUrl = await toJpeg(viewportElement, {
-        backgroundColor: '#ffffff',
+        backgroundColor: theme.background.canvas || '#1a1b2e',
         width: imageWidth,
         height: imageHeight,
         quality: 0.95,
@@ -1171,7 +1183,7 @@ const AppContent: React.FC = () => {
       link.click();
     } catch (error) {
       console.error('JPG export failed:', error);
-      alert(`Export failed: ${error}`);
+      showError(`Export failed: ${error}`);
     } finally {
       setIsExporting(false);
     }
@@ -1179,11 +1191,11 @@ const AppContent: React.FC = () => {
 
   const handleExportSVG = async () => {
     if (!reactFlowInstance) {
-      alert('Diagram is still initializing, please wait a moment');
+      showWarning('Diagram is still initializing, please wait a moment');
       return;
     }
     if (nodes.length === 0) {
-      alert('Please add some nodes to the diagram first');
+      showWarning('Please add some nodes to the diagram first');
       return;
     }
 
@@ -1212,7 +1224,7 @@ const AppContent: React.FC = () => {
       // Use toSvg for vector export
       const { toSvg } = await import('html-to-image');
       const dataUrl = await toSvg(viewportElement, {
-        backgroundColor: '#ffffff',
+        backgroundColor: theme.background.canvas || '#1a1b2e',
         width: imageWidth,
         height: imageHeight,
         style: {
@@ -1229,7 +1241,7 @@ const AppContent: React.FC = () => {
       link.click();
     } catch (error) {
       console.error('SVG export failed:', error);
-      alert(`Export failed: ${error}`);
+      showError(`Export failed: ${error}`);
     } finally {
       setIsExporting(false);
     }
@@ -1268,6 +1280,8 @@ const AppContent: React.FC = () => {
             onNodeDoubleClick={onNodeDoubleClick}
             onNodeContextMenu={onNodeContextMenu}
             onEdgeContextMenu={onEdgeContextMenu}
+            onNodesDelete={onNodesDelete}
+            onEdgesDelete={onEdgesDelete}
             onInit={setReactFlowInstance}
             activeTool={activeTool}
             onTemporaryHandToolStart={handleTemporaryHandToolStart}
@@ -1605,7 +1619,7 @@ const AppContent: React.FC = () => {
           <ContextMenu
             x={contextMenu.x}
             y={contextMenu.y}
-            showConnect={!!contextMenu.node && (contextMenu.node.type === 'group' || contextMenu.node.type !== 'group')}
+            showConnect={!!contextMenu.node}
             connections={contextMenu.node ? (contextMenu.node.data as any).connections || [] : []}
             onConnect={contextMenu.node ? (connection) => handleConnectToDevice(contextMenu.node!, connection) : undefined}
             onDuplicate={contextMenu.node ? () => handleDuplicateNode(contextMenu.node!) : undefined}
@@ -1640,6 +1654,56 @@ const AppContent: React.FC = () => {
           <ConnectionsTab />
         </ErrorBoundary>
       </div>
+
+      {/* Clear Canvas Confirm Dialog */}
+      {showClearConfirm && (
+        <div style={{
+          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+          background: 'rgba(0,0,0,0.5)', zIndex: 10000,
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+        }}
+          onClick={() => setShowClearConfirm(false)}
+        >
+          <div style={{
+            background: theme.background.elevated, borderRadius: theme.radius.lg,
+            padding: '24px', minWidth: '360px', boxShadow: theme.shadow.xl,
+            border: `1px solid ${theme.border.default}`,
+          }}
+            onClick={e => e.stopPropagation()}
+          >
+            <h3 style={{ margin: '0 0 12px', color: theme.text.primary, fontSize: theme.fontSize.lg }}>Clear Canvas</h3>
+            <p style={{ margin: '0 0 20px', color: theme.text.secondary, fontSize: theme.fontSize.sm }}>
+              Are you sure you want to clear the canvas? This action cannot be undone.
+            </p>
+            <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
+              <button
+                onClick={() => setShowClearConfirm(false)}
+                style={{
+                  padding: '8px 16px', border: `1px solid ${theme.border.default}`,
+                  borderRadius: theme.radius.sm, background: theme.background.tertiary,
+                  color: theme.text.primary, cursor: 'pointer', fontSize: theme.fontSize.sm,
+                }}
+              >Cancel</button>
+              <button
+                onClick={() => {
+                  setNodes([]);
+                  setEdges([]);
+                  setDiagramName('Untitled');
+                  setCurrentFilePath(null);
+                  setHasUnsavedChanges(false);
+                  setShowClearConfirm(false);
+                }}
+                style={{
+                  padding: '8px 16px', border: 'none',
+                  borderRadius: theme.radius.sm, background: theme.accent.red,
+                  color: '#fff', cursor: 'pointer', fontSize: theme.fontSize.sm,
+                  fontWeight: theme.fontWeight.medium,
+                }}
+              >Clear</button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Keyboard Shortcuts Modal */}
       <KeyboardShortcuts

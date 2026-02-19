@@ -97,13 +97,32 @@ const ContextMenu: React.FC<ContextMenuProps> = ({
 }) => {
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
   const [isVisible, setIsVisible] = useState(false);
+  const [adjustedPos, setAdjustedPos] = useState({ x, y });
+  const menuRef = React.useRef<HTMLDivElement>(null);
 
   // Entrance animation on mount
   useEffect(() => {
-    // Trigger animation after mount
     const timer = setTimeout(() => setIsVisible(true), 10);
     return () => clearTimeout(timer);
   }, []);
+
+  // Boundary detection: adjust position if menu would render off-screen
+  useEffect(() => {
+    if (menuRef.current) {
+      const rect = menuRef.current.getBoundingClientRect();
+      let newX = x;
+      let newY = y;
+      if (x + rect.width > window.innerWidth) {
+        newX = window.innerWidth - rect.width - 8;
+      }
+      if (y + rect.height > window.innerHeight) {
+        newY = window.innerHeight - rect.height - 8;
+      }
+      if (newX !== adjustedPos.x || newY !== adjustedPos.y) {
+        setAdjustedPos({ x: newX, y: newY });
+      }
+    }
+  }, [x, y, isVisible]);
 
   const normalizeGroup = (group?: string) => (group || '').trim();
   const connectionItems: Array<
@@ -122,6 +141,46 @@ const ContextMenu: React.FC<ContextMenuProps> = ({
     }
     connectionItems.push({ type: 'connection', connection });
   });
+
+  // Build flat list of actionable items for keyboard navigation
+  const actionItems: Array<{ index: number; action: () => void }> = [];
+  if (showConnect && onConnect && connections.length > 0) {
+    connectionItems.forEach((item, index) => {
+      if (item.type === 'connection') {
+        actionItems.push({ index, action: () => { onConnect(item.connection); onClose(); } });
+      }
+    });
+  }
+  if (onDuplicate) {
+    actionItems.push({ index: 1000, action: () => { onDuplicate(); onClose(); } });
+  }
+  actionItems.push({ index: 1001, action: () => { onDelete(); onClose(); } });
+
+  // Keyboard navigation
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        const currentIdx = actionItems.findIndex(a => a.index === hoveredIndex);
+        const nextIdx = currentIdx < actionItems.length - 1 ? currentIdx + 1 : 0;
+        setHoveredIndex(actionItems[nextIdx].index);
+      } else if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        const currentIdx = actionItems.findIndex(a => a.index === hoveredIndex);
+        const nextIdx = currentIdx > 0 ? currentIdx - 1 : actionItems.length - 1;
+        setHoveredIndex(actionItems[nextIdx].index);
+      } else if (e.key === 'Enter') {
+        e.preventDefault();
+        const item = actionItems.find(a => a.index === hoveredIndex);
+        if (item) item.action();
+      } else if (e.key === 'Escape') {
+        e.preventDefault();
+        onClose();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [hoveredIndex, onClose, onConnect, onDelete, onDuplicate, showConnect, connections]);
 
   const getConnectionLabel = (connection: ConnectionConfig): string => {
     // Use custom label if provided
@@ -166,10 +225,11 @@ const ContextMenu: React.FC<ContextMenuProps> = ({
 
       {/* Context Menu */}
       <div
+        ref={menuRef}
         style={{
           position: 'fixed',
-          top: y,
-          left: x,
+          top: adjustedPos.y,
+          left: adjustedPos.x,
           ...getMenuContainerStyle(isVisible),
           zIndex: 9999,
           width: '200px',

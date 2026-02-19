@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Handle, Position, NodeProps, NodeResizer } from '@xyflow/react';
 import CONFIG from '../../config';
 import { ConnectionConfig } from './EnhancedDeviceNode';
-import { WarningIcon } from './StatusIcons';
+
 import theme from '../../theme';
 
 export interface GroupNodeData {
@@ -219,28 +219,7 @@ const GroupNode: React.FC<NodeProps> = ({ data, selected }) => {
           </div>
         )}
 
-        {/* Connection Status Indicator for Groups */}
-        {(!groupData.connections || groupData.connections.length === 0) && (
-          <div
-            style={{
-              position: 'absolute',
-              top: '12px',
-              right: '12px',
-              fontSize: theme.fontSize.xs,
-              color: theme.text.primary,
-              background: 'transparent',
-              padding: `${theme.spacing.xs} ${theme.spacing.md}`,
-              borderRadius: theme.radius.sm,
-              display: 'flex',
-              alignItems: 'center',
-              gap: theme.spacing.xs,
-              border: 'none'
-            }}
-          >
-            <WarningIcon size={12} color={theme.text.primary} />
-            <span>No connection</span>
-          </div>
-        )}
+        {/* Connection Status Indicator removed - group nodes are for visual organization */}
       </div>
     </>
   );

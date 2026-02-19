@@ -40,6 +40,7 @@ const CustomEdge: React.FC<EdgeProps> = ({
   const color = edgeData?.color || theme.border.default;
   const routingType = edgeData?.routingType || 'bezier';
   const strokeStyle = (edgeData as any)?.lineStyle || edgeData?.style || 'solid';
+  const strokeWidth = (edgeData as any)?.strokeWidth || 4;
   const animated = edgeData?.animated || false;
   const label = edgeData?.label;
   const markerStartType = edgeData?.markerStart || 'none';
@@ -103,7 +104,7 @@ const CustomEdge: React.FC<EdgeProps> = ({
         markerEnd={markerEndUrl}
         style={{
           stroke: color,
-          strokeWidth: 4,
+          strokeWidth,
           strokeDasharray,
           opacity: 1,
         }}

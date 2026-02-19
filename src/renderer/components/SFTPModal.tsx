@@ -359,8 +359,11 @@ const SFTPModal: React.FC<SFTPModalProps> = ({ isOpen, onClose }) => {
   }, [state.local.sortColumn, state.local.sortDirection, state.remote.sortColumn, state.remote.sortDirection]);
 
   // --- File selection handler ---
-  const handleFileSelect = useCallback((pane: 'local' | 'remote', filePath: string, ctrlKey: boolean) => {
-    if (ctrlKey) {
+  const handleFileSelect = useCallback((pane: 'local' | 'remote', filePath: string, ctrlKey: boolean, shiftKey?: boolean) => {
+    if (shiftKey) {
+      // Range selection - toggle for now since shift-click is handled inside FilePane
+      dispatch({ type: 'TOGGLE_FILE_SELECTION', pane, filePath });
+    } else if (ctrlKey) {
       dispatch({ type: 'TOGGLE_FILE_SELECTION', pane, filePath });
     } else {
       dispatch({ type: 'SET_PANE_SELECTED_FILE', pane, file: filePath });
@@ -375,6 +378,18 @@ const SFTPModal: React.FC<SFTPModalProps> = ({ isOpen, onClose }) => {
     dispatch({ type: 'RESET' });
     onClose();
   }, [state.selectedHost, onClose]);
+
+  // Escape key to close modal
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && !transferActive) {
+        handleClose();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, transferActive, handleClose]);
 
   if (!isOpen) return null;
 
@@ -495,7 +510,7 @@ const SFTPModal: React.FC<SFTPModalProps> = ({ isOpen, onClose }) => {
             transferActive={transferActive}
             onNavigate={(p) => { if (!transferActive) loadLocalFiles(p); }}
             onFileClick={(fp) => dispatch({ type: 'SET_PANE_SELECTED_FILE', pane: 'local', file: fp })}
-            onFileSelect={(fp, ctrl) => handleFileSelect('local', fp, ctrl)}
+            onFileSelect={(fp, ctrl, shift) => handleFileSelect('local', fp, ctrl, shift)}
             onSelectAll={() => {
               const selectableFiles = displayLocalFiles.filter(f => f.type === 'file' && f.name !== '..');
               dispatch({ type: 'SELECT_ALL_FILES', pane: 'local', filePaths: selectableFiles.map(f => f.path) });
@@ -631,7 +646,7 @@ const SFTPModal: React.FC<SFTPModalProps> = ({ isOpen, onClose }) => {
               transferActive={transferActive}
               onNavigate={(p) => { if (!transferActive) loadRemoteFiles(p); }}
               onFileClick={(fp) => dispatch({ type: 'SET_PANE_SELECTED_FILE', pane: 'remote', file: fp })}
-              onFileSelect={(fp, ctrl) => handleFileSelect('remote', fp, ctrl)}
+              onFileSelect={(fp, ctrl, shift) => handleFileSelect('remote', fp, ctrl, shift)}
               onSelectAll={() => {
                 const selectableFiles = displayRemoteFiles.filter(f => f.type === 'file' && f.name !== '..');
                 dispatch({ type: 'SELECT_ALL_FILES', pane: 'remote', filePaths: selectableFiles.map(f => f.path) });

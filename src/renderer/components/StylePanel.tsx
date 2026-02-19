@@ -133,6 +133,7 @@ const StylePanel: React.FC<StylePanelProps> = ({
   const [edgeAnimated, setEdgeAnimated] = useState(false);
   const [edgeMarkerStart, setEdgeMarkerStart] = useState<string>('none');
   const [edgeMarkerEnd, setEdgeMarkerEnd] = useState<string>('arrow');
+  const [edgeStrokeWidth, setEdgeStrokeWidth] = useState<number>(4);
 
   // Background opacity and transparency controls
   const [textBgOpacity, setTextBgOpacity] = useState(100);
@@ -249,8 +250,9 @@ const StylePanel: React.FC<StylePanelProps> = ({
           : 'bezier'
       );
       setEdgeAnimated(selectedEdge.animated || false);
-      setEdgeMarkerStart(typeof data.markerStart === 'string' ? data.markerStart : 'none'); // Read from edge data
-      setEdgeMarkerEnd(typeof data.markerEnd === 'string' ? data.markerEnd : 'arrow'); // Read from edge data
+      setEdgeMarkerStart(typeof data.markerStart === 'string' ? data.markerStart : 'none');
+      setEdgeMarkerEnd(typeof data.markerEnd === 'string' ? data.markerEnd : 'arrow');
+      setEdgeStrokeWidth(style.strokeWidth || data.strokeWidth || 4);
     }
   }, [selectedEdge]);
 
@@ -292,6 +294,7 @@ const StylePanel: React.FC<StylePanelProps> = ({
       onUpdateEdge(selectedEdge.id, {
         label: edgeLabel,
         color: edgeColor,
+        strokeWidth: edgeStrokeWidth,
         routingType: edgeRouting,
         animated: edgeAnimated,
         style: edgeStyle,
@@ -1058,6 +1061,7 @@ const StylePanel: React.FC<StylePanelProps> = ({
                         onUpdateEdge(selectedEdge.id, {
                           label: edgeLabel,
                           color: edgeColor,
+                          strokeWidth: edgeStrokeWidth,
                           style: style,
                           routingType: edgeRouting,
                           animated: edgeAnimated,
@@ -1105,6 +1109,7 @@ const StylePanel: React.FC<StylePanelProps> = ({
                         onUpdateEdge(selectedEdge.id, {
                           label: edgeLabel,
                           color: edgeColor,
+                          strokeWidth: edgeStrokeWidth,
                           style: edgeStyle,
                           routingType: routing,
                           animated: edgeAnimated,
@@ -1131,6 +1136,60 @@ const StylePanel: React.FC<StylePanelProps> = ({
                 ))}
               </div>
             </div>
+
+            {/* Edge Color - in Line section */}
+            <div style={{ marginBottom: theme.spacing.lg }}>
+              <label style={labelStyle}>Color</label>
+              <input
+                type="color"
+                value={edgeColor}
+                onChange={(e) => {
+                  const newColor = e.target.value;
+                  setEdgeColor(newColor);
+                  if (selectedEdge) {
+                    onUpdateEdge(selectedEdge.id, {
+                      label: edgeLabel,
+                      color: newColor,
+                      strokeWidth: edgeStrokeWidth,
+                      style: edgeStyle,
+                      routingType: edgeRouting,
+                      animated: edgeAnimated,
+                      markerStart: edgeMarkerStart,
+                      markerEnd: edgeMarkerEnd
+                    });
+                  }
+                }}
+                style={colorInputStyle}
+              />
+            </div>
+
+            {/* Edge Stroke Width */}
+            <div style={{ marginBottom: theme.spacing.lg }}>
+              <label style={labelStyle}>Stroke Width: {edgeStrokeWidth}px</label>
+              <input
+                type="range"
+                min="1"
+                max="12"
+                value={edgeStrokeWidth}
+                onChange={(e) => {
+                  const newWidth = parseInt(e.target.value);
+                  setEdgeStrokeWidth(newWidth);
+                  if (selectedEdge) {
+                    onUpdateEdge(selectedEdge.id, {
+                      label: edgeLabel,
+                      color: edgeColor,
+                      strokeWidth: newWidth,
+                      style: edgeStyle,
+                      routingType: edgeRouting,
+                      animated: edgeAnimated,
+                      markerStart: edgeMarkerStart,
+                      markerEnd: edgeMarkerEnd
+                    });
+                  }
+                }}
+                style={{ width: '100%', cursor: 'pointer' }}
+              />
+            </div>
             </CollapsibleSection>
 
             <CollapsibleSection title="Markers" defaultOpen={false}>
@@ -1154,6 +1213,7 @@ const StylePanel: React.FC<StylePanelProps> = ({
                       onUpdateEdge(selectedEdge.id, {
                         label: edgeLabel,
                         color: edgeColor,
+                        strokeWidth: edgeStrokeWidth,
                         style: edgeStyle,
                         routingType: edgeRouting,
                         animated: newAnimated,
@@ -1176,45 +1236,6 @@ const StylePanel: React.FC<StylePanelProps> = ({
                 fontWeight: theme.fontWeight.medium,
                 color: theme.text.secondary
               }}>
-                Color
-              </label>
-              <input
-                type="color"
-                value={edgeColor}
-                onChange={(e) => {
-                  const newColor = e.target.value;
-                  setEdgeColor(newColor);
-                  if (selectedEdge) {
-                    onUpdateEdge(selectedEdge.id, {
-                      label: edgeLabel,
-                      color: newColor,
-                      style: edgeStyle,
-                      routingType: edgeRouting,
-                      animated: edgeAnimated,
-                      markerStart: edgeMarkerStart,
-                      markerEnd: edgeMarkerEnd
-                    });
-                  }
-                }}
-                style={{
-                  width: '100%',
-                  height: '32px',
-                  border: `1px solid ${theme.border.default}`,
-                  borderRadius: theme.radius.sm,
-                  cursor: 'pointer',
-                  background: theme.background.tertiary
-                }}
-              />
-            </div>
-
-            <div style={{ marginBottom: theme.spacing.lg }}>
-              <label style={{
-                display: 'block',
-                fontSize: theme.fontSize.sm,
-                marginBottom: theme.spacing.xs,
-                fontWeight: theme.fontWeight.medium,
-                color: theme.text.secondary
-              }}>
                 Start Marker
               </label>
               <select
@@ -1226,6 +1247,7 @@ const StylePanel: React.FC<StylePanelProps> = ({
                     onUpdateEdge(selectedEdge.id, {
                       label: edgeLabel,
                       color: edgeColor,
+                      strokeWidth: edgeStrokeWidth,
                       style: edgeStyle,
                       routingType: edgeRouting,
                       animated: edgeAnimated,
@@ -1279,6 +1301,7 @@ const StylePanel: React.FC<StylePanelProps> = ({
                     onUpdateEdge(selectedEdge.id, {
                       label: edgeLabel,
                       color: edgeColor,
+                      strokeWidth: edgeStrokeWidth,
                       style: edgeStyle,
                       routingType: edgeRouting,
                       animated: edgeAnimated,

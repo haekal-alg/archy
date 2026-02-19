@@ -5,7 +5,7 @@ import { WebLinksAddon } from '@xterm/addon-web-links';
 import { SerializeAddon } from '@xterm/addon-serialize';
 import { WebglAddon } from '@xterm/addon-webgl';
 import '@xterm/xterm/css/xterm.css';
-import { useToast } from '../hooks/useToast';
+
 
 interface TerminalEmulatorProps {
   connectionId: string;
@@ -194,7 +194,7 @@ export const getTerminalContent = (connectionId: string): string | null => {
 
 const TerminalEmulator: React.FC<TerminalEmulatorProps> = ({ connectionId, isVisible, zoom = 1.0, isActive = false }) => {
   const terminalRef = useRef<HTMLDivElement>(null);
-  const { showToast, ToastContainer } = useToast();
+
 
   useEffect(() => {
     if (!terminalRef.current) return;
@@ -302,7 +302,6 @@ const TerminalEmulator: React.FC<TerminalEmulatorProps> = ({ connectionId, isVis
             event.preventDefault();
             event.stopPropagation();
             window.electron.clipboard.writeText(selection);
-            showToast('Copied to clipboard');
             return false;
           }
         }
@@ -315,7 +314,6 @@ const TerminalEmulator: React.FC<TerminalEmulatorProps> = ({ connectionId, isVis
             if (text) {
               // Send to server - let server echo it back
               window.electron.sendSSHData(connectionId, text);
-              showToast('Pasted from clipboard');
             }
           });
           return false;
@@ -429,29 +427,26 @@ const TerminalEmulator: React.FC<TerminalEmulatorProps> = ({ connectionId, isVis
   }, [connectionId, zoom]);
 
   return (
-    <div style={{ position: 'relative', width: '100%', height: '100%' }}>
-      <div
-        ref={terminalRef}
-        onClick={() => {
-          // Ensure terminal gets focus when clicked
-          const instance = terminalInstances.get(connectionId);
-          if (instance) {
-            instance.terminal.focus();
-          }
-        }}
-        style={{
-          width: '100%',
-          height: '100%',
-          overflow: 'hidden',
-          cursor: 'text',
-          border: isActive ? '2px solid rgba(59, 142, 234, 0.5)' : '2px solid transparent',
-          borderRadius: '4px',
-          transition: 'border-color 0.2s ease',
-          boxShadow: isActive ? '0 0 12px rgba(59, 142, 234, 0.3)' : 'none',
-        }}
-      />
-      <ToastContainer />
-    </div>
+    <div
+      ref={terminalRef}
+      onClick={() => {
+        // Ensure terminal gets focus when clicked
+        const instance = terminalInstances.get(connectionId);
+        if (instance) {
+          instance.terminal.focus();
+        }
+      }}
+      style={{
+        width: '100%',
+        height: '100%',
+        overflow: 'hidden',
+        cursor: 'text',
+        border: isActive ? '2px solid rgba(59, 142, 234, 0.5)' : '2px solid transparent',
+        borderRadius: '4px',
+        transition: 'border-color 0.2s ease',
+        boxShadow: isActive ? '0 0 12px rgba(59, 142, 234, 0.3)' : 'none',
+      }}
+    />
   );
 };
 
