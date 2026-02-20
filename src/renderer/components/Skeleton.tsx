@@ -47,38 +47,22 @@ const Skeleton: React.FC<SkeletonProps> = ({
   };
 
   return (
-    <>
-      <div
-        style={{
-          width: typeof finalWidth === 'number' ? `${finalWidth}px` : finalWidth,
-          height: typeof finalHeight === 'number' ? `${finalHeight}px` : finalHeight,
-          borderRadius: getBorderRadius(),
-          background: `linear-gradient(
-            90deg,
-            ${theme.background.tertiary} 0%,
-            ${theme.background.hover} 50%,
-            ${theme.background.tertiary} 100%
-          )`,
-          backgroundSize: '200% 100%',
-          animation: 'shimmer 1.5s ease-in-out infinite',
-          ...style,
-        }}
-      />
-
-      {/* CSS Animation */}
-      <style>
-        {`
-          @keyframes shimmer {
-            0% {
-              background-position: 200% 0;
-            }
-            100% {
-              background-position: -200% 0;
-            }
-          }
-        `}
-      </style>
-    </>
+    <div
+      style={{
+        width: typeof finalWidth === 'number' ? `${finalWidth}px` : finalWidth,
+        height: typeof finalHeight === 'number' ? `${finalHeight}px` : finalHeight,
+        borderRadius: getBorderRadius(),
+        background: `linear-gradient(
+          90deg,
+          ${theme.background.tertiary} 0%,
+          ${theme.background.hover} 50%,
+          ${theme.background.tertiary} 100%
+        )`,
+        backgroundSize: '200% 100%',
+        animation: 'shimmer 1.5s ease-in-out infinite',
+        ...style,
+      }}
+    />
   );
 };
 

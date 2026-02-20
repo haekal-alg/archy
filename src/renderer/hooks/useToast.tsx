@@ -63,11 +63,15 @@ export const useToast = () => {
   }, []);
 
   const ToastContainer = useCallback(() => {
+    const visibleToasts = toasts.slice(-3); // Show max 3 toasts at a time
     return (
       <div
+        role="status"
+        aria-live="polite"
+        aria-atomic="false"
         style={{
           position: 'fixed',
-          top: 0,
+          bottom: 0,
           right: 0,
           zIndex: 99999,
           pointerEvents: 'none',
@@ -80,9 +84,10 @@ export const useToast = () => {
             gap: '12px',
             padding: '16px',
             pointerEvents: 'auto',
+            maxWidth: '420px',
           }}
         >
-          {toasts.map((toast) => (
+          {visibleToasts.map((toast) => (
             <Toast
               key={toast.id}
               message={toast.message}

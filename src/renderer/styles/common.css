@@ -157,3 +157,195 @@
 .pulse-dot {
   animation: pulse-dot 2s ease-in-out infinite;
 }
+
+/* ===== Hover Utility Classes ===== */
+/* These replace inline onMouseEnter/onMouseLeave handlers */
+
+.btn-ghost {
+  background: var(--bg-hover);
+  border: 1px solid var(--border-default);
+  color: var(--text-primary);
+  cursor: pointer;
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.btn-ghost:hover {
+  background: var(--bg-active);
+}
+
+.btn-ghost:active {
+  transform: scale(0.98);
+}
+
+.btn-danger-ghost {
+  background: var(--bg-hover);
+  border: 1px solid var(--border-default);
+  color: var(--text-tertiary);
+  cursor: pointer;
+  transition: background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+}
+
+.btn-danger-ghost:hover {
+  background: var(--accent-red);
+  color: var(--text-inverted);
+  border-color: var(--accent-red-dark);
+}
+
+.connection-card {
+  transition: background-color 0.2s ease, border-color 0.2s ease;
+}
+
+.connection-card:hover {
+  background: var(--bg-hover) !important;
+}
+
+.connection-card.active {
+  background: var(--bg-secondary) !important;
+  border-color: var(--accent-blue) !important;
+}
+
+.connection-card.active:hover {
+  background: var(--bg-secondary) !important;
+}
+
+/* ===== Status Color Classes ===== */
+
+.status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  display: inline-block;
+  flex-shrink: 0;
+}
+
+.status-dot--connected { background: #51cf66; }
+.status-dot--connecting { background: var(--accent-orange); }
+.status-dot--error { background: var(--accent-red); }
+.status-dot--disconnected { background: var(--text-disabled); }
+
+/* Shimmer animation for skeleton loading */
+@keyframes shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+/* ===== Terminal Skeleton Loading ===== */
+
+.terminal-skeleton {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 16px;
+  height: 100%;
+}
+
+.terminal-skeleton-line {
+  height: 14px;
+  border-radius: var(--radius-sm);
+  background: linear-gradient(90deg, var(--bg-tertiary) 0%, var(--bg-hover) 50%, var(--bg-tertiary) 100%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s ease-in-out infinite;
+}
+
+/* ===== Confirm Dialog ===== */
+
+.confirm-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10001;
+  animation: confirmFadeIn 0.15s ease;
+}
+
+@keyframes confirmFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.confirm-dialog {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-lg);
+  padding: var(--sp-xxxl);
+  min-width: 380px;
+  max-width: 480px;
+  box-shadow: var(--shadow-xl);
+  animation: confirmSlideIn 0.15s ease;
+}
+
+@keyframes confirmSlideIn {
+  from { opacity: 0; transform: scale(0.95) translateY(-8px); }
+  to { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+.confirm-dialog__title {
+  margin: 0 0 var(--sp-md) 0;
+  font-size: var(--fs-lg);
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.confirm-dialog__message {
+  margin: 0 0 var(--sp-xxl) 0;
+  font-size: var(--fs-md);
+  color: var(--text-secondary);
+  line-height: 1.5;
+}
+
+.confirm-dialog__actions {
+  display: flex;
+  gap: var(--sp-md);
+  justify-content: flex-end;
+}
+
+.btn-confirm-cancel {
+  padding: var(--sp-md) var(--sp-xl);
+  background: var(--bg-hover);
+  color: var(--text-primary);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-sm);
+  font-size: var(--fs-md);
+  cursor: pointer;
+  font-weight: 500;
+  transition: background-color 0.15s ease;
+}
+
+.btn-confirm-cancel:hover {
+  background: var(--bg-active);
+}
+
+.btn-confirm-destructive {
+  padding: var(--sp-md) var(--sp-xl);
+  background: var(--accent-red);
+  color: #fff;
+  border: 1px solid var(--accent-red-dark);
+  border-radius: var(--radius-sm);
+  font-size: var(--fs-md);
+  cursor: pointer;
+  font-weight: 500;
+  transition: background-color 0.15s ease;
+}
+
+.btn-confirm-destructive:hover {
+  background: var(--accent-red-dark);
+}
+
+.btn-confirm-primary {
+  padding: var(--sp-md) var(--sp-xl);
+  background: var(--accent-blue);
+  color: var(--text-primary);
+  border: 1px solid var(--accent-blue-dark);
+  border-radius: var(--radius-sm);
+  font-size: var(--fs-md);
+  cursor: pointer;
+  font-weight: 500;
+  transition: background-color 0.15s ease;
+}
+
+.btn-confirm-primary:hover {
+  background: var(--accent-blue-light);
+}

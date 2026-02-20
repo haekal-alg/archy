@@ -5,6 +5,8 @@ import ConnectionContextMenu from './ConnectionContextMenu';
 const SFTPModal = React.lazy(() => import('./SFTPModal'));
 import { ClimbingBoxLoader } from 'react-spinners';
 import { PlugIcon, LatencyDot, LightningIcon } from './StatusIcons';
+import { mapErrorMessage } from '../utils/errorMessages';
+import { useConfirm } from '../hooks/useConfirm';
 import theme from '../../theme';
 
 // Icon for local terminal connections
@@ -48,6 +50,7 @@ const ReconnectCountdown: React.FC<{ connectionId: string }> = ({ connectionId }
 
 const ConnectionsTab: React.FC = () => {
   const { connections, activeConnectionId, setActiveConnectionId, disconnectConnection, removeConnection, retryConnection, createLocalTerminal, renameConnection, cancelAutoReconnect, topologyNodes, focusNode } = useTabContext();
+  const { confirm, ConfirmContainer } = useConfirm();
   const [sidePanelCollapsed, setSidePanelCollapsed] = useState(false);
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; connectionId: string } | null>(null);
   const [renameModal, setRenameModal] = useState<{ connectionId: string; currentName: string } | null>(null);
@@ -63,10 +66,10 @@ const ConnectionsTab: React.FC = () => {
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'connected': return theme.accent.greenDark;
-      case 'connecting': return theme.accent.orange;
+      case 'connected': return theme.status.success;
+      case 'connecting': return theme.status.warning;
       case 'disconnected': return theme.text.disabled;
-      case 'error': return theme.accent.red;
+      case 'error': return theme.status.error;
       default: return theme.text.disabled;
     }
   };
@@ -125,17 +128,39 @@ const ConnectionsTab: React.FC = () => {
     }
   };
 
-  const handleDisconnect = () => {
+  const handleDisconnect = async () => {
     if (contextMenu) {
-      disconnectConnection(contextMenu.connectionId);
+      const conn = connections.find(c => c.id === contextMenu.connectionId);
+      const name = conn?.customLabel || conn?.nodeName || 'this connection';
       closeContextMenu();
+      if (conn?.status === 'connected') {
+        const confirmed = await confirm({
+          title: 'Disconnect Session?',
+          message: `This will terminate the active session to ${name}.`,
+          confirmLabel: 'Disconnect',
+          destructive: true,
+        });
+        if (!confirmed) return;
+      }
+      disconnectConnection(contextMenu.connectionId);
     }
   };
 
-  const handleRemove = () => {
+  const handleRemove = async () => {
     if (contextMenu) {
-      removeConnection(contextMenu.connectionId);
+      const conn = connections.find(c => c.id === contextMenu.connectionId);
+      const name = conn?.customLabel || conn?.nodeName || 'this connection';
       closeContextMenu();
+      if (conn?.status === 'connected') {
+        const confirmed = await confirm({
+          title: 'Remove Connection?',
+          message: `This will disconnect and remove ${name}. The terminal session will be lost.`,
+          confirmLabel: 'Remove',
+          destructive: true,
+        });
+        if (!confirmed) return;
+      }
+      removeConnection(contextMenu.connectionId);
     }
   };
 
@@ -215,7 +240,7 @@ const ConnectionsTab: React.FC = () => {
   return (
     <div style={{ display: 'flex', height: '100%', overflow: 'hidden', position: 'relative' }}>
       {/* Side Panel - Always rendered for animation */}
-      <div style={{
+      <aside aria-label="Active connections" style={{
         width: sidePanelCollapsed ? '0px' : '320px',
         background: theme.background.primary,
         borderRight: sidePanelCollapsed ? 'none' : `1px solid ${theme.border.default}`,
@@ -341,15 +366,34 @@ const ConnectionsTab: React.FC = () => {
               textAlign: 'center',
               background: theme.background.tertiary,
               border: `1px solid ${theme.border.default}`,
-              borderRadius: theme.radius.sm,
+              borderRadius: theme.radius.lg,
             }}>
-              <div style={{ marginBottom: theme.spacing.lg }}><PlugIcon size={36} color={theme.text.tertiary} /></div>
-              <div style={{ fontSize: theme.fontSize.sm, color: theme.text.secondary, marginBottom: theme.spacing.xs }}>
+              <div style={{ marginBottom: theme.spacing.xl }}><PlugIcon size={40} color={theme.text.disabled} /></div>
+              <div style={{ fontSize: theme.fontSize.base, color: theme.text.secondary, marginBottom: theme.spacing.md, fontWeight: theme.fontWeight.medium }}>
                 No active connections
               </div>
-              <div style={{ fontSize: theme.fontSize.xs, color: theme.text.tertiary }}>
-                Connect to a device from the Design tab
+              <div style={{ fontSize: theme.fontSize.sm, color: theme.text.tertiary, marginBottom: theme.spacing.xxl, lineHeight: '1.5' }}>
+                Add a device on the Design tab, then<br />right-click to connect via SSH or RDP.
               </div>
+              <button
+                onClick={() => createLocalTerminal()}
+                className="btn-ghost"
+                style={{
+                  padding: `${theme.spacing.md} ${theme.spacing.xl}`,
+                  borderRadius: theme.radius.sm,
+                  fontSize: theme.fontSize.sm,
+                  fontWeight: theme.fontWeight.medium,
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: theme.spacing.sm,
+                }}
+              >
+                <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                  <rect x="1" y="2" width="12" height="10" rx="1" stroke="currentColor" strokeWidth="1.2" fill="none" />
+                  <path d="M3 5L5 7L3 9M6 9H8" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+                Open Local Terminal
+              </button>
             </div>
           ) : (
             connections.map(conn => (
@@ -438,23 +482,13 @@ const ConnectionsTab: React.FC = () => {
                     alignItems: 'center',
                     gap: theme.spacing.sm,
                   }}>
-                    <span style={{
-                      width: '8px',
-                      height: '8px',
-                      borderRadius: '50%',
-                      background: conn.status === 'connected'
-                        ? theme.accent.green
-                        : conn.status === 'connecting'
-                          ? theme.accent.orange
-                          : conn.status === 'error'
-                            ? theme.accent.red
-                            : theme.text.disabled,
-                      display: 'inline-block',
-                    }} />
+                    <span
+                      className={`status-dot status-dot--${conn.status}`}
+                    />
                     <span style={{
                       fontSize: theme.fontSize.xs,
                       fontWeight: theme.fontWeight.medium,
-                      color: conn.status === 'connected' ? theme.accent.green : theme.text.secondary,
+                      color: conn.status === 'connected' ? theme.status.success : theme.text.secondary,
                     }}>
                       {getStatusText(conn.status)}
                     </span>
@@ -469,20 +503,34 @@ const ConnectionsTab: React.FC = () => {
                 </div>
 
                 {/* Error Message */}
-                {conn.error && !conn.reconnectState && (
-                  <div style={{
-                    marginTop: theme.spacing.md,
-                    fontSize: theme.fontSize.xs,
-                    color: theme.accent.redLight,
-                    background: theme.background.elevated,
-                    padding: `${theme.spacing.sm} ${theme.spacing.md}`,
-                    borderRadius: theme.radius.sm,
-                    border: `1px solid ${theme.accent.red}`,
-                    lineHeight: '1.4',
-                  }}>
-                    {conn.error}
-                  </div>
-                )}
+                {conn.error && !conn.reconnectState && (() => {
+                  const mapped = mapErrorMessage(conn.error);
+                  return (
+                    <div style={{
+                      marginTop: theme.spacing.md,
+                      background: theme.background.elevated,
+                      padding: `${theme.spacing.md}`,
+                      borderRadius: theme.radius.sm,
+                      border: `1px solid ${theme.accent.red}`,
+                      lineHeight: '1.4',
+                    }}>
+                      <div style={{
+                        fontSize: theme.fontSize.xs,
+                        color: theme.accent.redLight,
+                        fontWeight: theme.fontWeight.medium,
+                        marginBottom: '2px',
+                      }}>
+                        {mapped.title}
+                      </div>
+                      <div style={{
+                        fontSize: theme.fontSize.xs,
+                        color: theme.text.tertiary,
+                      }}>
+                        {mapped.suggestion}
+                      </div>
+                    </div>
+                  );
+                })()}
 
                 {/* Auto-Reconnect Status */}
                 {conn.reconnectState?.isReconnecting && (
@@ -547,41 +595,35 @@ const ConnectionsTab: React.FC = () => {
                 {/* Remove X Button */}
                 {conn.status === 'connected' && (
                   <button
-                    onClick={(e) => {
+                    className="btn-danger-ghost"
+                    onClick={async (e) => {
                       e.stopPropagation();
-                      removeConnection(conn.id);
+                      const name = conn.customLabel || conn.nodeName;
+                      const confirmed = await confirm({
+                        title: 'Remove Connection?',
+                        message: `This will disconnect and remove ${name}.`,
+                        confirmLabel: 'Remove',
+                        destructive: true,
+                      });
+                      if (confirmed) removeConnection(conn.id);
                     }}
                     style={{
                       position: 'absolute',
-                      top: theme.spacing.lg,
-                      right: theme.spacing.lg,
-                      width: '18px',
-                      height: '18px',
+                      top: theme.spacing.md,
+                      right: theme.spacing.md,
+                      width: '28px',
+                      height: '28px',
                       padding: '0',
-                      background: theme.background.hover,
-                      color: theme.text.tertiary,
-                      border: `1px solid ${theme.border.default}`,
                       borderRadius: theme.radius.sm,
-                      fontSize: theme.fontSize.base,
-                      cursor: 'pointer',
+                      fontSize: theme.fontSize.lg,
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
                       fontWeight: theme.fontWeight.semibold,
                       lineHeight: '1',
-                      transition: theme.transition.normal,
                     }}
                     title="Disconnect and Remove"
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.background = theme.accent.red;
-                      e.currentTarget.style.color = theme.text.inverted;
-                      e.currentTarget.style.border = `1px solid ${theme.accent.redDark}`;
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.background = theme.background.hover;
-                      e.currentTarget.style.color = theme.text.tertiary;
-                      e.currentTarget.style.border = `1px solid ${theme.border.default}`;
-                    }}
+                    aria-label={`Remove connection ${conn.customLabel || conn.nodeName}`}
                   >
                     ×
                   </button>
@@ -591,12 +633,13 @@ const ConnectionsTab: React.FC = () => {
           )}
         </div>
 
-      </div>
+      </aside>
 
       {/* Unified Toggle Button */}
       <button
         onClick={() => setSidePanelCollapsed(!sidePanelCollapsed)}
         className="panel-glass"
+        aria-label={sidePanelCollapsed ? 'Show connections panel' : 'Hide connections panel'}
         style={{
           position: 'absolute',
           left: sidePanelCollapsed ? '0' : '290px',
@@ -622,7 +665,7 @@ const ConnectionsTab: React.FC = () => {
       </button>
 
       {/* Main Terminal Canvas */}
-      <div style={{
+      <main style={{
         flex: 1,
         backgroundColor: '#000000',
         display: 'flex',
@@ -772,6 +815,7 @@ const ConnectionsTab: React.FC = () => {
                       transition: 'background-color 0.2s ease',
                     }}
                     title="Zoom out"
+                    aria-label="Zoom out terminal text"
                     onMouseEnter={(e) => e.currentTarget.style.backgroundColor = theme.background.active}
                     onMouseLeave={(e) => e.currentTarget.style.backgroundColor = theme.background.hover}
                   >
@@ -799,6 +843,7 @@ const ConnectionsTab: React.FC = () => {
                       transition: 'background-color 0.2s ease',
                     }}
                     title="Zoom in"
+                    aria-label="Zoom in terminal text"
                     onMouseEnter={(e) => e.currentTarget.style.backgroundColor = theme.background.active}
                     onMouseLeave={(e) => e.currentTarget.style.backgroundColor = theme.background.hover}
                   >
@@ -834,52 +879,128 @@ const ConnectionsTab: React.FC = () => {
                 <div style={{
                   display: 'flex',
                   flexDirection: 'column',
-                  alignItems: 'center',
-                  justifyContent: 'center',
                   height: '100%',
-                  color: theme.text.primary,
-                  fontSize: theme.fontSize.base,
-                  gap: theme.spacing.xxxl,
                 }}>
-                  {/* Modern Loading Spinner with Glow */}
-                  <div style={{
-                    filter: 'drop-shadow(0 0 15px rgba(77, 124, 254, 1)) drop-shadow(0 0 30px rgba(77, 124, 254, 0.8)) drop-shadow(0 0 50px rgba(77, 124, 254, 0.6)) drop-shadow(0 0 80px rgba(77, 124, 254, 0.4))',
-                  }}>
-                    <ClimbingBoxLoader color={theme.accent.blue} size={18} />
+                  {/* Skeleton terminal lines */}
+                  <div className="terminal-skeleton" style={{ flex: 1, opacity: 0.3 }}>
+                    {Array.from({ length: 12 }, (_, i) => (
+                      <div
+                        key={i}
+                        className="terminal-skeleton-line"
+                        style={{
+                          width: `${30 + Math.random() * 50}%`,
+                          animationDelay: `${i * 0.1}s`,
+                        }}
+                      />
+                    ))}
                   </div>
+                  {/* Centered connecting message overlay */}
                   <div style={{
-                    textShadow: '0 0 10px rgba(77, 124, 254, 0.5)',
-                    fontWeight: theme.fontWeight.medium,
-                  }}>Connecting to {activeConnection.host}...</div>
+                    position: 'absolute',
+                    inset: 0,
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: theme.spacing.xxxl,
+                  }}>
+                    <div style={{
+                      filter: 'drop-shadow(0 0 15px rgba(77, 124, 254, 1)) drop-shadow(0 0 30px rgba(77, 124, 254, 0.8)) drop-shadow(0 0 50px rgba(77, 124, 254, 0.6))',
+                    }}>
+                      <ClimbingBoxLoader color={theme.accent.blue} size={18} />
+                    </div>
+                    <div style={{
+                      color: theme.text.primary,
+                      fontSize: theme.fontSize.base,
+                      textShadow: '0 0 10px rgba(77, 124, 254, 0.5)',
+                      fontWeight: theme.fontWeight.medium,
+                    }}>
+                      Connecting to {activeConnection.host}...
+                    </div>
+                  </div>
                 </div>
               )}
-              {activeConnection && activeConnection.status === 'error' && (
+              {activeConnection && activeConnection.status === 'error' && (() => {
+                const mapped = mapErrorMessage(activeConnection.error || 'Connection failed');
+                return (
+                  <div style={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    height: '100%',
+                    gap: theme.spacing.lg,
+                    padding: theme.spacing.xxxl,
+                  }}>
+                    <div style={{
+                      width: '48px',
+                      height: '48px',
+                      borderRadius: '50%',
+                      background: theme.status.errorBg,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      fontSize: '24px',
+                      marginBottom: theme.spacing.md,
+                    }}>
+                      &#9888;
+                    </div>
+                    <div style={{
+                      color: theme.status.error,
+                      fontSize: theme.fontSize.lg,
+                      fontWeight: theme.fontWeight.semibold,
+                    }}>
+                      {mapped.title}
+                    </div>
+                    <div style={{
+                      fontSize: theme.fontSize.md,
+                      color: theme.text.tertiary,
+                      textAlign: 'center',
+                      maxWidth: '400px',
+                      lineHeight: '1.5',
+                    }}>
+                      {mapped.suggestion}
+                    </div>
+                    <button
+                      className="btn-primary"
+                      onClick={() => retryConnection(activeConnection.id)}
+                      style={{
+                        marginTop: theme.spacing.md,
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: theme.spacing.sm,
+                      }}
+                    >
+                      Retry Connection
+                    </button>
+                  </div>
+                );
+              })()}
+              {activeConnection && activeConnection.status === 'disconnected' && (
                 <div style={{
                   display: 'flex',
                   flexDirection: 'column',
                   alignItems: 'center',
                   justifyContent: 'center',
                   height: '100%',
-                  color: theme.accent.red,
-                  fontSize: theme.fontSize.base,
-                  gap: theme.spacing.md,
+                  gap: theme.spacing.lg,
                 }}>
-                  <div>Connection failed</div>
-                  <div style={{ fontSize: '12px', color: theme.text.tertiary }}>
-                    {activeConnection.error}
+                  <div style={{ color: theme.text.tertiary, fontSize: theme.fontSize.base }}>
+                    Connection closed
                   </div>
-                </div>
-              )}
-              {activeConnection && activeConnection.status === 'disconnected' && (
-                <div style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  height: '100%',
-                  color: theme.text.tertiary,
-                  fontSize: theme.fontSize.base,
-                }}>
-                  Connection closed
+                  {activeConnection.connectionType !== 'local' && (
+                    <button
+                      className="btn-ghost"
+                      onClick={() => retryConnection(activeConnection.id)}
+                      style={{
+                        padding: `${theme.spacing.md} ${theme.spacing.xl}`,
+                        borderRadius: theme.radius.sm,
+                        fontSize: theme.fontSize.sm,
+                      }}
+                    >
+                      Reconnect
+                    </button>
+                  )}
                 </div>
               )}
             </div>
@@ -904,7 +1025,7 @@ const ConnectionsTab: React.FC = () => {
             </div>
           </div>
         )}
-      </div>
+      </main>
 
       {/* Context Menu */}
       {contextMenu && (() => {
@@ -929,20 +1050,27 @@ const ConnectionsTab: React.FC = () => {
 
       {/* Rename Modal */}
       {renameModal && (
-        <div style={{
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          background: 'rgba(0, 0, 0, 0.7)',
-          backdropFilter: 'blur(4px)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          zIndex: 10000,
-        }}
-        onClick={() => setRenameModal(null)}
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label="Rename connection"
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: 'rgba(0, 0, 0, 0.7)',
+            backdropFilter: 'blur(4px)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 10000,
+          }}
+          onClick={() => setRenameModal(null)}
+          onKeyDown={(e) => {
+            if (e.key === 'Escape') setRenameModal(null);
+          }}
         >
           <div
             style={{
@@ -1030,6 +1158,9 @@ const ConnectionsTab: React.FC = () => {
       <React.Suspense fallback={null}>
         <SFTPModal isOpen={sftpModalOpen} onClose={() => setSftpModalOpen(false)} />
       </React.Suspense>
+
+      {/* Confirm Dialog */}
+      <ConfirmContainer />
 
     </div>
   );

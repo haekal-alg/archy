@@ -123,6 +123,18 @@ const AppContent: React.FC = () => {
     currentFilePathRef.current = currentFilePath;
   }, [currentFilePath]);
 
+  // Warn before closing with unsaved changes
+  useEffect(() => {
+    const handler = (e: BeforeUnloadEvent) => {
+      if (hasUnsavedChanges) {
+        e.preventDefault();
+        e.returnValue = '';
+      }
+    };
+    window.addEventListener('beforeunload', handler);
+    return () => window.removeEventListener('beforeunload', handler);
+  }, [hasUnsavedChanges]);
+
   // Sync lightweight topology node data to TabContext for ConnectionsTab cross-reference
   useEffect(() => {
     const topologyInfo = nodes
@@ -1261,16 +1273,23 @@ const AppContent: React.FC = () => {
 
   return (
     <div style={{ width: '100vw', height: '100vh', display: 'flex', flexDirection: 'column' }}>
-      <TabBar />
+      <nav aria-label="Main navigation">
+        <TabBar />
+      </nav>
 
       {/* Design Tab */}
-      <div style={{
-        flex: 1,
-        position: 'relative',
-        overflow: 'hidden',
-        display: activeTab === 'design' ? 'flex' : 'none',
-        flexDirection: 'column'
-      }}>
+      <div
+        role="tabpanel"
+        id="tabpanel-design"
+        aria-labelledby="tab-design"
+        style={{
+          flex: 1,
+          position: 'relative',
+          overflow: 'hidden',
+          display: activeTab === 'design' ? 'flex' : 'none',
+          flexDirection: 'column'
+        }}
+      >
         <ShapeLibrary
           onAddNode={addEnhancedNode}
           onAddGroup={addGroupNode}
@@ -1624,7 +1643,18 @@ const AppContent: React.FC = () => {
           boxShadow: theme.shadow.md,
           border: `1px solid ${theme.border.default}`
         }}>
-          <strong style={{ color: theme.accent.blue }}>Tip:</strong> Double-click nodes to edit | Right-click to delete/connect | {currentFilePath ? currentFilePath : diagramName}{hasUnsavedChanges ? ' *' : ''}
+          <strong style={{ color: theme.accent.blue }}>Tip:</strong> Double-click nodes to edit | Right-click to delete/connect | {currentFilePath ? currentFilePath : diagramName}
+          <span style={{
+            marginLeft: theme.spacing.md,
+            padding: `1px ${theme.spacing.sm}`,
+            borderRadius: theme.radius.xs,
+            fontSize: theme.fontSize.xs,
+            fontWeight: theme.fontWeight.medium,
+            color: hasUnsavedChanges ? theme.status.warning : theme.status.success,
+            background: hasUnsavedChanges ? theme.status.warningBg : theme.status.successBg,
+          }}>
+            {hasUnsavedChanges ? 'Unsaved' : 'Saved'}
+          </span>
         </div>
 
         {contextMenu && (
@@ -1656,12 +1686,17 @@ const AppContent: React.FC = () => {
       </div>
 
       {/* Connections Tab */}
-      <div style={{
-        flex: 1,
-        display: activeTab === 'connections' ? 'flex' : 'none',
-        flexDirection: 'column',
-        overflow: 'hidden'
-      }}>
+      <div
+        role="tabpanel"
+        id="tabpanel-connections"
+        aria-labelledby="tab-connections"
+        style={{
+          flex: 1,
+          display: activeTab === 'connections' ? 'flex' : 'none',
+          flexDirection: 'column',
+          overflow: 'hidden'
+        }}
+      >
         <ErrorBoundary componentName="Connections">
           <ConnectionsTab />
         </ErrorBoundary>

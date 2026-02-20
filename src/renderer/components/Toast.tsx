@@ -96,6 +96,7 @@ const Toast: React.FC<ToastProps> = ({
 
   return (
     <div
+      role={type === 'error' ? 'alert' : undefined}
       style={{
         background: theme.background.elevated,
         color: theme.text.primary,
@@ -104,14 +105,16 @@ const Toast: React.FC<ToastProps> = ({
         border: `2px solid ${config.color}`,
         boxShadow: `${theme.shadow.xl}, 0 0 20px ${config.color}40`,
         fontSize: theme.fontSize.md,
+        maxWidth: '400px',
         opacity: isFadingOut ? 0 : (isVisible ? 1 : 0),
         transform: isFadingOut
           ? 'translateX(100%) scale(0.9)'
-          : (isVisible ? 'translateX(0) scale(1)' : 'translateX(-100%) scale(0.9)'),
+          : (isVisible ? 'translateX(0) scale(1)' : 'translateX(100%) scale(0.9)'),
         transition: isFadingOut
           ? 'opacity 0.3s ease, transform 0.3s ease'
           : 'opacity 0.3s ease, transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1)',
         pointerEvents: (isVisible && !isFadingOut) ? 'auto' : 'none',
+        position: 'relative',
       }}
     >
       {/* Toast Content */}
@@ -146,7 +149,7 @@ const Toast: React.FC<ToastProps> = ({
           style={{
             flex: 1,
             paddingTop: '2px',
-            whiteSpace: 'nowrap',
+            wordBreak: 'break-word',
           }}
         >
           {message}
