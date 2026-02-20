@@ -245,3 +245,37 @@ a:hover {
 .react-flow__node.node-connect-flash {
   animation: nodeConnectFlash 0.6s ease-out;
 }
+
+/* ===== CustomEdge Animation Keyframes ===== */
+
+@keyframes dashdraw {
+  to {
+    stroke-dashoffset: -10;
+  }
+}
+
+@keyframes glow-pulse {
+  0%, 100% {
+    opacity: 0.4;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+/* Edge hover effect */
+.react-flow__edge-path {
+  transition: stroke-width 0.2s ease, filter 0.2s ease;
+}
+
+.react-flow__edge:hover .react-flow__edge-path {
+  stroke-width: 5;
+  filter: brightness(1.2);
+}
+
+/* ===== ConnectionsTab Spin Animation ===== */
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}

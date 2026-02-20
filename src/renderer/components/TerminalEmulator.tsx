@@ -339,13 +339,11 @@ const TerminalEmulator: React.FC<TerminalEmulatorProps> = ({ connectionId, isVis
       const bufferState = getBufferState(connectionId);
 
       const dataListener = window.electron.onSSHData((data: { connectionId: string; data: string }) => {
-        if (data.connectionId === connectionId) {
-          // Enqueue data chunk (with overflow protection)
-          enqueueChunk(bufferState, data.data);
-          // Schedule batched write to terminal
-          scheduleTerminalWrite(connectionId, bufferState);
-        }
-      });
+        // Enqueue data chunk (with overflow protection)
+        enqueueChunk(bufferState, data.data);
+        // Schedule batched write to terminal
+        scheduleTerminalWrite(connectionId, bufferState);
+      }, connectionId);
 
       // Initial resize notification
       window.electron.resizeSSHTerminal(connectionId, terminal.cols, terminal.rows);

@@ -29,7 +29,7 @@ import ContextMenu from './components/ContextMenu';
 import TabBar from './components/TabBar';
 import DesignTab from './components/DesignTab';
 import ConnectionsTab from './components/ConnectionsTab';
-import KeyboardShortcuts from './components/KeyboardShortcuts';
+const KeyboardShortcuts = React.lazy(() => import('./components/KeyboardShortcuts'));
 import LoadingSpinner from './components/LoadingSpinner';
 import ErrorBoundary from './components/ErrorBoundary';
 import { TabProvider, useTabContext } from './contexts/TabContext';
@@ -40,7 +40,7 @@ import { ExportIcon } from './components/StatusIcons';
 import './App.css';
 import './styles/theme-vars.css';
 import './styles/common.css';
-import { toPng, toJpeg } from 'html-to-image';
+// html-to-image is dynamically imported in export handlers to reduce initial bundle
 import theme from '../theme';
 
 const nodeTypes: NodeTypes = {
@@ -294,13 +294,26 @@ const AppContent: React.FC = () => {
 
   // History management functions
   const saveToHistory = useCallback(() => {
-    // Use structuredClone for better performance (2-10x faster than JSON parse/stringify)
-    const newState: HistoryState = {
-      nodes: structuredClone(nodes),
-      edges: structuredClone(edges)
-    };
-
     setHistory((prev) => {
+      const lastState = prev.length > 0 ? prev[Math.min(historyIndex, prev.length - 1)] : null;
+
+      // Structural sharing: reuse data references for unchanged nodes (common during drag)
+      const snapshotNodes = nodes.map(node => {
+        const lastNode = lastState?.nodes.find(n => n.id === node.id);
+        const data = (lastNode && lastNode.data === node.data) ? lastNode.data : { ...node.data };
+        return { ...node, data, position: { ...node.position } };
+      });
+      const snapshotEdges = edges.map(edge => ({
+        ...edge,
+        data: edge.data ? { ...edge.data } : undefined,
+        style: edge.style ? { ...edge.style } : undefined,
+      }));
+
+      const newState: HistoryState = {
+        nodes: snapshotNodes,
+        edges: snapshotEdges,
+      };
+
       const newHistory = prev.slice(0, historyIndex + 1);
       newHistory.push(newState);
       // Limit history to 50 states
@@ -522,7 +535,7 @@ const AppContent: React.FC = () => {
       }
     };
 
-    const handleExport = () => {
+    const handleExport = async () => {
       if (!reactFlowWrapper.current || !reactFlowInstance) {
         showWarning('Please wait for the diagram to load');
         return;
@@ -546,6 +559,7 @@ const AppContent: React.FC = () => {
         0.2
       );
 
+      const { toPng } = await import('html-to-image');
       toPng(reactFlowWrapper.current, {
         backgroundColor: theme.background.canvas || '#1a1b2e',
         width: nodesBounds.width + 200,
@@ -735,8 +749,7 @@ const AppContent: React.FC = () => {
       // Handle connection types
       if (type === 'rdp') {
         // RDP connection: mstsc /v:host
-        const command = `mstsc /v:${host}`;
-        await window.electron.executeCommand(command);
+        await window.electron.launchMstsc(host);
         console.log('RDP connection initiated');
       } else if (type === 'ssh') {
         // SSH connection: Use new terminal emulator
@@ -754,17 +767,14 @@ const AppContent: React.FC = () => {
         });
         console.log('SSH connection initiated in terminal emulator');
       } else if (type === 'browser') {
-        // Browser connection: start URL (opens in default browser)
-        // Wrap URL in quotes to handle special characters like &, ?, #
-        const command = `start "" "${host}"`;
-        await window.electron.executeCommand(command);
+        // Browser connection: open URL in default browser
+        const url = host.startsWith('http') ? host : `https://${host}`;
+        await window.electron.openURL(url);
         console.log('Browser opened');
       } else if (type === 'custom') {
         // Custom command: execute whatever user inputted in cmd window
         if (customCommand) {
-          // Open cmd with the custom command and keep window open with /k
-          const command = `start cmd /k "${customCommand}"`;
-          await window.electron.executeCommand(command);
+          await window.electron.executeCustomCommand(customCommand);
           console.log('Custom command executed in CMD');
         } else {
           showWarning('No custom command specified');
@@ -1106,6 +1116,7 @@ const AppContent: React.FC = () => {
       );
 
       // Export only the viewport (canvas area) with proper transform
+      const { toPng } = await import('html-to-image');
       const dataUrl = await toPng(viewportElement, {
         backgroundColor: theme.background.canvas || '#1a1b2e',
         width: imageWidth,
@@ -1163,6 +1174,7 @@ const AppContent: React.FC = () => {
         0.1
       );
 
+      const { toJpeg } = await import('html-to-image');
       const dataUrl = await toJpeg(viewportElement, {
         backgroundColor: theme.background.canvas || '#1a1b2e',
         width: imageWidth,
@@ -1706,10 +1718,12 @@ const AppContent: React.FC = () => {
       )}
 
       {/* Keyboard Shortcuts Modal */}
-      <KeyboardShortcuts
-        isOpen={showKeyboardShortcuts}
-        onClose={() => setShowKeyboardShortcuts(false)}
-      />
+      <React.Suspense fallback={null}>
+        <KeyboardShortcuts
+          isOpen={showKeyboardShortcuts}
+          onClose={() => setShowKeyboardShortcuts(false)}
+        />
+      </React.Suspense>
 
       {/* Loading Overlay */}
       {isLoading && (

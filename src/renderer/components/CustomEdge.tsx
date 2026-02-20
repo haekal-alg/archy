@@ -179,32 +179,6 @@ const CustomEdge: React.FC<EdgeProps> = ({
         </EdgeLabelRenderer>
       )}
 
-      {/* Animation styles */}
-      <style>
-        {`
-          @keyframes dashdraw {
-            to {
-              stroke-dashoffset: -10;
-            }
-          }
-          @keyframes glow-pulse {
-            0%, 100% {
-              opacity: 0.4;
-            }
-            50% {
-              opacity: 1;
-            }
-          }
-          /* Hover effect for edges - using CSS hover */
-          .react-flow__edge-path {
-            transition: stroke-width 0.2s ease, filter 0.2s ease;
-          }
-          .react-flow__edge:hover .react-flow__edge-path {
-            stroke-width: 5;
-            filter: brightness(1.2);
-          }
-        `}
-      </style>
     </>
   );
 };

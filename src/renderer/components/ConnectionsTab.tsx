@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useTabContext } from '../contexts/TabContext';
 import TerminalEmulator from './TerminalEmulator';
 import ConnectionContextMenu from './ConnectionContextMenu';
-import SFTPModal from './SFTPModal';
+const SFTPModal = React.lazy(() => import('./SFTPModal'));
 import { ClimbingBoxLoader } from 'react-spinners';
 import { PlugIcon, LatencyDot, LightningIcon } from './StatusIcons';
 import theme from '../../theme';
@@ -25,6 +25,26 @@ const RemoteSSHIcon = () => (
     <path d="M4 7H2V11H4M10 7H12V11H10" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
   </svg>
 );
+
+// Isolated component that subscribes to ref-based countdown updates
+// Only this component re-renders every second, not the entire ConnectionsTab
+const ReconnectCountdown: React.FC<{ connectionId: string }> = ({ connectionId }) => {
+  const { subscribeReconnectUpdates, getReconnectCountdown } = useTabContext();
+  const [countdown, setCountdown] = useState<number | undefined>(() => getReconnectCountdown(connectionId));
+
+  useEffect(() => {
+    const unsubscribe = subscribeReconnectUpdates(() => {
+      setCountdown(getReconnectCountdown(connectionId));
+    });
+    return unsubscribe;
+  }, [connectionId, subscribeReconnectUpdates, getReconnectCountdown]);
+
+  if (countdown === undefined) return null;
+
+  return (
+    <span>{Math.ceil(countdown / 1000)}s</span>
+  );
+};
 
 const ConnectionsTab: React.FC = () => {
   const { connections, activeConnectionId, setActiveConnectionId, disconnectConnection, removeConnection, retryConnection, createLocalTerminal, renameConnection, cancelAutoReconnect, topologyNodes, focusNode } = useTabContext();
@@ -504,7 +524,7 @@ const ConnectionsTab: React.FC = () => {
                       </button>
                     </div>
                     <div style={{ fontSize: theme.fontSize.xs, color: theme.text.tertiary, marginTop: theme.spacing.xs }}>
-                      Next attempt in {Math.ceil(conn.reconnectState.nextAttemptIn / 1000)}s
+                      Next attempt in <ReconnectCountdown connectionId={conn.id} />
                     </div>
                     {/* Progress bar for countdown */}
                     <div style={{
@@ -1007,15 +1027,10 @@ const ConnectionsTab: React.FC = () => {
       )}
 
       {/* SFTP Modal */}
-      <SFTPModal isOpen={sftpModalOpen} onClose={() => setSftpModalOpen(false)} />
+      <React.Suspense fallback={null}>
+        <SFTPModal isOpen={sftpModalOpen} onClose={() => setSftpModalOpen(false)} />
+      </React.Suspense>
 
-      {/* CSS Animations */}
-      <style>{`
-        @keyframes spin {
-          0% { transform: rotate(0deg); }
-          100% { transform: rotate(360deg); }
-        }
-      `}</style>
     </div>
   );
 };

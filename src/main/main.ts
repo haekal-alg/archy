@@ -3,9 +3,9 @@
  * Main process entry point
  */
 
-import { app, BrowserWindow, ipcMain, dialog, clipboard, session } from 'electron';
+import { app, BrowserWindow, ipcMain, dialog, clipboard, session, shell } from 'electron';
 import * as path from 'path';
-import { exec } from 'child_process';
+import { execFile } from 'child_process';
 
 // Module imports
 import { createMenu } from './menu-system';
@@ -228,16 +228,46 @@ ipcMain.handle('create-local-terminal', async (event, { connectionId, cwd }) => 
   return createLocalTerminal(connectionId, cwd);
 });
 
-// Generic command execution
-ipcMain.handle('execute-command', async (event, { command }) => {
+// Open URL in default browser (validated scheme)
+ipcMain.handle('open-url', async (event, { url }) => {
+  if (typeof url !== 'string' || !/^https?:\/\//i.test(url)) {
+    throw new Error('Invalid URL: must start with http:// or https://');
+  }
+  await shell.openExternal(url);
+  return { success: true };
+});
+
+// Launch mstsc (RDP client) with validated hostname
+ipcMain.handle('launch-mstsc', async (event, { host }) => {
+  if (typeof host !== 'string' || !/^[a-zA-Z0-9._:\-\[\]]+$/.test(host)) {
+    throw new Error('Invalid hostname: only alphanumeric characters, dots, colons, hyphens, and brackets allowed');
+  }
   return new Promise((resolve, reject) => {
-    exec(command, (error, stdout, stderr) => {
+    execFile('mstsc', [`/v:${host}`], (error) => {
       if (error) {
-        console.error(`Command execution error: ${error.message}`);
+        console.error(`mstsc launch error: ${error.message}`);
         reject(error);
       } else {
-        console.log(`Command executed: ${command}`);
-        resolve({ success: true, stdout, stderr });
+        console.log(`mstsc launched for host: ${host}`);
+        resolve({ success: true });
+      }
+    });
+  });
+});
+
+// Execute custom command in a new cmd window (Windows only)
+ipcMain.handle('execute-custom-command', async (event, { command }) => {
+  if (typeof command !== 'string' || !command.trim()) {
+    throw new Error('Invalid command: must be a non-empty string');
+  }
+  return new Promise((resolve, reject) => {
+    execFile('cmd', ['/c', 'start', 'cmd', '/k', command], (error) => {
+      if (error) {
+        console.error(`Custom command error: ${error.message}`);
+        reject(error);
+      } else {
+        console.log(`Custom command executed in CMD: ${command}`);
+        resolve({ success: true });
       }
     });
   });

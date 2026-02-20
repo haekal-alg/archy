@@ -32,6 +32,14 @@ export const TabProvider: React.FC<TabProviderProps> = ({ children }) => {
   const [connections, setConnections] = useState<SSHConnection[]>([]);
   const [activeConnectionId, setActiveConnectionId] = useState<string | null>(null);
 
+  // Ref to access latest connections without causing dependency cascades
+  const connectionsRef = useRef(connections);
+  connectionsRef.current = connections;
+
+  // Ref for activeConnectionId to avoid dependency in callbacks
+  const activeConnectionIdRef = useRef(activeConnectionId);
+  activeConnectionIdRef.current = activeConnectionId;
+
   // Topology cross-reference
   const [topologyNodes, setTopologyNodes] = useState<TopologyNodeInfo[]>([]);
   const onFocusNodeRef = useRef<((nodeId: string) => void) | undefined>(undefined);
@@ -53,6 +61,23 @@ export const TabProvider: React.FC<TabProviderProps> = ({ children }) => {
   // Track auto-reconnect timers and intervals
   const reconnectTimers = useRef<Map<string, NodeJS.Timeout>>(new Map());
   const reconnectIntervals = useRef<Map<string, NodeJS.Timeout>>(new Map());
+
+  // Ref-based countdown store (avoids triggering full re-renders every second)
+  const reconnectCountdowns = useRef<Map<string, number>>(new Map());
+  const reconnectListeners = useRef<Set<() => void>>(new Set());
+
+  const subscribeReconnectUpdates = useCallback((listener: () => void) => {
+    reconnectListeners.current.add(listener);
+    return () => { reconnectListeners.current.delete(listener); };
+  }, []);
+
+  const getReconnectCountdown = useCallback((connectionId: string) => {
+    return reconnectCountdowns.current.get(connectionId);
+  }, []);
+
+  const notifyReconnectListeners = useCallback(() => {
+    reconnectListeners.current.forEach(listener => listener());
+  }, []);
 
   // Helper to clear connection timeout
   const clearConnectionTimeout = useCallback((connectionId: string) => {
@@ -169,7 +194,7 @@ export const TabProvider: React.FC<TabProviderProps> = ({ children }) => {
 
   const createLocalTerminal = useCallback(async (cwd?: string) => {
     const connectionId = `local-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-    const terminalNumber = connections.filter(c => c.connectionType === 'local').length + 1;
+    const terminalNumber = connectionsRef.current.filter(c => c.connectionType === 'local').length + 1;
 
     const newConnection: SSHConnection = {
       id: connectionId,
@@ -206,7 +231,7 @@ export const TabProvider: React.FC<TabProviderProps> = ({ children }) => {
         )
       );
     }
-  }, [connections]);
+  }, []);
 
   const renameConnection = useCallback((id: string, newLabel: string) => {
     setConnections(prev =>
@@ -250,11 +275,11 @@ export const TabProvider: React.FC<TabProviderProps> = ({ children }) => {
     );
 
     // If this was the active connection, switch to another connected one
-    if (activeConnectionId === id) {
-      const remainingConnections = connections.filter(c => c.id !== id && c.status === 'connected');
+    if (activeConnectionIdRef.current === id) {
+      const remainingConnections = connectionsRef.current.filter(c => c.id !== id && c.status === 'connected');
       setActiveConnectionId(remainingConnections.length > 0 ? remainingConnections[0].id : null);
     }
-  }, [activeConnectionId, connections, clearConnectionTimeout]);
+  }, [clearConnectionTimeout]);
 
   const removeConnection = useCallback((id: string) => {
     // Clear any pending timeout
@@ -268,14 +293,14 @@ export const TabProvider: React.FC<TabProviderProps> = ({ children }) => {
     setConnections(prev => prev.filter(c => c.id !== id));
 
     // If this was the active connection, switch to another connected one
-    if (activeConnectionId === id) {
-      const remainingConnections = connections.filter(c => c.id !== id && c.status === 'connected');
+    if (activeConnectionIdRef.current === id) {
+      const remainingConnections = connectionsRef.current.filter(c => c.id !== id && c.status === 'connected');
       setActiveConnectionId(remainingConnections.length > 0 ? remainingConnections[0].id : null);
     }
-  }, [activeConnectionId, connections, clearConnectionTimeout]);
+  }, [clearConnectionTimeout]);
 
   const retryConnection = useCallback(async (id: string) => {
-    const connection = connections.find(c => c.id === id);
+    const connection = connectionsRef.current.find(c => c.id === id);
     if (!connection) return;
 
     // Cleanup old terminal if exists
@@ -321,7 +346,7 @@ export const TabProvider: React.FC<TabProviderProps> = ({ children }) => {
         )
       );
     }
-  }, [connections]);
+  }, []);
 
   // Calculate exponential backoff delay for reconnect attempts
   const getReconnectDelay = useCallback((attempt: number): number => {
@@ -345,6 +370,10 @@ export const TabProvider: React.FC<TabProviderProps> = ({ children }) => {
       reconnectIntervals.current.delete(connectionId);
     }
 
+    // Clear countdown ref
+    reconnectCountdowns.current.delete(connectionId);
+    notifyReconnectListeners();
+
     // Update connection state to disconnected without reconnect state
     setConnections(prev =>
       prev.map(conn =>
@@ -353,11 +382,11 @@ export const TabProvider: React.FC<TabProviderProps> = ({ children }) => {
           : conn
       )
     );
-  }, []);
+  }, [notifyReconnectListeners]);
 
   // Execute a reconnect attempt
   const executeReconnectAttempt = useCallback(async (connectionId: string, attempt: number) => {
-    const connection = connections.find(c => c.id === connectionId);
+    const connection = connectionsRef.current.find(c => c.id === connectionId);
     if (!connection || !connection.reconnectState?.isReconnecting) {
       return;
     }
@@ -384,8 +413,10 @@ export const TabProvider: React.FC<TabProviderProps> = ({ children }) => {
         portForwards: connection.portForwards,
       });
 
-      // Success - clear reconnect state
+      // Success - clear reconnect state and countdown
       console.log(`[TabContext] Auto-reconnect successful for ${connectionId}`);
+      reconnectCountdowns.current.delete(connectionId);
+      notifyReconnectListeners();
       setConnections(prev =>
         prev.map(conn =>
           conn.id === connectionId
@@ -400,6 +431,7 @@ export const TabProvider: React.FC<TabProviderProps> = ({ children }) => {
         // Schedule next attempt
         const nextDelay = getReconnectDelay(attempt + 1);
 
+        // Update connection state (once, not every second)
         setConnections(prev =>
           prev.map(conn =>
             conn.id === connectionId && conn.reconnectState
@@ -415,20 +447,17 @@ export const TabProvider: React.FC<TabProviderProps> = ({ children }) => {
           )
         );
 
-        // Start countdown interval for UI
+        // Use ref-based countdown for UI updates (no setConnections every second)
+        reconnectCountdowns.current.set(connectionId, nextDelay);
+        notifyReconnectListeners();
+
         const countdownInterval = setInterval(() => {
-          setConnections(prev =>
-            prev.map(conn => {
-              if (conn.id === connectionId && conn.reconnectState) {
-                const newNextAttemptIn = Math.max(0, conn.reconnectState.nextAttemptIn - 1000);
-                return {
-                  ...conn,
-                  reconnectState: { ...conn.reconnectState, nextAttemptIn: newNextAttemptIn },
-                };
-              }
-              return conn;
-            })
-          );
+          const current = reconnectCountdowns.current.get(connectionId);
+          if (current !== undefined) {
+            const next = Math.max(0, current - 1000);
+            reconnectCountdowns.current.set(connectionId, next);
+            notifyReconnectListeners();
+          }
         }, 1000);
         reconnectIntervals.current.set(connectionId, countdownInterval);
 
@@ -440,12 +469,15 @@ export const TabProvider: React.FC<TabProviderProps> = ({ children }) => {
             clearInterval(interval);
             reconnectIntervals.current.delete(connectionId);
           }
+          reconnectCountdowns.current.delete(connectionId);
           executeReconnectAttempt(connectionId, attempt + 1);
         }, nextDelay);
         reconnectTimers.current.set(connectionId, timer);
       } else {
         // Max attempts reached
         console.warn(`[TabContext] Auto-reconnect max attempts reached for ${connectionId}`);
+        reconnectCountdowns.current.delete(connectionId);
+        notifyReconnectListeners();
         setConnections(prev =>
           prev.map(conn =>
             conn.id === connectionId
@@ -460,7 +492,7 @@ export const TabProvider: React.FC<TabProviderProps> = ({ children }) => {
         );
       }
     }
-  }, [connections, getReconnectDelay, cancelAutoReconnect]);
+  }, [getReconnectDelay, cancelAutoReconnect, notifyReconnectListeners]);
 
   // Start auto-reconnect process for a connection
   const startAutoReconnect = useCallback((connectionId: string, reason: DisconnectReason) => {
@@ -470,7 +502,7 @@ export const TabProvider: React.FC<TabProviderProps> = ({ children }) => {
       return;
     }
 
-    const connection = connections.find(c => c.id === connectionId);
+    const connection = connectionsRef.current.find(c => c.id === connectionId);
     if (!connection) return;
 
     // Don't auto-reconnect local terminals
@@ -501,20 +533,17 @@ export const TabProvider: React.FC<TabProviderProps> = ({ children }) => {
       )
     );
 
-    // Start countdown interval for UI
+    // Use ref-based countdown for UI updates (no setConnections every second)
+    reconnectCountdowns.current.set(connectionId, initialDelay);
+    notifyReconnectListeners();
+
     const countdownInterval = setInterval(() => {
-      setConnections(prev =>
-        prev.map(conn => {
-          if (conn.id === connectionId && conn.reconnectState) {
-            const newNextAttemptIn = Math.max(0, conn.reconnectState.nextAttemptIn - 1000);
-            return {
-              ...conn,
-              reconnectState: { ...conn.reconnectState, nextAttemptIn: newNextAttemptIn },
-            };
-          }
-          return conn;
-        })
-      );
+      const current = reconnectCountdowns.current.get(connectionId);
+      if (current !== undefined) {
+        const next = Math.max(0, current - 1000);
+        reconnectCountdowns.current.set(connectionId, next);
+        notifyReconnectListeners();
+      }
     }, 1000);
     reconnectIntervals.current.set(connectionId, countdownInterval);
 
@@ -526,10 +555,11 @@ export const TabProvider: React.FC<TabProviderProps> = ({ children }) => {
         clearInterval(interval);
         reconnectIntervals.current.delete(connectionId);
       }
+      reconnectCountdowns.current.delete(connectionId);
       executeReconnectAttempt(connectionId, 1);
     }, initialDelay);
     reconnectTimers.current.set(connectionId, timer);
-  }, [connections, executeReconnectAttempt]);
+  }, [executeReconnectAttempt, notifyReconnectListeners]);
 
   // Listen for latency updates - use useEffect for proper cleanup
   React.useEffect(() => {
@@ -556,7 +586,7 @@ export const TabProvider: React.FC<TabProviderProps> = ({ children }) => {
       }
 
       // Get the connection to check if it should auto-reconnect
-      const connection = connections.find(c => c.id === data.connectionId);
+      const connection = connectionsRef.current.find(c => c.id === data.connectionId);
       if (!connection) return;
 
       // Skip if already disconnected or has active reconnect state
@@ -581,7 +611,7 @@ export const TabProvider: React.FC<TabProviderProps> = ({ children }) => {
       }
     });
     return unsubscribe;
-  }, [connections, startAutoReconnect]);
+  }, [startAutoReconnect]);
 
   // Cleanup all timeouts and reconnect timers on unmount
   React.useEffect(() => {
@@ -616,6 +646,8 @@ export const TabProvider: React.FC<TabProviderProps> = ({ children }) => {
     removeConnection,
     retryConnection,
     cancelAutoReconnect,
+    subscribeReconnectUpdates,
+    getReconnectCountdown,
     topologyNodes,
     setTopologyNodes,
     focusNode,

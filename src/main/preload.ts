@@ -10,8 +10,14 @@ contextBridge.exposeInMainWorld('electron', {
   connectSSH: (host: string, port: number, username: string, password: string) =>
     ipcRenderer.invoke('connect-ssh', { host, port, username, password }),
 
-  executeCommand: (command: string) =>
-    ipcRenderer.invoke('execute-command', { command }),
+  openURL: (url: string) =>
+    ipcRenderer.invoke('open-url', { url }),
+
+  launchMstsc: (host: string) =>
+    ipcRenderer.invoke('launch-mstsc', { host }),
+
+  executeCustomCommand: (command: string) =>
+    ipcRenderer.invoke('execute-custom-command', { command }),
 
   showOpenDialog: (options: any) =>
     ipcRenderer.invoke('show-open-dialog', options),
@@ -65,10 +71,11 @@ contextBridge.exposeInMainWorld('electron', {
     ipcRenderer.send('ssh-data-consumed', { connectionId, bytesConsumed });
   },
 
-  onSSHData: (callback: (data: { connectionId: string; data: string }) => void) => {
+  onSSHData: (callback: (data: { connectionId: string; data: string }) => void, connectionId?: string) => {
+    const channel = connectionId ? `ssh-data-${connectionId}` : 'ssh-data';
     const subscription = (_event: any, data: { connectionId: string; data: string }) => callback(data);
-    ipcRenderer.on('ssh-data', subscription);
-    return () => ipcRenderer.removeListener('ssh-data', subscription);
+    ipcRenderer.on(channel, subscription);
+    return () => ipcRenderer.removeListener(channel, subscription);
   },
 
   onSSHClosed: (callback: (data: { connectionId: string; reason?: string; exitCode?: number; signal?: number }) => void) => {

@@ -84,6 +84,9 @@ export interface TabContextType {
   removeConnection: (id: string) => void;
   retryConnection: (id: string) => Promise<void>;
   cancelAutoReconnect: (id: string) => void;
+  // Reconnect countdown (ref-based, does not trigger full re-render)
+  subscribeReconnectUpdates: (listener: () => void) => () => void;
+  getReconnectCountdown: (connectionId: string) => number | undefined;
   // Topology cross-reference
   topologyNodes: TopologyNodeInfo[];
   setTopologyNodes: (nodes: TopologyNodeInfo[]) => void;

@@ -19,6 +19,7 @@ export const RESUME_THRESHOLD_BYTES = 32768; // 32KB resume threshold (50%)
  */
 export interface BufferState {
   buffer: Buffer[];
+  totalSize: number;
   timer: NodeJS.Timeout | null;
   lastFlush: number;
 }
@@ -87,11 +88,12 @@ export function flushBuffer(connectionId: string): void {
 
   // Reset buffer state BEFORE sending to prevent race conditions
   bufferState.buffer = [];
+  bufferState.totalSize = 0;
   bufferState.lastFlush = Date.now();
 
-  // Send single IPC message with batched data
+  // Send single IPC message with batched data on per-connection channel
   if (mainWindowRef && !mainWindowRef.isDestroyed()) {
-    mainWindowRef.webContents.send('ssh-data', {
+    mainWindowRef.webContents.send(`ssh-data-${connectionId}`, {
       connectionId,
       data: dataStr,
     });
@@ -132,18 +134,16 @@ export function bufferData(connectionId: string, data: string | Buffer): void {
   let bufferState = dataBuffers.get(connectionId);
 
   if (!bufferState) {
-    bufferState = { buffer: [], timer: null, lastFlush: Date.now() };
+    bufferState = { buffer: [], totalSize: 0, timer: null, lastFlush: Date.now() };
     dataBuffers.set(connectionId, bufferState);
   }
 
-  const bufferData = typeof data === 'string' ? Buffer.from(data, 'utf-8') : data;
-  bufferState.buffer.push(bufferData);
-
-  // Calculate current buffer size
-  const totalSize = bufferState.buffer.reduce((sum, buf) => sum + buf.length, 0);
+  const bufferChunk = typeof data === 'string' ? Buffer.from(data, 'utf-8') : data;
+  bufferState.buffer.push(bufferChunk);
+  bufferState.totalSize += bufferChunk.length;
 
   // Force flush if buffer is too large
-  if (totalSize >= BUFFER_SIZE_BYTES) {
+  if (bufferState.totalSize >= BUFFER_SIZE_BYTES) {
     if (bufferState.timer) {
       clearTimeout(bufferState.timer);
     }

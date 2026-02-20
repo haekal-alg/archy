@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Handle, Position, NodeProps } from '@xyflow/react';
 import CONFIG from '../../config';
 import theme from '../../theme';
@@ -56,7 +56,58 @@ export interface EnhancedDeviceData {
   connections?: ConnectionConfig[];
 }
 
-const EnhancedDeviceNode: React.FC<NodeProps> = ({ data, selected }) => {
+// Static style constants extracted to module scope (never re-created)
+const HANDLE_BASE_STYLE: React.CSSProperties = {
+  width: `${CONFIG.handles.size}px`,
+  height: `${CONFIG.handles.size}px`,
+  border: `${CONFIG.handles.borderWidth}px solid ${CONFIG.handles.borderColor}`,
+  transition: 'opacity 0.2s ease-in-out',
+};
+
+const ICON_CONTAINER_STYLE: React.CSSProperties = {
+  marginBottom: theme.spacing.md,
+  display: 'flex',
+  justifyContent: 'center',
+  alignItems: 'center',
+};
+
+const LABEL_STYLE: React.CSSProperties = {
+  fontWeight: theme.fontWeight.bold,
+  marginBottom: theme.spacing.xs,
+  fontSize: theme.fontSize.md,
+  color: theme.text.primary,
+  wordWrap: 'break-word',
+};
+
+const OS_STYLE: React.CSSProperties = {
+  fontSize: theme.fontSize.sm,
+  color: theme.text.secondary,
+  marginTop: theme.spacing.xs,
+};
+
+const STATUS_CONNECTED_STYLE: React.CSSProperties = {
+  marginTop: theme.spacing.sm,
+  fontSize: theme.fontSize.xs,
+  color: theme.accent.green,
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  gap: theme.spacing.xs,
+};
+
+const STATUS_DISCONNECTED_STYLE: React.CSSProperties = {
+  marginTop: theme.spacing.sm,
+  fontSize: theme.fontSize.xs,
+  color: theme.text.tertiary,
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  gap: theme.spacing.xs,
+};
+
+const CENTER_STYLE: React.CSSProperties = { textAlign: 'center' };
+
+const EnhancedDeviceNode: React.FC<NodeProps> = React.memo(({ data, selected }) => {
   const deviceData = data as unknown as EnhancedDeviceData;
   const [isHovered, setIsHovered] = useState(false);
 
@@ -111,6 +162,15 @@ const EnhancedDeviceNode: React.FC<NodeProps> = ({ data, selected }) => {
   };
 
   const borderColor = getDefaultColor();
+  const handleOpacity = isHovered ? 1 : 0;
+
+  // Memoize handle styles that depend on borderColor and hover state
+  const handleStyles = useMemo(() => ({
+    top: { ...HANDLE_BASE_STYLE, background: borderColor, opacity: handleOpacity, top: 0 } as React.CSSProperties,
+    right: { ...HANDLE_BASE_STYLE, background: borderColor, opacity: handleOpacity, right: 0 } as React.CSSProperties,
+    bottom: { ...HANDLE_BASE_STYLE, background: borderColor, opacity: handleOpacity, bottom: 0 } as React.CSSProperties,
+    left: { ...HANDLE_BASE_STYLE, background: borderColor, opacity: handleOpacity, left: 0 } as React.CSSProperties,
+  }), [borderColor, handleOpacity]);
 
   return (
     <div
@@ -132,176 +192,41 @@ const EnhancedDeviceNode: React.FC<NodeProps> = ({ data, selected }) => {
       onMouseLeave={() => setIsHovered(false)}
     >
       {/* Connection Handles - All 4 directions as both source and target */}
-      <Handle
-        type="source"
-        position={Position.Top}
-        id="top"
-        style={{
-          background: borderColor,
-          width: `${CONFIG.handles.size}px`,
-          height: `${CONFIG.handles.size}px`,
-          border: `${CONFIG.handles.borderWidth}px solid ${CONFIG.handles.borderColor}`,
-          opacity: isHovered ? 1 : 0,
-          transition: 'opacity 0.2s ease-in-out',
-          top: 0
-        }}
-      />
-      <Handle
-        type="target"
-        position={Position.Top}
-        id="top-target"
-        style={{
-          background: borderColor,
-          width: `${CONFIG.handles.size}px`,
-          height: `${CONFIG.handles.size}px`,
-          border: `${CONFIG.handles.borderWidth}px solid ${CONFIG.handles.borderColor}`,
-          opacity: isHovered ? 1 : 0,
-          transition: 'opacity 0.2s ease-in-out',
-          top: 0
-        }}
-      />
-      <Handle
-        type="source"
-        position={Position.Right}
-        id="right"
-        style={{
-          background: borderColor,
-          width: `${CONFIG.handles.size}px`,
-          height: `${CONFIG.handles.size}px`,
-          border: `${CONFIG.handles.borderWidth}px solid ${CONFIG.handles.borderColor}`,
-          opacity: isHovered ? 1 : 0,
-          transition: 'opacity 0.2s ease-in-out',
-          right: 0
-        }}
-      />
-      <Handle
-        type="target"
-        position={Position.Right}
-        id="right-target"
-        style={{
-          background: borderColor,
-          width: `${CONFIG.handles.size}px`,
-          height: `${CONFIG.handles.size}px`,
-          border: `${CONFIG.handles.borderWidth}px solid ${CONFIG.handles.borderColor}`,
-          opacity: isHovered ? 1 : 0,
-          transition: 'opacity 0.2s ease-in-out',
-          right: 0
-        }}
-      />
-      <Handle
-        type="source"
-        position={Position.Bottom}
-        id="bottom"
-        style={{
-          background: borderColor,
-          width: `${CONFIG.handles.size}px`,
-          height: `${CONFIG.handles.size}px`,
-          border: `${CONFIG.handles.borderWidth}px solid ${CONFIG.handles.borderColor}`,
-          opacity: isHovered ? 1 : 0,
-          transition: 'opacity 0.2s ease-in-out',
-          bottom: 0
-        }}
-      />
-      <Handle
-        type="target"
-        position={Position.Bottom}
-        id="bottom-target"
-        style={{
-          background: borderColor,
-          width: `${CONFIG.handles.size}px`,
-          height: `${CONFIG.handles.size}px`,
-          border: `${CONFIG.handles.borderWidth}px solid ${CONFIG.handles.borderColor}`,
-          opacity: isHovered ? 1 : 0,
-          transition: 'opacity 0.2s ease-in-out',
-          bottom: 0
-        }}
-      />
-      <Handle
-        type="source"
-        position={Position.Left}
-        id="left"
-        style={{
-          background: borderColor,
-          width: `${CONFIG.handles.size}px`,
-          height: `${CONFIG.handles.size}px`,
-          border: `${CONFIG.handles.borderWidth}px solid ${CONFIG.handles.borderColor}`,
-          opacity: isHovered ? 1 : 0,
-          transition: 'opacity 0.2s ease-in-out',
-          left: 0
-        }}
-      />
-      <Handle
-        type="target"
-        position={Position.Left}
-        id="left-target"
-        style={{
-          background: borderColor,
-          width: `${CONFIG.handles.size}px`,
-          height: `${CONFIG.handles.size}px`,
-          border: `${CONFIG.handles.borderWidth}px solid ${CONFIG.handles.borderColor}`,
-          opacity: isHovered ? 1 : 0,
-          transition: 'opacity 0.2s ease-in-out',
-          left: 0
-        }}
-      />
+      <Handle type="source" position={Position.Top} id="top" style={handleStyles.top} />
+      <Handle type="target" position={Position.Top} id="top-target" style={handleStyles.top} />
+      <Handle type="source" position={Position.Right} id="right" style={handleStyles.right} />
+      <Handle type="target" position={Position.Right} id="right-target" style={handleStyles.right} />
+      <Handle type="source" position={Position.Bottom} id="bottom" style={handleStyles.bottom} />
+      <Handle type="target" position={Position.Bottom} id="bottom-target" style={handleStyles.bottom} />
+      <Handle type="source" position={Position.Left} id="left" style={handleStyles.left} />
+      <Handle type="target" position={Position.Left} id="left-target" style={handleStyles.left} />
 
-      <div style={{ textAlign: 'center' }}>
+      <div style={CENTER_STYLE}>
         {/* Icon */}
-        <div style={{
-          marginBottom: theme.spacing.md,
-          display: 'flex',
-          justifyContent: 'center',
-          alignItems: 'center'
-        }}>
+        <div style={ICON_CONTAINER_STYLE}>
           {getIcon()}
         </div>
 
         {/* Label */}
-        <div style={{
-          fontWeight: theme.fontWeight.bold,
-          marginBottom: theme.spacing.xs,
-          fontSize: theme.fontSize.md,
-          color: theme.text.primary,
-          wordWrap: 'break-word'
-        }}>
+        <div style={LABEL_STYLE}>
           {deviceData.label}
         </div>
 
         {/* Operating System */}
         {deviceData.operatingSystem && (
-          <div style={{
-            fontSize: theme.fontSize.sm,
-            color: theme.text.secondary,
-            marginTop: theme.spacing.xs
-          }}>
+          <div style={OS_STYLE}>
             {deviceData.operatingSystem}
           </div>
         )}
 
         {/* Connection Status Indicator */}
         {deviceData.connections && deviceData.connections.length > 0 ? (
-          <div style={{
-            marginTop: theme.spacing.sm,
-            fontSize: theme.fontSize.xs,
-            color: theme.accent.green,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: theme.spacing.xs
-          }}>
+          <div style={STATUS_CONNECTED_STYLE}>
             <CheckIcon size={13} color={theme.accent.green} />
             <span>{deviceData.connections.length} connection{deviceData.connections.length > 1 ? 's' : ''}</span>
           </div>
         ) : (
-          <div style={{
-            marginTop: theme.spacing.sm,
-            fontSize: theme.fontSize.xs,
-            color: theme.text.tertiary,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: theme.spacing.xs
-          }}>
+          <div style={STATUS_DISCONNECTED_STYLE}>
             <WarningIcon size={13} color={theme.text.tertiary} />
             <span>No connection</span>
           </div>
@@ -309,6 +234,6 @@ const EnhancedDeviceNode: React.FC<NodeProps> = ({ data, selected }) => {
       </div>
     </div>
   );
-};
+}, (prev, next) => prev.selected === next.selected && prev.data === next.data);
 
 export default EnhancedDeviceNode;
