@@ -34,8 +34,8 @@ const GroupNode: React.FC<NodeProps> = ({ data, selected }) => {
         minWidth={200}
         minHeight={150}
         lineStyle={{
-          borderWidth: 2,
-          borderColor: borderColor
+          borderWidth: 0,
+          borderColor: 'transparent'
         }}
         handleStyle={{
           width: 10,
@@ -46,137 +46,32 @@ const GroupNode: React.FC<NodeProps> = ({ data, selected }) => {
         }}
       />
 
-      {/* Connection Handles */}
-      <Handle
-        type="source"
-        position={Position.Top}
-        id="top"
-        style={{
-          background: borderColor,
-          width: `${CONFIG.handles.size}px`,
-          height: `${CONFIG.handles.size}px`,
-          border: `${CONFIG.handles.borderWidth}px solid ${CONFIG.handles.borderColor}`,
-          opacity: isHovered ? 1 : 0,
-          transition: 'opacity 0.2s ease-in-out',
-          top: 0
-        }}
-      />
-      <Handle
-        type="target"
-        position={Position.Top}
-        id="top-target"
-        style={{
-          background: borderColor,
-          width: `${CONFIG.handles.size}px`,
-          height: `${CONFIG.handles.size}px`,
-          border: `${CONFIG.handles.borderWidth}px solid ${CONFIG.handles.borderColor}`,
-          opacity: isHovered ? 1 : 0,
-          transition: 'opacity 0.2s ease-in-out',
-          top: 0
-        }}
-      />
-      <Handle
-        type="source"
-        position={Position.Right}
-        id="right"
-        style={{
-          background: borderColor,
-          width: `${CONFIG.handles.size}px`,
-          height: `${CONFIG.handles.size}px`,
-          border: `${CONFIG.handles.borderWidth}px solid ${CONFIG.handles.borderColor}`,
-          opacity: isHovered ? 1 : 0,
-          transition: 'opacity 0.2s ease-in-out',
-          right: 0
-        }}
-      />
-      <Handle
-        type="target"
-        position={Position.Right}
-        id="right-target"
-        style={{
-          background: borderColor,
-          width: `${CONFIG.handles.size}px`,
-          height: `${CONFIG.handles.size}px`,
-          border: `${CONFIG.handles.borderWidth}px solid ${CONFIG.handles.borderColor}`,
-          opacity: isHovered ? 1 : 0,
-          transition: 'opacity 0.2s ease-in-out',
-          right: 0
-        }}
-      />
-      <Handle
-        type="source"
-        position={Position.Bottom}
-        id="bottom"
-        style={{
-          background: borderColor,
-          width: `${CONFIG.handles.size}px`,
-          height: `${CONFIG.handles.size}px`,
-          border: `${CONFIG.handles.borderWidth}px solid ${CONFIG.handles.borderColor}`,
-          opacity: isHovered ? 1 : 0,
-          transition: 'opacity 0.2s ease-in-out',
-          bottom: 0
-        }}
-      />
-      <Handle
-        type="target"
-        position={Position.Bottom}
-        id="bottom-target"
-        style={{
-          background: borderColor,
-          width: `${CONFIG.handles.size}px`,
-          height: `${CONFIG.handles.size}px`,
-          border: `${CONFIG.handles.borderWidth}px solid ${CONFIG.handles.borderColor}`,
-          opacity: isHovered ? 1 : 0,
-          transition: 'opacity 0.2s ease-in-out',
-          bottom: 0
-        }}
-      />
-      <Handle
-        type="source"
-        position={Position.Left}
-        id="left"
-        style={{
-          background: borderColor,
-          width: `${CONFIG.handles.size}px`,
-          height: `${CONFIG.handles.size}px`,
-          border: `${CONFIG.handles.borderWidth}px solid ${CONFIG.handles.borderColor}`,
-          opacity: isHovered ? 1 : 0,
-          transition: 'opacity 0.2s ease-in-out',
-          left: 0
-        }}
-      />
-      <Handle
-        type="target"
-        position={Position.Left}
-        id="left-target"
-        style={{
-          background: borderColor,
-          width: `${CONFIG.handles.size}px`,
-          height: `${CONFIG.handles.size}px`,
-          border: `${CONFIG.handles.borderWidth}px solid ${CONFIG.handles.borderColor}`,
-          opacity: isHovered ? 1 : 0,
-          transition: 'opacity 0.2s ease-in-out',
-          left: 0
-        }}
-      />
-
       <div
         style={{
           width: '100%',
           height: '100%',
+          boxSizing: 'border-box',
           background: backgroundColor,
           border: `3px ${borderStyle} ${borderColor}`,
           borderRadius: theme.radius.xl,
           padding: theme.spacing.xl,
           position: 'relative',
-          boxShadow: selected
-            ? `0 0 0 3px #9ca3af`
-            : 'none',
+          boxShadow: 'none',
           cursor: 'pointer',
         }}
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={() => setIsHovered(false)}
       >
+        {/* Connection Handles - inside the bordered div so they align to its border */}
+        <Handle type="source" position={Position.Top} id="top" style={{ background: borderColor, width: `${CONFIG.handles.size}px`, height: `${CONFIG.handles.size}px`, border: `${CONFIG.handles.borderWidth}px solid ${CONFIG.handles.borderColor}`, opacity: isHovered ? 1 : 0, transition: 'opacity 0.2s ease-in-out' }} />
+        <Handle type="target" position={Position.Top} id="top-target" style={{ background: borderColor, width: `${CONFIG.handles.size}px`, height: `${CONFIG.handles.size}px`, border: `${CONFIG.handles.borderWidth}px solid ${CONFIG.handles.borderColor}`, opacity: isHovered ? 1 : 0, transition: 'opacity 0.2s ease-in-out' }} />
+        <Handle type="source" position={Position.Right} id="right" style={{ background: borderColor, width: `${CONFIG.handles.size}px`, height: `${CONFIG.handles.size}px`, border: `${CONFIG.handles.borderWidth}px solid ${CONFIG.handles.borderColor}`, opacity: isHovered ? 1 : 0, transition: 'opacity 0.2s ease-in-out' }} />
+        <Handle type="target" position={Position.Right} id="right-target" style={{ background: borderColor, width: `${CONFIG.handles.size}px`, height: `${CONFIG.handles.size}px`, border: `${CONFIG.handles.borderWidth}px solid ${CONFIG.handles.borderColor}`, opacity: isHovered ? 1 : 0, transition: 'opacity 0.2s ease-in-out' }} />
+        <Handle type="source" position={Position.Bottom} id="bottom" style={{ background: borderColor, width: `${CONFIG.handles.size}px`, height: `${CONFIG.handles.size}px`, border: `${CONFIG.handles.borderWidth}px solid ${CONFIG.handles.borderColor}`, opacity: isHovered ? 1 : 0, transition: 'opacity 0.2s ease-in-out' }} />
+        <Handle type="target" position={Position.Bottom} id="bottom-target" style={{ background: borderColor, width: `${CONFIG.handles.size}px`, height: `${CONFIG.handles.size}px`, border: `${CONFIG.handles.borderWidth}px solid ${CONFIG.handles.borderColor}`, opacity: isHovered ? 1 : 0, transition: 'opacity 0.2s ease-in-out' }} />
+        <Handle type="source" position={Position.Left} id="left" style={{ background: borderColor, width: `${CONFIG.handles.size}px`, height: `${CONFIG.handles.size}px`, border: `${CONFIG.handles.borderWidth}px solid ${CONFIG.handles.borderColor}`, opacity: isHovered ? 1 : 0, transition: 'opacity 0.2s ease-in-out' }} />
+        <Handle type="target" position={Position.Left} id="left-target" style={{ background: borderColor, width: `${CONFIG.handles.size}px`, height: `${CONFIG.handles.size}px`, border: `${CONFIG.handles.borderWidth}px solid ${CONFIG.handles.borderColor}`, opacity: isHovered ? 1 : 0, transition: 'opacity 0.2s ease-in-out' }} />
+
         {/* Title Bar - only show if label exists */}
         {groupData.label && (
           <div
@@ -218,8 +113,6 @@ const GroupNode: React.FC<NodeProps> = ({ data, selected }) => {
             {groupData.description}
           </div>
         )}
-
-        {/* Connection Status Indicator removed - group nodes are for visual organization */}
       </div>
     </>
   );
