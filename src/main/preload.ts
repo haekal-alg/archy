@@ -149,4 +149,22 @@ contextBridge.exposeInMainWorld('electron', {
   localDelete: (filePath: string) => ipcRenderer.invoke('local-delete', filePath),
   localRename: (config: { oldPath: string; newPath: string }) => ipcRenderer.invoke('local-rename', config),
   localMkdir: (dirPath: string) => ipcRenderer.invoke('local-mkdir', dirPath),
+
+  // Window controls (custom title bar)
+  windowMinimize: () => ipcRenderer.invoke('window-minimize'),
+  windowMaximize: () => ipcRenderer.invoke('window-maximize'),
+  windowClose: () => ipcRenderer.invoke('window-close'),
+  windowIsMaximized: () => ipcRenderer.invoke('window-is-maximized'),
+  onWindowMaximizedChange: (callback: (maximized: boolean) => void) => {
+    const subscription = (_event: any, maximized: boolean) => callback(maximized);
+    ipcRenderer.on('window-maximized-change', subscription);
+    return () => ipcRenderer.removeListener('window-maximized-change', subscription);
+  },
+
+  // View controls (custom title bar)
+  windowReload: () => ipcRenderer.invoke('window-reload'),
+  windowToggleDevTools: () => ipcRenderer.invoke('window-toggle-devtools'),
+  windowZoomIn: () => ipcRenderer.invoke('window-zoom-in'),
+  windowZoomOut: () => ipcRenderer.invoke('window-zoom-out'),
+  windowZoomReset: () => ipcRenderer.invoke('window-zoom-reset'),
 });

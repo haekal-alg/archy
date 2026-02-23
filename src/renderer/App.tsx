@@ -23,6 +23,7 @@ import EnhancedDeviceNode, { EnhancedDeviceData } from './components/EnhancedDev
 import GroupNode from './components/GroupNode';
 import TextNode from './components/TextNode';
 // EditNodeModal removed — editing done via StylePanel
+import TitleBar from './components/TitleBar';
 import ShapeLibrary from './components/ShapeLibrary';
 import StylePanel from './components/StylePanel';
 import ContextMenu from './components/ContextMenu';
@@ -484,126 +485,126 @@ const AppContent: React.FC = () => {
     };
   }, [nodes]);
 
-  // Setup menu event listeners (only once on mount)
-  useEffect(() => {
-    const handleSave = async () => {
-      setIsLoading(true);
-      setLoadingText('Saving diagram...');
+  // Standalone menu handler callbacks (used by both IPC menu events and TitleBar)
+  const handleSave = useCallback(async () => {
+    setIsLoading(true);
+    setLoadingText('Saving diagram...');
 
-      const diagramData = {
-        nodes: nodesRef.current,
-        edges: edgesRef.current,
-        metadata: {
-          name: diagramNameRef.current,
-          created: new Date().toISOString(),
-          version: '1.0'
-        }
-      };
-
-      try {
-        // Use currentFilePath if available, otherwise show save dialog
-        const result = await window.electron.saveDiagram(
-          diagramNameRef.current,
-          diagramData,
-          currentFilePathRef.current || undefined
-        );
-
-        if (result.success) {
-          setCurrentFilePath(result.path);
-          setHasUnsavedChanges(false);
-          showSuccess('Diagram saved successfully!');
-        } else if (!result.canceled) {
-          showError('Failed to save diagram');
-        }
-      } catch (error) {
-        console.error('Save failed:', error);
-        showError('Failed to save diagram');
-      } finally {
-        setIsLoading(false);
-        setLoadingText('');
+    const diagramData = {
+      nodes: nodesRef.current,
+      edges: edgesRef.current,
+      metadata: {
+        name: diagramNameRef.current,
+        created: new Date().toISOString(),
+        version: '1.0'
       }
     };
 
-    const handleLoad = async () => {
-      setIsLoading(true);
-      setLoadingText('Loading diagram...');
-
-      try {
-        const result = await window.electron.loadDiagram();
-        if (result.success && result.data) {
-          setNodes(result.data.nodes || []);
-          setEdges(result.data.edges || []);
-          setDiagramName(result.data.metadata?.name || result.filename || 'Untitled');
-          setCurrentFilePath(result.filePath);
-          setHasUnsavedChanges(false);
-          showSuccess('Diagram loaded successfully!');
-        }
-      } catch (error) {
-        console.error('Load failed:', error);
-        showError('Failed to load diagram');
-      } finally {
-        setIsLoading(false);
-        setLoadingText('');
-      }
-    };
-
-    const handleExport = async () => {
-      if (!reactFlowWrapper.current || !reactFlowInstance) {
-        showWarning('Please wait for the diagram to load');
-        return;
-      }
-
-      const nodesBounds = getNodesBounds(nodesRef.current);
-      if (nodesRef.current.length === 0) {
-        showWarning('Please add some nodes to export');
-        return;
-      }
-
-      setIsLoading(true);
-      setLoadingText('Exporting diagram...');
-
-      const viewport = getViewportForBounds(
-        nodesBounds,
-        nodesBounds.width,
-        nodesBounds.height,
-        0.5,
-        2,
-        0.2
+    try {
+      const result = await window.electron.saveDiagram(
+        diagramNameRef.current,
+        diagramData,
+        currentFilePathRef.current || undefined
       );
 
-      const { toPng } = await import('html-to-image');
-      toPng(reactFlowWrapper.current, {
-        backgroundColor: theme.background.canvas || '#1a1b2e',
-        width: nodesBounds.width + 200,
-        height: nodesBounds.height + 200,
-        style: {
-          width: `${nodesBounds.width + 200}px`,
-          height: `${nodesBounds.height + 200}px`,
-          transform: `translate(${viewport.x}px, ${viewport.y}px) scale(${viewport.zoom})`,
-        },
-      }).then((dataUrl) => {
-        const link = document.createElement('a');
-        link.download = `${diagramNameRef.current}.png`;
-        link.href = dataUrl;
-        link.click();
-        showSuccess('Diagram exported as PNG!');
-      }).catch((error) => {
-        console.error('Export failed:', error);
-        showError('Failed to export diagram');
-      }).finally(() => {
-        setIsLoading(false);
-        setLoadingText('');
-      });
-    };
+      if (result.success) {
+        setCurrentFilePath(result.path);
+        setHasUnsavedChanges(false);
+        showSuccess('Diagram saved successfully!');
+      } else if (!result.canceled) {
+        showError('Failed to save diagram');
+      }
+    } catch (error) {
+      console.error('Save failed:', error);
+      showError('Failed to save diagram');
+    } finally {
+      setIsLoading(false);
+      setLoadingText('');
+    }
+  }, [showSuccess, showError]);
 
-    const handleClear = () => {
-      setShowClearConfirm(true);
-    };
+  const handleLoad = useCallback(async () => {
+    setIsLoading(true);
+    setLoadingText('Loading diagram...');
 
+    try {
+      const result = await window.electron.loadDiagram();
+      if (result.success && result.data) {
+        setNodes(result.data.nodes || []);
+        setEdges(result.data.edges || []);
+        setDiagramName(result.data.metadata?.name || result.filename || 'Untitled');
+        setCurrentFilePath(result.filePath);
+        setHasUnsavedChanges(false);
+        showSuccess('Diagram loaded successfully!');
+      }
+    } catch (error) {
+      console.error('Load failed:', error);
+      showError('Failed to load diagram');
+    } finally {
+      setIsLoading(false);
+      setLoadingText('');
+    }
+  }, [setNodes, setEdges, showSuccess, showError]);
+
+  const handleExportMenu = useCallback(async () => {
+    if (!reactFlowWrapper.current || !reactFlowInstance) {
+      showWarning('Please wait for the diagram to load');
+      return;
+    }
+
+    const nodesBounds = getNodesBounds(nodesRef.current);
+    if (nodesRef.current.length === 0) {
+      showWarning('Please add some nodes to export');
+      return;
+    }
+
+    setIsLoading(true);
+    setLoadingText('Exporting diagram...');
+
+    const viewport = getViewportForBounds(
+      nodesBounds,
+      nodesBounds.width,
+      nodesBounds.height,
+      0.5,
+      2,
+      0.2
+    );
+
+    const { toPng } = await import('html-to-image');
+    toPng(reactFlowWrapper.current, {
+      backgroundColor: theme.background.canvas || '#1a1b2e',
+      width: nodesBounds.width + 200,
+      height: nodesBounds.height + 200,
+      style: {
+        width: `${nodesBounds.width + 200}px`,
+        height: `${nodesBounds.height + 200}px`,
+        transform: `translate(${viewport.x}px, ${viewport.y}px) scale(${viewport.zoom})`,
+      },
+    }).then((dataUrl) => {
+      const link = document.createElement('a');
+      link.download = `${diagramNameRef.current}.png`;
+      link.href = dataUrl;
+      link.click();
+      showSuccess('Diagram exported as PNG!');
+    }).catch((error) => {
+      console.error('Export failed:', error);
+      showError('Failed to export diagram');
+    }).finally(() => {
+      setIsLoading(false);
+      setLoadingText('');
+    });
+  }, [reactFlowInstance, showWarning, showSuccess, showError]);
+
+  const handleClear = useCallback(() => {
+    setShowClearConfirm(true);
+  }, []);
+
+  // Setup menu event listeners (only once on mount)
+  useEffect(() => {
     // Register menu listeners and capture cleanup functions
     const cleanupSave = window.electron.onMenuSave(handleSave);
     const cleanupLoad = window.electron.onMenuLoad(handleLoad);
-    const cleanupExport = window.electron.onMenuExport(handleExport);
+    const cleanupExport = window.electron.onMenuExport(handleExportMenu);
     const cleanupClear = window.electron.onMenuClear(handleClear);
 
     // Wire Ctrl+S / Ctrl+O keyboard shortcut events
@@ -621,7 +622,7 @@ const AppContent: React.FC = () => {
       document.removeEventListener('menu-save-trigger', handleSaveTrigger);
       document.removeEventListener('menu-load-trigger', handleLoadTrigger);
     };
-  }, []); // Empty dependency array - only run once
+  }, [handleSave, handleLoad, handleExportMenu, handleClear]);
 
   const onConnect = useCallback(
     (params: Connection) => {
@@ -1273,6 +1274,16 @@ const AppContent: React.FC = () => {
 
   return (
     <div style={{ width: '100vw', height: '100vh', display: 'flex', flexDirection: 'column' }}>
+      <TitleBar
+        onSave={handleSave}
+        onLoad={handleLoad}
+        onExport={handleExportMenu}
+        onClear={handleClear}
+        onUndo={handleUndo}
+        onRedo={handleRedo}
+        canUndo={canUndo}
+        canRedo={canRedo}
+      />
       <nav aria-label="Main navigation">
         <TabBar />
       </nav>

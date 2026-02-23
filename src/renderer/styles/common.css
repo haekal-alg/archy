@@ -349,3 +349,112 @@
 .btn-confirm-primary:hover {
   background: var(--accent-blue-light);
 }
+
+/* ===== Custom Title Bar ===== */
+
+.titlebar-drag {
+  -webkit-app-region: drag;
+}
+
+.titlebar-no-drag {
+  -webkit-app-region: no-drag;
+}
+
+.titlebar-menu-btn {
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  padding: 0 10px;
+  height: 100%;
+  font-size: var(--fs-md);
+  cursor: pointer;
+  transition: background-color 0.1s ease;
+  position: relative;
+}
+
+.titlebar-menu-btn:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+
+.titlebar-menu-btn.active {
+  background: var(--bg-active);
+  color: var(--text-primary);
+}
+
+.titlebar-menu-dropdown {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  min-width: 220px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-default);
+  border-radius: 0 0 var(--radius-md) var(--radius-md);
+  box-shadow: var(--shadow-lg);
+  z-index: 10000;
+  padding: 4px 0;
+}
+
+.titlebar-menu-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 6px 24px 6px 12px;
+  background: none;
+  border: none;
+  color: var(--text-primary);
+  font-size: var(--fs-md);
+  cursor: pointer;
+  text-align: left;
+  transition: background-color 0.1s ease;
+}
+
+.titlebar-menu-item:hover:not(.disabled) {
+  background: var(--accent-blue);
+  color: #fff;
+}
+
+.titlebar-menu-item.disabled {
+  color: var(--text-disabled);
+  cursor: default;
+}
+
+.titlebar-menu-separator {
+  height: 1px;
+  background: var(--border-subtle);
+  margin: 4px 0;
+}
+
+.titlebar-menu-shortcut {
+  font-size: var(--fs-xs);
+  color: var(--text-tertiary);
+  margin-left: 24px;
+}
+
+.titlebar-menu-item:hover:not(.disabled) .titlebar-menu-shortcut {
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.titlebar-window-btn {
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  width: 46px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background-color 0.1s ease;
+}
+
+.titlebar-window-btn:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+
+.titlebar-window-btn--close:hover {
+  background: #e81123 !important;
+  color: #fff !important;
+}

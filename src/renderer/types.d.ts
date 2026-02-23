@@ -114,6 +114,20 @@ export interface ElectronAPI {
   localDelete: (filePath: string) => Promise<{ success: boolean }>;
   localRename: (config: { oldPath: string; newPath: string }) => Promise<{ success: boolean }>;
   localMkdir: (dirPath: string) => Promise<{ success: boolean }>;
+
+  // Window controls (custom title bar)
+  windowMinimize: () => Promise<void>;
+  windowMaximize: () => Promise<void>;
+  windowClose: () => Promise<void>;
+  windowIsMaximized: () => Promise<boolean>;
+  onWindowMaximizedChange: (callback: (maximized: boolean) => void) => () => void;
+
+  // View controls (custom title bar)
+  windowReload: () => Promise<void>;
+  windowToggleDevTools: () => Promise<void>;
+  windowZoomIn: () => Promise<void>;
+  windowZoomOut: () => Promise<void>;
+  windowZoomReset: () => Promise<void>;
 }
 
 declare global {

@@ -104,6 +104,8 @@ function createWindow(): void {
     title: windowTitle,
     icon: iconPath,
     show: false,
+    frame: false,
+    backgroundColor: '#151923',
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,
@@ -139,6 +141,14 @@ function createWindow(): void {
 
   mainWindow.on('closed', () => {
     mainWindow = null;
+  });
+
+  // Forward maximize/unmaximize state to renderer
+  mainWindow.on('maximize', () => {
+    mainWindow?.webContents.send('window-maximized-change', true);
+  });
+  mainWindow.on('unmaximize', () => {
+    mainWindow?.webContents.send('window-maximized-change', false);
   });
 }
 
@@ -292,4 +302,55 @@ ipcMain.handle('clipboard-write-text', async (event, text: string) => {
 
 ipcMain.handle('clipboard-read-text', async () => {
   return clipboard.readText();
+});
+
+// ============================================================================
+// Window Control IPC Handlers (for custom title bar)
+// ============================================================================
+
+ipcMain.handle('window-minimize', async () => {
+  mainWindow?.minimize();
+});
+
+ipcMain.handle('window-maximize', async () => {
+  if (mainWindow?.isMaximized()) {
+    mainWindow.unmaximize();
+  } else {
+    mainWindow?.maximize();
+  }
+});
+
+ipcMain.handle('window-close', async () => {
+  mainWindow?.close();
+});
+
+ipcMain.handle('window-is-maximized', async () => {
+  return mainWindow?.isMaximized() ?? false;
+});
+
+// View control IPC handlers
+ipcMain.handle('window-reload', async () => {
+  mainWindow?.webContents.reload();
+});
+
+ipcMain.handle('window-toggle-devtools', async () => {
+  mainWindow?.webContents.toggleDevTools();
+});
+
+ipcMain.handle('window-zoom-in', async () => {
+  if (mainWindow) {
+    const currentZoom = mainWindow.webContents.getZoomLevel();
+    mainWindow.webContents.setZoomLevel(currentZoom + 0.5);
+  }
+});
+
+ipcMain.handle('window-zoom-out', async () => {
+  if (mainWindow) {
+    const currentZoom = mainWindow.webContents.getZoomLevel();
+    mainWindow.webContents.setZoomLevel(currentZoom - 0.5);
+  }
+});
+
+ipcMain.handle('window-zoom-reset', async () => {
+  mainWindow?.webContents.setZoomLevel(0);
 });
