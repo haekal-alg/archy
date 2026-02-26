@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   EdgeProps,
   getBezierPath,
@@ -9,7 +9,7 @@ import {
 } from '@xyflow/react';
 import theme from '../../theme';
 
-export type MarkerType = 'arrow' | 'arrow-open' | 'diamond' | 'diamond-filled' | 'circle' | 'circle-filled' | 'square' | 'square-filled' | 'cross' | 'bar' | 'none';
+export type MarkerType = 'arrow' | 'none';
 
 export interface CustomEdgeData {
   label?: string;
@@ -34,11 +34,13 @@ const CustomEdge: React.FC<EdgeProps> = ({
   markerEnd,
   selected,
 }) => {
+  const [isHovered, setIsHovered] = useState(false);
   const edgeData = data as CustomEdgeData;
 
   const color = edgeData?.color || theme.border.default;
   const routingType = edgeData?.routingType || 'bezier';
-  const strokeStyle = edgeData?.style || 'solid';
+  const strokeStyle = (edgeData as any)?.lineStyle || edgeData?.style || 'solid';
+  const strokeWidth = (edgeData as any)?.strokeWidth || 4;
   const animated = edgeData?.animated || false;
   const label = edgeData?.label;
   const markerStartType = edgeData?.markerStart || 'none';
@@ -47,6 +49,10 @@ const CustomEdge: React.FC<EdgeProps> = ({
   // Generate marker URL references
   const getMarkerUrl = (markerType: MarkerType, position: 'start' | 'end') => {
     if (markerType === 'none') return undefined;
+    // Use red markers when hovered or selected
+    if (isHovered || selected) {
+      return `url(#${markerType}-${position}-ff5c5c)`;
+    }
     // Encode color for URL (remove # and handle transparency)
     const colorId = color.replace('#', '');
     return `url(#${markerType}-${position}-${colorId})`;
@@ -98,11 +104,12 @@ const CustomEdge: React.FC<EdgeProps> = ({
         markerEnd={markerEndUrl}
         style={{
           stroke: color,
-          strokeWidth: selected ? 3 : 2,
+          strokeWidth,
           strokeDasharray,
-          opacity: selected ? 1 : 0.8,
-          filter: selected ? `drop-shadow(0 0 4px ${theme.shadow.md})` : 'none',
+          opacity: 1,
         }}
+        onMouseEnter={() => setIsHovered(true)}
+        onMouseLeave={() => setIsHovered(false)}
       />
 
       {/* Animated flow effect with intense glow */}
@@ -113,7 +120,7 @@ const CustomEdge: React.FC<EdgeProps> = ({
             d={path}
             fill="none"
             stroke={color}
-            strokeWidth="8"
+            strokeWidth="10"
             style={{
               filter: 'blur(8px)',
               opacity: 0.6,
@@ -125,7 +132,7 @@ const CustomEdge: React.FC<EdgeProps> = ({
             d={path}
             fill="none"
             stroke={color}
-            strokeWidth="4"
+            strokeWidth="6"
             style={{
               filter: 'blur(4px)',
               opacity: 0.8,
@@ -137,7 +144,7 @@ const CustomEdge: React.FC<EdgeProps> = ({
             d={path}
             fill="none"
             stroke={color}
-            strokeWidth="2"
+            strokeWidth="4"
             strokeDasharray="5 5"
             style={{
               animation: 'dashdraw 0.5s linear infinite',
@@ -172,24 +179,6 @@ const CustomEdge: React.FC<EdgeProps> = ({
         </EdgeLabelRenderer>
       )}
 
-      {/* Animation styles */}
-      <style>
-        {`
-          @keyframes dashdraw {
-            to {
-              stroke-dashoffset: -10;
-            }
-          }
-          @keyframes glow-pulse {
-            0%, 100% {
-              opacity: 0.4;
-            }
-            50% {
-              opacity: 1;
-            }
-          }
-        `}
-      </style>
     </>
   );
 };

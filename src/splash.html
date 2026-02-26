@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Loading Archy</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+      background: linear-gradient(135deg, #0f0f14 0%, #1a1a24 50%, #0f0f14 100%);
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      -webkit-app-region: drag;
+      user-select: none;
+    }
+
+    .container {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 32px;
+    }
+
+    .logo {
+      font-size: 42px;
+      font-weight: 600;
+      letter-spacing: -1px;
+      color: #fff;
+      opacity: 0;
+      animation: fadeIn 0.6s ease-out 0.2s forwards;
+    }
+
+    .logo span {
+      background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 50%, #a78bfa 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .loader {
+      display: flex;
+      gap: 6px;
+      opacity: 0;
+      animation: fadeIn 0.6s ease-out 0.4s forwards;
+    }
+
+    .loader-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #6366f1;
+      animation: pulse 1.4s ease-in-out infinite;
+    }
+
+    .loader-dot:nth-child(2) {
+      animation-delay: 0.2s;
+    }
+
+    .loader-dot:nth-child(3) {
+      animation-delay: 0.4s;
+    }
+
+    .quote-container {
+      height: 24px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      opacity: 0;
+      animation: fadeIn 0.6s ease-out 0.6s forwards;
+    }
+
+    .quote {
+      font-size: 13px;
+      color: #64748b;
+      font-style: italic;
+      text-align: center;
+      opacity: 0;
+      transform: translateY(4px);
+      transition: opacity 0.4s ease, transform 0.4s ease;
+    }
+
+    .quote.visible {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    @keyframes fadeIn {
+      from {
+        opacity: 0;
+        transform: translateY(10px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    @keyframes pulse {
+      0%, 100% {
+        transform: scale(1);
+        opacity: 0.4;
+      }
+      50% {
+        transform: scale(1.2);
+        opacity: 1;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="logo"><span>Archy</span></div>
+    <div class="loader">
+      <div class="loader-dot"></div>
+      <div class="loader-dot"></div>
+      <div class="loader-dot"></div>
+    </div>
+    <div class="quote-container">
+      <div class="quote" id="quote"></div>
+    </div>
+  </div>
+
+  <script>
+    const quotes = [
+      "Enumerating all possible states\u2026",
+      "Normalizing the universe to 3NF.",
+      "Solving P vs NP (ETA: soon\u2122).",
+      "Inlining reality for performance.",
+      "Garbage collecting unused dimensions.",
+      "Waiting for cache coherence.",
+      "Recompiling the laws of physics.",
+      "Resolving circular dependencies in spacetime.",
+      "Reducing entropy (temporarily).",
+      "Indexing the multiverse.",
+      "Synchronizing atomic clocks\u2026 emotionally.",
+      "Rebalancing floating-point errors.",
+      "Checking if infinity fits in a 64-bit integer.",
+      "Vectorizing the timeline.",
+      "Rewriting history with better variable names."
+    ];
+
+    // Shuffle quotes
+    const shuffled = quotes.sort(() => Math.random() - 0.5);
+    let currentIndex = 0;
+
+    const quoteEl = document.getElementById('quote');
+
+    function showQuote() {
+      quoteEl.classList.remove('visible');
+
+      setTimeout(() => {
+        quoteEl.textContent = shuffled[currentIndex];
+        quoteEl.classList.add('visible');
+        currentIndex = (currentIndex + 1) % shuffled.length;
+      }, 400);
+    }
+
+    // Initial quote after a short delay
+    setTimeout(showQuote, 800);
+
+    // Rotate quotes every 2.5 seconds
+    setInterval(showQuote, 2500);
+  </script>
+</body>
+</html>

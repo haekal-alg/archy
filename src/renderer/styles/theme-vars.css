@@ -1,0 +1,81 @@
+/* CSS Custom Properties derived from src/theme.ts */
+/* These mirror the darkTheme tokens for use in CSS utility classes */
+
+:root {
+  /* Background */
+  --bg-canvas: #161b22;
+  --bg-primary: #151923;
+  --bg-secondary: #1e2433;
+  --bg-tertiary: #252d3f;
+  --bg-elevated: #2a3347;
+  --bg-hover: #303948;
+  --bg-active: #3a4556;
+
+  /* Text */
+  --text-primary: #e8ecf4;
+  --text-secondary: #b4bcc9;
+  --text-tertiary: #8892a6;
+  --text-disabled: #5a6375;
+  --text-inverted: #0a0e1a;
+
+  /* Border */
+  --border-subtle: #2d3548;
+  --border-default: #3a4556;
+  --border-strong: #4a5568;
+  --border-focus: #4d7cfe;
+
+  /* Accent */
+  --accent-blue: #4d7cfe;
+  --accent-blue-light: #6b96ff;
+  --accent-blue-dark: #3461e8;
+  --accent-green: #3dd68c;
+  --accent-green-light: #5de4a5;
+  --accent-green-dark: #2ab871;
+  --accent-red: #ff5c5c;
+  --accent-red-light: #ff7878;
+  --accent-red-dark: #e84545;
+  --accent-orange: #ffab40;
+  --accent-orange-light: #ffc164;
+  --accent-orange-dark: #f59518;
+  --accent-purple: #9d5cff;
+  --accent-teal: #3dd6d6;
+
+  /* Radius */
+  --radius-xs: 2px;
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 8px;
+  --radius-xl: 12px;
+  --radius-xxl: 16px;
+  --radius-full: 9999px;
+
+  /* Spacing */
+  --sp-xs: 4px;
+  --sp-sm: 6px;
+  --sp-md: 8px;
+  --sp-lg: 12px;
+  --sp-xl: 16px;
+  --sp-xxl: 20px;
+  --sp-xxxl: 24px;
+
+  /* Font Sizes */
+  --fs-xs: 10px;
+  --fs-sm: 11px;
+  --fs-md: 13px;
+  --fs-base: 14px;
+  --fs-lg: 16px;
+  --fs-xl: 20px;
+  --fs-xxl: 24px;
+
+  /* Shadows */
+  --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.5);
+  --shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.5);
+  --shadow-md: 0 4px 8px rgba(0, 0, 0, 0.6);
+  --shadow-lg: 0 8px 16px rgba(0, 0, 0, 0.7);
+  --shadow-xl: 0 12px 24px rgba(0, 0, 0, 0.8);
+
+  /* Transitions */
+  --transition-fast: all 0.15s ease;
+  --transition-normal: all 0.2s ease;
+  --transition-slow: all 0.3s ease;
+}

@@ -4,8 +4,8 @@
   "description": "Visual network architecture tool with integrated remote access",
   "main": "dist/main.js",
   "scripts": {
-    "start": "npm run build:main && npm run build:renderer && electron .",
-    "dev": "npm run build:main && webpack serve --mode development",
+    "start": "npm run build:main && npm run build:preload && npm run build:renderer && electron .",
+    "dev": "npm run build:main && npm run build:preload && webpack serve --mode development",
     "build:main": "tsc src/main/main.ts --outDir dist --module commonjs --target ES2020 --esModuleInterop --skipLibCheck",
     "build:preload": "tsc src/main/preload.ts --outDir dist --module commonjs --target ES2020 --esModuleInterop --skipLibCheck",
     "build:renderer": "webpack --mode production",
@@ -25,13 +25,17 @@
     "@xterm/addon-fit": "^0.10.0",
     "@xterm/addon-serialize": "^0.13.0",
     "@xterm/addon-web-links": "^0.11.0",
+    "@xterm/addon-webgl": "^0.18.0",
     "@xterm/xterm": "^5.5.0",
     "@xyflow/react": "^12.9.2",
     "electron-store": "^11.0.2",
     "html-to-image": "^1.11.13",
+    "node-pty": "^1.1.0",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
-    "ssh2": "^1.17.0"
+    "react-spinners": "^0.17.0",
+    "ssh2": "^1.17.0",
+    "ssh2-sftp-client": "^12.0.1"
   },
   "devDependencies": {
     "@electron/rebuild": "^4.0.1",

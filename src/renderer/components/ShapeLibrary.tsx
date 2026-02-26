@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { ChevronLeftIcon, ChevronRightIcon } from './StatusIcons';
 import {
   RouterIcon,
   ServerIcon,
@@ -7,10 +8,12 @@ import {
   LinuxIcon,
   SwitchIcon,
   CloudIcon,
+  CloudIcon2,
   DatabaseIcon,
   LaptopIcon,
   AttackIcon,
-  GenericIcon
+  GenericIcon,
+  MobileIcon
 } from './NetworkIcons';
 import theme from '../../theme';
 
@@ -30,6 +33,7 @@ const ShapeLibrary: React.FC<ShapeLibraryProps> = ({ onAddNode, onAddGroup, onAd
       { type: 'windows', icon: DesktopIcon, label: 'Windows', color: theme.device.windows },
       { type: 'linux', icon: LinuxIcon, label: 'Linux', color: theme.device.linux },
       { type: 'laptop', icon: LaptopIcon, label: 'Laptop', color: theme.device.laptop },
+      { type: 'mobile', icon: MobileIcon, label: 'Mobile', color: theme.device.mobile },
       { type: 'generic', icon: GenericIcon, label: 'Generic', color: theme.text.tertiary },
     ],
     network: [
@@ -41,6 +45,7 @@ const ShapeLibrary: React.FC<ShapeLibraryProps> = ({ onAddNode, onAddGroup, onAd
       { type: 'server', icon: ServerIcon, label: 'Server', color: theme.device.server },
       { type: 'database', icon: DatabaseIcon, label: 'Database', color: theme.device.database },
       { type: 'cloud', icon: CloudIcon, label: 'Cloud', color: theme.device.cloud },
+      { type: 'cloud2', icon: CloudIcon2, label: 'Cloud 2', color: '#5c9ded' },
     ],
     security: [
       { type: 'attacker', icon: AttackIcon, label: 'Attacker', color: theme.device.attacker },
@@ -182,6 +187,11 @@ const ShapeLibrary: React.FC<ShapeLibraryProps> = ({ onAddNode, onAddGroup, onAd
         gap: theme.spacing.md
       }}>
         <button
+          draggable
+          onDragStart={(e) => {
+            e.dataTransfer.setData('application/reactflow', 'group');
+            e.dataTransfer.effectAllowed = 'move';
+          }}
           onClick={onAddGroup}
           style={{
             width: '100%',
@@ -190,7 +200,7 @@ const ShapeLibrary: React.FC<ShapeLibraryProps> = ({ onAddNode, onAddGroup, onAd
             borderRadius: theme.radius.sm,
             background: theme.background.tertiary,
             color: theme.text.primary,
-            cursor: 'pointer',
+            cursor: 'grab',
             fontSize: theme.fontSize.md,
             fontWeight: theme.fontWeight.medium,
             transition: theme.transition.normal
@@ -208,6 +218,11 @@ const ShapeLibrary: React.FC<ShapeLibraryProps> = ({ onAddNode, onAddGroup, onAd
         </button>
         {onAddText && (
           <button
+            draggable
+            onDragStart={(e) => {
+              e.dataTransfer.setData('application/reactflow', 'text');
+              e.dataTransfer.effectAllowed = 'move';
+            }}
             onClick={onAddText}
             style={{
               width: '100%',
@@ -216,7 +231,7 @@ const ShapeLibrary: React.FC<ShapeLibraryProps> = ({ onAddNode, onAddGroup, onAd
               borderRadius: theme.radius.sm,
               background: theme.background.tertiary,
               color: theme.text.primary,
-              cursor: 'pointer',
+              cursor: 'grab',
               fontSize: theme.fontSize.md,
               fontWeight: theme.fontWeight.medium,
               transition: theme.transition.normal
@@ -238,6 +253,7 @@ const ShapeLibrary: React.FC<ShapeLibraryProps> = ({ onAddNode, onAddGroup, onAd
       {/* Toggle Button */}
       <button
         onClick={onToggle}
+        className="panel-glass"
         style={{
           position: 'absolute',
           right: '-30px',
@@ -245,30 +261,17 @@ const ShapeLibrary: React.FC<ShapeLibraryProps> = ({ onAddNode, onAddGroup, onAd
           transform: 'translateY(-50%)',
           width: '30px',
           height: '60px',
-          border: '1px solid rgba(255, 255, 255, 0.25)',
           borderLeft: 'none',
           borderTopRightRadius: theme.radius.md,
           borderBottomRightRadius: theme.radius.md,
-          background: 'rgba(30, 33, 51, 0.65)',
-          backdropFilter: 'blur(60px) saturate(200%) brightness(1.1)',
-          WebkitBackdropFilter: 'blur(60px) saturate(200%) brightness(1.1)',
-          color: theme.text.primary,
-          cursor: 'pointer',
           fontSize: theme.fontSize.lg,
           boxShadow: theme.shadow.md,
-          transition: theme.transition.normal,
           display: 'flex',
           alignItems: 'center',
-          justifyContent: 'center'
-        }}
-        onMouseEnter={(e) => {
-          e.currentTarget.style.background = theme.background.hover;
-        }}
-        onMouseLeave={(e) => {
-          e.currentTarget.style.background = theme.background.secondary;
+          justifyContent: 'center',
         }}
       >
-        {isOpen ? '◀' : '▶'}
+        {isOpen ? <ChevronLeftIcon size={14} /> : <ChevronRightIcon size={14} />}
       </button>
     </div>
   );

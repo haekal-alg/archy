@@ -1,10 +1,19 @@
+export interface SSHPortForward {
+  localPort: number;
+  remoteHost: string;
+  remotePort: number;
+  bindAddress?: string;
+}
+
 export interface ElectronAPI {
   // App information
   isPackaged: () => Promise<boolean>;
 
   connectRDP: (host: string, username: string, password: string) => Promise<any>;
   connectSSH: (host: string, port: number, username: string, password: string) => Promise<any>;
-  executeCommand: (command: string) => Promise<any>;
+  openURL: (url: string) => Promise<any>;
+  launchMstsc: (host: string) => Promise<any>;
+  executeCustomCommand: (command: string) => Promise<any>;
   showOpenDialog: (options: any) => Promise<any>;
   saveDiagram: (name: string, data: any, filePath?: string) => Promise<any>;
   saveDiagramAs: (name: string, data: any) => Promise<any>;
@@ -21,25 +30,104 @@ export interface ElectronAPI {
     username: string;
     password: string;
     privateKeyPath?: string;
+    portForwards?: SSHPortForward[];
   }) => Promise<{ success: boolean; error?: string }>;
+
+  // Local Terminal Management
+  createLocalTerminal: (config: { connectionId: string; cwd?: string }) => Promise<{ success: boolean; cwd?: string; error?: string }>;
+  openTerminalInExplorer: (connectionId: string) => Promise<{ success: boolean; error?: string }>;
+  getLocalTerminalCwd: (connectionId: string) => Promise<{ success: boolean; cwd?: string; error?: string }>;
+
   sendSSHData: (connectionId: string, data: string) => void;
   resizeSSHTerminal: (connectionId: string, cols: number, rows: number) => void;
   closeSSHSession: (connectionId: string) => void;
-  onSSHData: (callback: (data: { connectionId: string; data: string }) => void) => () => void;
+  sshDataConsumed: (connectionId: string, bytesConsumed: number) => void;
+  onSSHData: (callback: (data: { connectionId: string; data: string }) => void, connectionId?: string) => () => void;
   onSSHClosed: (callback: (data: { connectionId: string }) => void) => () => void;
   onSSHLatency: (callback: (data: { connectionId: string; latency: number }) => void) => () => void;
 
-  // Menu event listeners
-  onMenuSave: (callback: () => void) => void;
-  onMenuLoad: (callback: () => void) => void;
-  onMenuExport: (callback: () => void) => void;
-  onMenuClear: (callback: () => void) => void;
+  // Menu event listeners - return cleanup functions to prevent memory leaks
+  onMenuSave: (callback: () => void) => () => void;
+  onMenuLoad: (callback: () => void) => () => void;
+  onMenuExport: (callback: () => void) => () => void;
+  onMenuClear: (callback: () => void) => () => void;
 
   // Clipboard operations
   clipboard: {
     writeText: (text: string) => Promise<{ success: boolean }>;
     readText: () => Promise<string>;
   };
+
+  // SFTP File Transfer
+  getHomeDirectory: () => Promise<string>;
+
+  listLocalFiles: (path: string) => Promise<Array<{
+    name: string;
+    type: 'file' | 'directory';
+    size: number;
+    modifiedTime: string;
+    path: string;
+  }>>;
+
+  listRemoteFiles: (config: {
+    connectionId: string;
+    path: string;
+  }) => Promise<Array<{
+    name: string;
+    type: 'file' | 'directory';
+    size: number;
+    modifiedTime: string;
+    path: string;
+  }>>;
+
+  closeSFTPConnection: (connectionId: string) => Promise<void>;
+
+  uploadFile: (config: {
+    connectionId: string;
+    localPath: string;
+    remotePath: string;
+    fileName: string;
+  }) => Promise<{ success: boolean }>;
+
+  downloadFile: (config: {
+    connectionId: string;
+    remotePath: string;
+    localPath: string;
+    fileName: string;
+  }) => Promise<{ success: boolean }>;
+
+  // SFTP progress events
+  onSFTPProgress: (callback: (data: {
+    connectionId: string;
+    fileName: string;
+    bytesTransferred: number;
+    totalBytes: number;
+    direction: 'upload' | 'download';
+  }) => void) => () => void;
+
+  // Remote file operations
+  sftpDelete: (config: { connectionId: string; remotePath: string; isDirectory: boolean }) => Promise<{ success: boolean }>;
+  sftpRename: (config: { connectionId: string; oldPath: string; newPath: string }) => Promise<{ success: boolean }>;
+  sftpMkdir: (config: { connectionId: string; remotePath: string }) => Promise<{ success: boolean }>;
+
+  // Local file operations
+  localDelete: (filePath: string) => Promise<{ success: boolean }>;
+  localRename: (config: { oldPath: string; newPath: string }) => Promise<{ success: boolean }>;
+  localMkdir: (dirPath: string) => Promise<{ success: boolean }>;
+
+  // Window controls (custom title bar)
+  windowMinimize: () => Promise<void>;
+  windowMaximize: () => Promise<void>;
+  windowClose: () => Promise<void>;
+  windowIsMaximized: () => Promise<boolean>;
+  onWindowMaximizedChange: (callback: (maximized: boolean) => void) => () => void;
+
+  // View controls (custom title bar)
+  windowReload: () => Promise<void>;
+  windowToggleDevTools: () => Promise<void>;
+  windowZoomIn: () => Promise<void>;
+  windowZoomOut: () => Promise<void>;
+  windowZoomReset: () => Promise<void>;
 }
 
 declare global {

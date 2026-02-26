@@ -1,7 +1,8 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Handle, Position, NodeProps, NodeResizer } from '@xyflow/react';
 import CONFIG from '../../config';
 import { ConnectionConfig } from './EnhancedDeviceNode';
+
 import theme from '../../theme';
 
 export interface GroupNodeData {
@@ -20,6 +21,7 @@ export interface GroupNodeData {
 
 const GroupNode: React.FC<NodeProps> = ({ data, selected }) => {
   const groupData = data as unknown as GroupNodeData;
+  const [isHovered, setIsHovered] = useState(false);
 
   const backgroundColor = groupData.backgroundColor || theme.accent.pink + '40';
   const borderColor = groupData.borderColor || theme.accent.pink;
@@ -32,8 +34,8 @@ const GroupNode: React.FC<NodeProps> = ({ data, selected }) => {
         minWidth={200}
         minHeight={150}
         lineStyle={{
-          borderWidth: 2,
-          borderColor: borderColor
+          borderWidth: 0,
+          borderColor: 'transparent'
         }}
         handleStyle={{
           width: 10,
@@ -44,108 +46,32 @@ const GroupNode: React.FC<NodeProps> = ({ data, selected }) => {
         }}
       />
 
-      {/* Connection Handles */}
-      <Handle
-        type="source"
-        position={Position.Top}
-        id="top"
-        style={{
-          background: borderColor,
-          width: `${CONFIG.handles.size}px`,
-          height: `${CONFIG.handles.size}px`,
-          border: `${CONFIG.handles.borderWidth}px solid ${CONFIG.handles.borderColor}`
-        }}
-      />
-      <Handle
-        type="target"
-        position={Position.Top}
-        id="top-target"
-        style={{
-          background: borderColor,
-          width: `${CONFIG.handles.size}px`,
-          height: `${CONFIG.handles.size}px`,
-          border: `${CONFIG.handles.borderWidth}px solid ${CONFIG.handles.borderColor}`
-        }}
-      />
-      <Handle
-        type="source"
-        position={Position.Right}
-        id="right"
-        style={{
-          background: borderColor,
-          width: `${CONFIG.handles.size}px`,
-          height: `${CONFIG.handles.size}px`,
-          border: `${CONFIG.handles.borderWidth}px solid ${CONFIG.handles.borderColor}`
-        }}
-      />
-      <Handle
-        type="target"
-        position={Position.Right}
-        id="right-target"
-        style={{
-          background: borderColor,
-          width: `${CONFIG.handles.size}px`,
-          height: `${CONFIG.handles.size}px`,
-          border: `${CONFIG.handles.borderWidth}px solid ${CONFIG.handles.borderColor}`
-        }}
-      />
-      <Handle
-        type="source"
-        position={Position.Bottom}
-        id="bottom"
-        style={{
-          background: borderColor,
-          width: `${CONFIG.handles.size}px`,
-          height: `${CONFIG.handles.size}px`,
-          border: `${CONFIG.handles.borderWidth}px solid ${CONFIG.handles.borderColor}`
-        }}
-      />
-      <Handle
-        type="target"
-        position={Position.Bottom}
-        id="bottom-target"
-        style={{
-          background: borderColor,
-          width: `${CONFIG.handles.size}px`,
-          height: `${CONFIG.handles.size}px`,
-          border: `${CONFIG.handles.borderWidth}px solid ${CONFIG.handles.borderColor}`
-        }}
-      />
-      <Handle
-        type="source"
-        position={Position.Left}
-        id="left"
-        style={{
-          background: borderColor,
-          width: `${CONFIG.handles.size}px`,
-          height: `${CONFIG.handles.size}px`,
-          border: `${CONFIG.handles.borderWidth}px solid ${CONFIG.handles.borderColor}`
-        }}
-      />
-      <Handle
-        type="target"
-        position={Position.Left}
-        id="left-target"
-        style={{
-          background: borderColor,
-          width: `${CONFIG.handles.size}px`,
-          height: `${CONFIG.handles.size}px`,
-          border: `${CONFIG.handles.borderWidth}px solid ${CONFIG.handles.borderColor}`
-        }}
-      />
-
       <div
         style={{
           width: '100%',
           height: '100%',
+          boxSizing: 'border-box',
           background: backgroundColor,
           border: `3px ${borderStyle} ${borderColor}`,
           borderRadius: theme.radius.xl,
           padding: theme.spacing.xl,
           position: 'relative',
           boxShadow: 'none',
+          cursor: 'pointer',
         }}
+        onMouseEnter={() => setIsHovered(true)}
+        onMouseLeave={() => setIsHovered(false)}
       >
+        {/* Connection Handles - inside the bordered div so they align to its border */}
+        <Handle type="source" position={Position.Top} id="top" style={{ background: borderColor, width: `${CONFIG.handles.size}px`, height: `${CONFIG.handles.size}px`, border: `${CONFIG.handles.borderWidth}px solid ${CONFIG.handles.borderColor}`, opacity: isHovered ? 1 : 0, transition: 'opacity 0.2s ease-in-out' }} />
+        <Handle type="target" position={Position.Top} id="top-target" style={{ background: borderColor, width: `${CONFIG.handles.size}px`, height: `${CONFIG.handles.size}px`, border: `${CONFIG.handles.borderWidth}px solid ${CONFIG.handles.borderColor}`, opacity: isHovered ? 1 : 0, transition: 'opacity 0.2s ease-in-out' }} />
+        <Handle type="source" position={Position.Right} id="right" style={{ background: borderColor, width: `${CONFIG.handles.size}px`, height: `${CONFIG.handles.size}px`, border: `${CONFIG.handles.borderWidth}px solid ${CONFIG.handles.borderColor}`, opacity: isHovered ? 1 : 0, transition: 'opacity 0.2s ease-in-out' }} />
+        <Handle type="target" position={Position.Right} id="right-target" style={{ background: borderColor, width: `${CONFIG.handles.size}px`, height: `${CONFIG.handles.size}px`, border: `${CONFIG.handles.borderWidth}px solid ${CONFIG.handles.borderColor}`, opacity: isHovered ? 1 : 0, transition: 'opacity 0.2s ease-in-out' }} />
+        <Handle type="source" position={Position.Bottom} id="bottom" style={{ background: borderColor, width: `${CONFIG.handles.size}px`, height: `${CONFIG.handles.size}px`, border: `${CONFIG.handles.borderWidth}px solid ${CONFIG.handles.borderColor}`, opacity: isHovered ? 1 : 0, transition: 'opacity 0.2s ease-in-out' }} />
+        <Handle type="target" position={Position.Bottom} id="bottom-target" style={{ background: borderColor, width: `${CONFIG.handles.size}px`, height: `${CONFIG.handles.size}px`, border: `${CONFIG.handles.borderWidth}px solid ${CONFIG.handles.borderColor}`, opacity: isHovered ? 1 : 0, transition: 'opacity 0.2s ease-in-out' }} />
+        <Handle type="source" position={Position.Left} id="left" style={{ background: borderColor, width: `${CONFIG.handles.size}px`, height: `${CONFIG.handles.size}px`, border: `${CONFIG.handles.borderWidth}px solid ${CONFIG.handles.borderColor}`, opacity: isHovered ? 1 : 0, transition: 'opacity 0.2s ease-in-out' }} />
+        <Handle type="target" position={Position.Left} id="left-target" style={{ background: borderColor, width: `${CONFIG.handles.size}px`, height: `${CONFIG.handles.size}px`, border: `${CONFIG.handles.borderWidth}px solid ${CONFIG.handles.borderColor}`, opacity: isHovered ? 1 : 0, transition: 'opacity 0.2s ease-in-out' }} />
+
         {/* Title Bar - only show if label exists */}
         {groupData.label && (
           <div
@@ -185,29 +111,6 @@ const GroupNode: React.FC<NodeProps> = ({ data, selected }) => {
             }}
           >
             {groupData.description}
-          </div>
-        )}
-
-        {/* Connection Status Indicator for Groups */}
-        {(!groupData.connections || groupData.connections.length === 0) && (
-          <div
-            style={{
-              position: 'absolute',
-              top: '12px',
-              right: '12px',
-              fontSize: theme.fontSize.xs,
-              color: theme.text.primary,
-              background: 'transparent',
-              padding: `${theme.spacing.xs} ${theme.spacing.md}`,
-              borderRadius: theme.radius.sm,
-              display: 'flex',
-              alignItems: 'center',
-              gap: theme.spacing.xs,
-              border: 'none'
-            }}
-          >
-            <span style={{ fontSize: '12px' }}>⚠️</span>
-            <span>No connection</span>
           </div>
         )}
       </div>

@@ -24,6 +24,7 @@ release/
 
 # OS
 Thumbs.db
+desktop.ini
 Desktop.ini
 
 # Environment
@@ -87,6 +88,16 @@ temp/
 nul
 architectures/
 improvement.txt
+example/
+docs/
+
+# Loose screenshots
+Screenshot*.png
+
+# Unused build assets
+build/*.psd
+build/old_*
+build/icon_*
 
 # Keep build folder (contains app icons)
 !build/

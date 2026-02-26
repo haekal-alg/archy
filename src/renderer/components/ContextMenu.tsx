@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { ConnectionConfig } from './EnhancedDeviceNode';
 import theme from '../../theme';
 
@@ -13,6 +13,78 @@ interface ContextMenuProps {
   connections?: ConnectionConfig[];
 }
 
+// Icons for menu items
+const DuplicateIcon = () => (
+  <svg width="14" height="14" viewBox="0 0 14 14" fill="none" style={{ marginRight: '8px' }}>
+    <rect x="4" y="4" width="7" height="7" rx="1" stroke="currentColor" strokeWidth="1.5" fill="none" />
+    <path d="M3 9V3C3 2.44772 3.44772 2 4 2H9" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+  </svg>
+);
+
+const DeleteIcon = () => (
+  <svg width="14" height="14" viewBox="0 0 14 14" fill="none" style={{ marginRight: '8px' }}>
+    <path d="M10.5 3.5L3.5 10.5M3.5 3.5L10.5 10.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+  </svg>
+);
+
+const ConnectIcon = ({ type }: { type: string }) => {
+  if (type === 'rdp' || type === 'ssh') {
+    return (
+      <svg width="14" height="14" viewBox="0 0 14 14" fill="none" style={{ marginRight: '8px' }}>
+        <rect x="2" y="3" width="10" height="8" rx="1" stroke="currentColor" strokeWidth="1.5" fill="none" />
+        <path d="M2 5H12" stroke="currentColor" strokeWidth="1.5" />
+      </svg>
+    );
+  }
+  if (type === 'browser') {
+    return (
+      <svg width="14" height="14" viewBox="0 0 14 14" fill="none" style={{ marginRight: '8px' }}>
+        <circle cx="7" cy="7" r="5" stroke="currentColor" strokeWidth="1.5" fill="none" />
+        <path d="M7 2C7 2 9 4 9 7C9 10 7 12 7 12M7 2C7 2 5 4 5 7C5 10 7 12 7 12M2 7H12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+      </svg>
+    );
+  }
+  return (
+    <svg width="14" height="14" viewBox="0 0 14 14" fill="none" style={{ marginRight: '8px' }}>
+      <circle cx="7" cy="7" r="2" fill="currentColor" />
+      <path d="M7 2V5M7 9V12M2 7H5M9 7H12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+    </svg>
+  );
+};
+
+// Shared menu styles
+export const getMenuContainerStyle = (isVisible: boolean) => ({
+  background: 'rgba(50, 50, 55, 0.65)',
+  backdropFilter: 'blur(60px) saturate(200%) brightness(1.1)',
+  WebkitBackdropFilter: 'blur(60px) saturate(200%) brightness(1.1)',
+  border: '1px solid rgba(255, 255, 255, 0.25)',
+  borderTop: '1px solid rgba(255, 255, 255, 0.35)',
+  borderRadius: '10px',
+  boxShadow: '0 8px 32px rgba(0, 0, 0, 0.5), 0 2px 8px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.1)',
+  opacity: isVisible ? 1 : 0,
+  transform: isVisible ? 'scale(1)' : 'scale(0.95)',
+  transition: 'opacity 0.2s ease-out, transform 0.2s ease-out',
+  transformOrigin: 'top left',
+});
+
+export const getMenuItemStyle = (isHovered: boolean, isDanger: boolean = false) => ({
+  width: '100%',
+  padding: '6px 12px',
+  border: 'none',
+  background: isHovered
+    ? (isDanger ? 'rgba(255, 92, 92, 0.25)' : 'rgba(255, 255, 255, 0.2)')
+    : 'transparent',
+  borderRadius: '6px',
+  color: isDanger ? '#ff5c5c' : theme.text.primary,
+  textAlign: 'left' as const,
+  cursor: 'pointer',
+  fontSize: theme.fontSize.sm,
+  transition: 'background 0.12s ease-out',
+  outline: 'none',
+  display: 'flex',
+  alignItems: 'center',
+});
+
 const ContextMenu: React.FC<ContextMenuProps> = ({
   x,
   y,
@@ -24,6 +96,92 @@ const ContextMenu: React.FC<ContextMenuProps> = ({
   connections = []
 }) => {
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
+  const [isVisible, setIsVisible] = useState(false);
+  const [adjustedPos, setAdjustedPos] = useState({ x, y });
+  const menuRef = React.useRef<HTMLDivElement>(null);
+
+  // Entrance animation on mount
+  useEffect(() => {
+    const timer = setTimeout(() => setIsVisible(true), 10);
+    return () => clearTimeout(timer);
+  }, []);
+
+  // Boundary detection: adjust position if menu would render off-screen
+  useEffect(() => {
+    if (menuRef.current) {
+      const rect = menuRef.current.getBoundingClientRect();
+      let newX = x;
+      let newY = y;
+      if (x + rect.width > window.innerWidth) {
+        newX = window.innerWidth - rect.width - 8;
+      }
+      if (y + rect.height > window.innerHeight) {
+        newY = window.innerHeight - rect.height - 8;
+      }
+      if (newX !== adjustedPos.x || newY !== adjustedPos.y) {
+        setAdjustedPos({ x: newX, y: newY });
+      }
+    }
+  }, [x, y, isVisible]);
+
+  const normalizeGroup = (group?: string) => (group || '').trim();
+  const connectionItems: Array<
+    | { type: 'divider'; label: string }
+    | { type: 'connection'; connection: ConnectionConfig }
+  > = [];
+  let currentGroup = '';
+  connections.forEach((connection) => {
+    const group = normalizeGroup(connection.group);
+    if (group && group !== currentGroup) {
+      connectionItems.push({ type: 'divider', label: group });
+      currentGroup = group;
+    }
+    if (!group) {
+      currentGroup = '';
+    }
+    connectionItems.push({ type: 'connection', connection });
+  });
+
+  // Build flat list of actionable items for keyboard navigation
+  const actionItems: Array<{ index: number; action: () => void }> = [];
+  if (showConnect && onConnect && connections.length > 0) {
+    connectionItems.forEach((item, index) => {
+      if (item.type === 'connection') {
+        actionItems.push({ index, action: () => { onConnect(item.connection); onClose(); } });
+      }
+    });
+  }
+  if (onDuplicate) {
+    actionItems.push({ index: 1000, action: () => { onDuplicate(); onClose(); } });
+  }
+  actionItems.push({ index: 1001, action: () => { onDelete(); onClose(); } });
+
+  // Keyboard navigation
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        const currentIdx = actionItems.findIndex(a => a.index === hoveredIndex);
+        const nextIdx = currentIdx < actionItems.length - 1 ? currentIdx + 1 : 0;
+        setHoveredIndex(actionItems[nextIdx].index);
+      } else if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        const currentIdx = actionItems.findIndex(a => a.index === hoveredIndex);
+        const nextIdx = currentIdx > 0 ? currentIdx - 1 : actionItems.length - 1;
+        setHoveredIndex(actionItems[nextIdx].index);
+      } else if (e.key === 'Enter') {
+        e.preventDefault();
+        const item = actionItems.find(a => a.index === hoveredIndex);
+        if (item) item.action();
+      } else if (e.key === 'Escape') {
+        e.preventDefault();
+        onClose();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [hoveredIndex, onClose, onConnect, onDelete, onDuplicate, showConnect, connections]);
+
   const getConnectionLabel = (connection: ConnectionConfig): string => {
     // Use custom label if provided
     if (connection.label && connection.label.trim() !== '') {
@@ -67,30 +225,46 @@ const ContextMenu: React.FC<ContextMenuProps> = ({
 
       {/* Context Menu */}
       <div
+        ref={menuRef}
         style={{
           position: 'fixed',
-          top: y,
-          left: x,
-          background: 'rgba(50, 50, 55, 0.65)',
-          backdropFilter: 'blur(60px) saturate(200%) brightness(1.1)',
-          WebkitBackdropFilter: 'blur(60px) saturate(200%) brightness(1.1)',
-          border: '1px solid rgba(255, 255, 255, 0.25)',
-          borderTop: '1px solid rgba(255, 255, 255, 0.35)',
-          borderRadius: '10px',
-          boxShadow: '0 8px 32px rgba(0, 0, 0, 0.5), 0 2px 8px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.1)',
+          top: adjustedPos.y,
+          left: adjustedPos.x,
+          ...getMenuContainerStyle(isVisible),
           zIndex: 9999,
           width: '200px',
           padding: '4px',
           overflow: 'hidden',
-          pointerEvents: 'auto'
+          pointerEvents: 'auto',
         }}
       >
         {/* Connection options */}
         {showConnect && onConnect && connections.length > 0 && (
           <>
-            {connections.map((connection, index) => {
+            {connectionItems.map((item, index) => {
+              if (item.type === 'divider') {
+                return (
+                  <div
+                    key={`group-${item.label}-${index}`}
+                    style={{
+                      padding: '6px 10px 4px',
+                      fontSize: theme.fontSize.xs,
+                      fontWeight: theme.fontWeight.semibold,
+                      color: theme.text.secondary,
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.04em',
+                      borderTop: '1px solid rgba(255, 255, 255, 0.08)',
+                      marginTop: index === 0 ? 0 : '4px'
+                    }}
+                  >
+                    {item.label}
+                  </div>
+                );
+              }
+
               const itemIndex = index;
               const isHovered = hoveredIndex === itemIndex;
+              const { connection } = item;
               return (
                 <button
                   key={connection.id}
@@ -102,20 +276,9 @@ const ContextMenu: React.FC<ContextMenuProps> = ({
                   }}
                   onMouseEnter={() => setHoveredIndex(itemIndex)}
                   onMouseLeave={() => setHoveredIndex(null)}
-                  style={{
-                    width: '100%',
-                    padding: '6px 12px',
-                    border: 'none',
-                    background: isHovered ? 'rgba(255, 255, 255, 0.2)' : 'transparent',
-                    borderRadius: '6px',
-                    color: theme.text.primary,
-                    textAlign: 'left',
-                    cursor: 'pointer',
-                    fontSize: theme.fontSize.sm,
-                    transition: 'background 0.12s ease-out',
-                    outline: 'none'
-                  }}
+                  style={getMenuItemStyle(isHovered)}
                 >
+                  <ConnectIcon type={connection.type} />
                   {getConnectionLabel(connection)}
                 </button>
               );
@@ -159,20 +322,9 @@ const ContextMenu: React.FC<ContextMenuProps> = ({
               }}
               onMouseEnter={() => setHoveredIndex(duplicateIndex)}
               onMouseLeave={() => setHoveredIndex(null)}
-              style={{
-                width: '100%',
-                padding: '6px 12px',
-                border: 'none',
-                background: isHovered ? 'rgba(255, 255, 255, 0.2)' : 'transparent',
-                borderRadius: '6px',
-                color: theme.text.primary,
-                textAlign: 'left',
-                cursor: 'pointer',
-                fontSize: theme.fontSize.sm,
-                transition: 'background 0.12s ease-out',
-                outline: 'none'
-              }}
+              style={getMenuItemStyle(isHovered)}
             >
+              <DuplicateIcon />
               Duplicate
             </button>
           );
@@ -191,20 +343,9 @@ const ContextMenu: React.FC<ContextMenuProps> = ({
               }}
               onMouseEnter={() => setHoveredIndex(deleteIndex)}
               onMouseLeave={() => setHoveredIndex(null)}
-              style={{
-                width: '100%',
-                padding: '6px 12px',
-                border: 'none',
-                background: isHovered ? 'rgba(255, 92, 92, 0.25)' : 'transparent',
-                borderRadius: '6px',
-                color: '#ff5c5c',
-                textAlign: 'left',
-                cursor: 'pointer',
-                fontSize: theme.fontSize.sm,
-                transition: 'background 0.12s ease-out',
-                outline: 'none'
-              }}
+              style={getMenuItemStyle(isHovered, true)}
             >
+              <DeleteIcon />
               Delete
             </button>
           );

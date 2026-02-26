@@ -1,0 +1,460 @@
+/* Common utility classes for Archy UI components */
+/* These extract the most-repeated inline style patterns */
+
+/* ===== Form Field Styles ===== */
+
+.field-label {
+  display: block;
+  font-size: var(--fs-sm);
+  margin-bottom: var(--sp-xs);
+  font-weight: 500;
+  color: var(--text-secondary);
+}
+
+.field-input {
+  width: 100%;
+  padding: var(--sp-sm) var(--sp-md);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-sm);
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
+  font-size: var(--fs-sm);
+  box-sizing: border-box;
+  outline: none;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.field-input:focus {
+  border-color: var(--accent-blue) !important;
+  box-shadow: 0 0 0 3px rgba(77, 124, 254, 0.25);
+}
+
+.field-group {
+  margin-bottom: var(--sp-lg);
+}
+
+.color-input {
+  width: 100%;
+  height: 32px;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  background: var(--bg-tertiary);
+}
+
+/* ===== Button Styles ===== */
+
+.btn-secondary {
+  padding: var(--sp-md) var(--sp-xl);
+  background: var(--bg-hover);
+  color: var(--text-primary);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-sm);
+  font-size: var(--fs-md);
+  cursor: pointer;
+  font-weight: 500;
+  transition: background-color 0.2s ease;
+}
+
+.btn-secondary:hover {
+  background: var(--bg-active);
+}
+
+.btn-primary {
+  padding: var(--sp-md) var(--sp-xl);
+  background: var(--accent-blue);
+  color: var(--text-primary);
+  border: 1px solid var(--accent-blue-dark);
+  border-radius: var(--radius-sm);
+  font-size: var(--fs-md);
+  cursor: pointer;
+  font-weight: 500;
+  transition: background-color 0.2s ease;
+}
+
+.btn-primary:hover {
+  background: var(--accent-blue-light);
+}
+
+.btn-icon {
+  background: var(--bg-hover);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-sm);
+  color: var(--text-tertiary);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+.btn-icon:hover {
+  background: var(--bg-active);
+  color: var(--text-primary);
+}
+
+/* ===== Flex Utilities ===== */
+
+.flex-row { display: flex; flex-direction: row; }
+.flex-col { display: flex; flex-direction: column; }
+.flex-center { display: flex; align-items: center; justify-content: center; }
+.flex-between { display: flex; justify-content: space-between; align-items: center; }
+
+/* ===== Panel & Card Styles ===== */
+
+.panel-glass {
+  background: rgba(30, 33, 51, 0.65);
+  backdrop-filter: blur(60px) saturate(200%) brightness(1.1);
+  -webkit-backdrop-filter: blur(60px) saturate(200%) brightness(1.1);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  color: var(--text-primary);
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+}
+
+.panel-glass:hover {
+  background: rgba(40, 44, 68, 0.8);
+}
+
+.card {
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-sm);
+  padding: var(--sp-lg) var(--sp-xl);
+  transition: background-color 0.2s ease;
+}
+
+/* ===== Badge Styles ===== */
+
+.tab-badge {
+  color: var(--text-primary);
+  border-radius: var(--radius-full);
+  padding: 2px var(--sp-md);
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  min-width: 20px;
+  text-align: center;
+  display: inline-block;
+  line-height: 1.4;
+}
+
+/* ===== Animations ===== */
+
+@keyframes pulse-red {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.6; }
+}
+
+.pulse-red {
+  animation: pulse-red 2s ease-in-out infinite;
+}
+
+@keyframes pulse-dot {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.2); opacity: 0.7; }
+}
+
+.pulse-dot {
+  animation: pulse-dot 2s ease-in-out infinite;
+}
+
+/* ===== Hover Utility Classes ===== */
+/* These replace inline onMouseEnter/onMouseLeave handlers */
+
+.btn-ghost {
+  background: var(--bg-hover);
+  border: 1px solid var(--border-default);
+  color: var(--text-primary);
+  cursor: pointer;
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.btn-ghost:hover {
+  background: var(--bg-active);
+}
+
+.btn-ghost:active {
+  transform: scale(0.98);
+}
+
+.btn-danger-ghost {
+  background: var(--bg-hover);
+  border: 1px solid var(--border-default);
+  color: var(--text-tertiary);
+  cursor: pointer;
+  transition: background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+}
+
+.btn-danger-ghost:hover {
+  background: var(--accent-red);
+  color: var(--text-inverted);
+  border-color: var(--accent-red-dark);
+}
+
+.connection-card {
+  transition: background-color 0.2s ease, border-color 0.2s ease;
+}
+
+.connection-card:hover {
+  background: var(--bg-hover) !important;
+}
+
+.connection-card.active {
+  background: var(--bg-secondary) !important;
+  border-color: var(--accent-blue) !important;
+}
+
+.connection-card.active:hover {
+  background: var(--bg-secondary) !important;
+}
+
+/* ===== Status Color Classes ===== */
+
+.status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  display: inline-block;
+  flex-shrink: 0;
+}
+
+.status-dot--connected { background: #51cf66; }
+.status-dot--connecting { background: var(--accent-orange); }
+.status-dot--error { background: var(--accent-red); }
+.status-dot--disconnected { background: var(--text-disabled); }
+
+/* Shimmer animation for skeleton loading */
+@keyframes shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+/* ===== Terminal Skeleton Loading ===== */
+
+.terminal-skeleton {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 16px;
+  height: 100%;
+}
+
+.terminal-skeleton-line {
+  height: 14px;
+  border-radius: var(--radius-sm);
+  background: linear-gradient(90deg, var(--bg-tertiary) 0%, var(--bg-hover) 50%, var(--bg-tertiary) 100%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s ease-in-out infinite;
+}
+
+/* ===== Confirm Dialog ===== */
+
+.confirm-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10001;
+  animation: confirmFadeIn 0.15s ease;
+}
+
+@keyframes confirmFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.confirm-dialog {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-lg);
+  padding: var(--sp-xxxl);
+  min-width: 380px;
+  max-width: 480px;
+  box-shadow: var(--shadow-xl);
+  animation: confirmSlideIn 0.15s ease;
+}
+
+@keyframes confirmSlideIn {
+  from { opacity: 0; transform: scale(0.95) translateY(-8px); }
+  to { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+.confirm-dialog__title {
+  margin: 0 0 var(--sp-md) 0;
+  font-size: var(--fs-lg);
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.confirm-dialog__message {
+  margin: 0 0 var(--sp-xxl) 0;
+  font-size: var(--fs-md);
+  color: var(--text-secondary);
+  line-height: 1.5;
+}
+
+.confirm-dialog__actions {
+  display: flex;
+  gap: var(--sp-md);
+  justify-content: flex-end;
+}
+
+.btn-confirm-cancel {
+  padding: var(--sp-md) var(--sp-xl);
+  background: var(--bg-hover);
+  color: var(--text-primary);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-sm);
+  font-size: var(--fs-md);
+  cursor: pointer;
+  font-weight: 500;
+  transition: background-color 0.15s ease;
+}
+
+.btn-confirm-cancel:hover {
+  background: var(--bg-active);
+}
+
+.btn-confirm-destructive {
+  padding: var(--sp-md) var(--sp-xl);
+  background: var(--accent-red);
+  color: #fff;
+  border: 1px solid var(--accent-red-dark);
+  border-radius: var(--radius-sm);
+  font-size: var(--fs-md);
+  cursor: pointer;
+  font-weight: 500;
+  transition: background-color 0.15s ease;
+}
+
+.btn-confirm-destructive:hover {
+  background: var(--accent-red-dark);
+}
+
+.btn-confirm-primary {
+  padding: var(--sp-md) var(--sp-xl);
+  background: var(--accent-blue);
+  color: var(--text-primary);
+  border: 1px solid var(--accent-blue-dark);
+  border-radius: var(--radius-sm);
+  font-size: var(--fs-md);
+  cursor: pointer;
+  font-weight: 500;
+  transition: background-color 0.15s ease;
+}
+
+.btn-confirm-primary:hover {
+  background: var(--accent-blue-light);
+}
+
+/* ===== Custom Title Bar ===== */
+
+.titlebar-drag {
+  -webkit-app-region: drag;
+}
+
+.titlebar-no-drag {
+  -webkit-app-region: no-drag;
+}
+
+.titlebar-menu-btn {
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  padding: 0 10px;
+  height: 100%;
+  font-size: var(--fs-md);
+  cursor: pointer;
+  transition: background-color 0.1s ease;
+  position: relative;
+}
+
+.titlebar-menu-btn:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+
+.titlebar-menu-btn.active {
+  background: var(--bg-active);
+  color: var(--text-primary);
+}
+
+.titlebar-menu-dropdown {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  min-width: 220px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-default);
+  border-radius: 0 0 var(--radius-md) var(--radius-md);
+  box-shadow: var(--shadow-lg);
+  z-index: 10000;
+  padding: 4px 0;
+}
+
+.titlebar-menu-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 6px 24px 6px 12px;
+  background: none;
+  border: none;
+  color: var(--text-primary);
+  font-size: var(--fs-md);
+  cursor: pointer;
+  text-align: left;
+  transition: background-color 0.1s ease;
+}
+
+.titlebar-menu-item:hover:not(.disabled) {
+  background: var(--accent-blue);
+  color: #fff;
+}
+
+.titlebar-menu-item.disabled {
+  color: var(--text-disabled);
+  cursor: default;
+}
+
+.titlebar-menu-separator {
+  height: 1px;
+  background: var(--border-subtle);
+  margin: 4px 0;
+}
+
+.titlebar-menu-shortcut {
+  font-size: var(--fs-xs);
+  color: var(--text-tertiary);
+  margin-left: 24px;
+}
+
+.titlebar-menu-item:hover:not(.disabled) .titlebar-menu-shortcut {
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.titlebar-window-btn {
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  width: 46px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background-color 0.1s ease;
+}
+
+.titlebar-window-btn:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+
+.titlebar-window-btn--close:hover {
+  background: #e81123 !important;
+  color: #fff !important;
+}

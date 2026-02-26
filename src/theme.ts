@@ -4,7 +4,7 @@
 export const darkTheme = {
   // Background Colors
   background: {
-    canvas: '#1a1f2e',           // Lighter dark blue for main canvas (easier on eyes)
+    canvas: '#161b22',           // Dark canvas with good node contrast
     primary: '#151923',          // Main dark background
     secondary: '#1e2433',        // Slightly lighter for panels
     tertiary: '#252d3f',         // Cards and inputs
@@ -63,6 +63,7 @@ export const darkTheme = {
     cloud: '#6b96ff',            // Light blue
     database: '#9d5cff',         // Purple
     laptop: '#8892a6',           // Gray
+    mobile: '#3ddc84',           // Android green
     attacker: '#ff5c9d',         // Pink
     endpoint: '#3dd6d6',         // Teal
   },
@@ -79,6 +80,18 @@ export const darkTheme = {
     gray: '#8892a6',
   },
 
+  // Status Colors (for notifications and states)
+  status: {
+    success: '#51cf66',
+    error: '#ff6b6b',
+    warning: '#ffa94d',
+    info: '#4dabf7',
+    successBg: 'rgba(81, 207, 102, 0.1)',
+    errorBg: 'rgba(255, 107, 107, 0.1)',
+    warningBg: 'rgba(255, 169, 77, 0.1)',
+    infoBg: 'rgba(77, 171, 247, 0.1)',
+  },
+
   // Shadows (lighter for dark theme)
   shadow: {
     xs: '0 1px 2px rgba(0, 0, 0, 0.5)',
@@ -90,11 +103,20 @@ export const darkTheme = {
     glowStrong: '0 0 30px rgba(77, 124, 254, 0.5)',
   },
 
+  // Elevation Shadows (for layered UI elements)
+  elevation: {
+    0: 'none',
+    1: '0 1px 3px rgba(0, 0, 0, 0.12)',
+    2: '0 4px 6px rgba(0, 0, 0, 0.12)',
+    3: '0 10px 20px rgba(0, 0, 0, 0.15)',
+    4: '0 20px 40px rgba(0, 0, 0, 0.2)',
+  },
+
   // Gradients
   gradient: {
-    nodeDefault: 'linear-gradient(135deg, #2a3347 0%, #1e2433 100%)',
-    nodeHover: 'linear-gradient(135deg, #303948 0%, #252d3f 100%)',
-    nodeSelected: 'linear-gradient(135deg, #3a4556 0%, #2a3347 100%)',
+    nodeDefault: 'linear-gradient(135deg, #3d4a5f 0%, #303947 100%)',
+    nodeHover: 'linear-gradient(135deg, #4a5770 0%, #3d4a5f 100%)',
+    nodeSelected: 'linear-gradient(135deg, #4f5d75 0%, #3d4a5f 100%)',
     panel: 'linear-gradient(180deg, #1e2433 0%, #151923 100%)',
     button: 'linear-gradient(135deg, #4d7cfe 0%, #3461e8 100%)',
     buttonHover: 'linear-gradient(135deg, #6b96ff 0%, #4d7cfe 100%)',
@@ -147,6 +169,26 @@ export const darkTheme = {
     fast: 'all 0.15s ease',
     normal: 'all 0.2s ease',
     slow: 'all 0.3s ease',
+  },
+
+  // Focus States (for accessibility)
+  focus: {
+    ring: '0 0 0 3px rgba(77, 124, 254, 0.4)',
+    ringOffset: '2px',
+  },
+
+  // Animation Tokens
+  animation: {
+    duration: {
+      fast: '150ms',
+      normal: '250ms',
+      slow: '350ms',
+    },
+    easing: {
+      easeIn: 'cubic-bezier(0.4, 0, 1, 1)',
+      easeOut: 'cubic-bezier(0, 0, 0.2, 1)',
+      easeInOut: 'cubic-bezier(0.4, 0, 0.2, 1)',
+    },
   },
 
   // Z-index

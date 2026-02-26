@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Handle, Position, NodeProps } from '@xyflow/react';
 import CONFIG from '../../config';
 import theme from '../../theme';
@@ -15,6 +15,7 @@ export interface TextNodeData {
 
 const TextNode: React.FC<NodeProps> = ({ data, selected }) => {
   const textData = data as unknown as TextNodeData;
+  const [isHovered, setIsHovered] = useState(false);
 
   const fontSize = textData.fontSize || 14;
   const fontColor = textData.fontColor || theme.text.primary;
@@ -35,12 +36,15 @@ const TextNode: React.FC<NodeProps> = ({ data, selected }) => {
         minWidth: '50px',
         maxWidth: '300px',
         wordWrap: 'break-word',
-        boxShadow: selected ? `0 0 0 2px ${theme.border.focus}` : 'none',
+        boxShadow: selected
+          ? `0 0 0 3px #9ca3af`
+          : 'none',
         cursor: 'pointer',
-        transition: theme.transition.normal,
         position: 'relative',
       }}
       className="text-node"
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
     >
       {/* Connection Handles */}
       <Handle
@@ -51,7 +55,10 @@ const TextNode: React.FC<NodeProps> = ({ data, selected }) => {
           background: theme.border.strong,
           width: `${CONFIG.handles.size}px`,
           height: `${CONFIG.handles.size}px`,
-          border: `${CONFIG.handles.borderWidth}px solid ${CONFIG.handles.borderColor}`
+          border: `${CONFIG.handles.borderWidth}px solid ${CONFIG.handles.borderColor}`,
+          opacity: isHovered ? 1 : 0,
+          transition: 'opacity 0.2s ease-in-out',
+          top: 0
         }}
       />
       <Handle
@@ -62,7 +69,10 @@ const TextNode: React.FC<NodeProps> = ({ data, selected }) => {
           background: theme.border.strong,
           width: `${CONFIG.handles.size}px`,
           height: `${CONFIG.handles.size}px`,
-          border: `${CONFIG.handles.borderWidth}px solid ${CONFIG.handles.borderColor}`
+          border: `${CONFIG.handles.borderWidth}px solid ${CONFIG.handles.borderColor}`,
+          opacity: isHovered ? 1 : 0,
+          transition: 'opacity 0.2s ease-in-out',
+          top: 0
         }}
       />
       <Handle
@@ -73,7 +83,10 @@ const TextNode: React.FC<NodeProps> = ({ data, selected }) => {
           background: theme.border.strong,
           width: `${CONFIG.handles.size}px`,
           height: `${CONFIG.handles.size}px`,
-          border: `${CONFIG.handles.borderWidth}px solid ${CONFIG.handles.borderColor}`
+          border: `${CONFIG.handles.borderWidth}px solid ${CONFIG.handles.borderColor}`,
+          opacity: isHovered ? 1 : 0,
+          transition: 'opacity 0.2s ease-in-out',
+          right: 0
         }}
       />
       <Handle
@@ -84,7 +97,10 @@ const TextNode: React.FC<NodeProps> = ({ data, selected }) => {
           background: theme.border.strong,
           width: `${CONFIG.handles.size}px`,
           height: `${CONFIG.handles.size}px`,
-          border: `${CONFIG.handles.borderWidth}px solid ${CONFIG.handles.borderColor}`
+          border: `${CONFIG.handles.borderWidth}px solid ${CONFIG.handles.borderColor}`,
+          opacity: isHovered ? 1 : 0,
+          transition: 'opacity 0.2s ease-in-out',
+          right: 0
         }}
       />
       <Handle
@@ -95,7 +111,10 @@ const TextNode: React.FC<NodeProps> = ({ data, selected }) => {
           background: theme.border.strong,
           width: `${CONFIG.handles.size}px`,
           height: `${CONFIG.handles.size}px`,
-          border: `${CONFIG.handles.borderWidth}px solid ${CONFIG.handles.borderColor}`
+          border: `${CONFIG.handles.borderWidth}px solid ${CONFIG.handles.borderColor}`,
+          opacity: isHovered ? 1 : 0,
+          transition: 'opacity 0.2s ease-in-out',
+          bottom: 0
         }}
       />
       <Handle
@@ -106,7 +125,10 @@ const TextNode: React.FC<NodeProps> = ({ data, selected }) => {
           background: theme.border.strong,
           width: `${CONFIG.handles.size}px`,
           height: `${CONFIG.handles.size}px`,
-          border: `${CONFIG.handles.borderWidth}px solid ${CONFIG.handles.borderColor}`
+          border: `${CONFIG.handles.borderWidth}px solid ${CONFIG.handles.borderColor}`,
+          opacity: isHovered ? 1 : 0,
+          transition: 'opacity 0.2s ease-in-out',
+          bottom: 0
         }}
       />
       <Handle
@@ -117,7 +139,10 @@ const TextNode: React.FC<NodeProps> = ({ data, selected }) => {
           background: theme.border.strong,
           width: `${CONFIG.handles.size}px`,
           height: `${CONFIG.handles.size}px`,
-          border: `${CONFIG.handles.borderWidth}px solid ${CONFIG.handles.borderColor}`
+          border: `${CONFIG.handles.borderWidth}px solid ${CONFIG.handles.borderColor}`,
+          opacity: isHovered ? 1 : 0,
+          transition: 'opacity 0.2s ease-in-out',
+          left: 0
         }}
       />
       <Handle
@@ -128,7 +153,10 @@ const TextNode: React.FC<NodeProps> = ({ data, selected }) => {
           background: theme.border.strong,
           width: `${CONFIG.handles.size}px`,
           height: `${CONFIG.handles.size}px`,
-          border: `${CONFIG.handles.borderWidth}px solid ${CONFIG.handles.borderColor}`
+          border: `${CONFIG.handles.borderWidth}px solid ${CONFIG.handles.borderColor}`,
+          opacity: isHovered ? 1 : 0,
+          transition: 'opacity 0.2s ease-in-out',
+          left: 0
         }}
       />
 
