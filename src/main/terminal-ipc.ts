@@ -20,7 +20,7 @@ import {
   getLocalSession,
   getLocalTerminalCwdAsync,
 } from './local-terminal';
-import { cleanupBuffer } from './buffer-manager';
+
 
 /**
  * Register all terminal-related IPC handlers
@@ -50,9 +50,6 @@ export function registerTerminalIPCHandlers(): void {
 
   // Close SSH or local terminal session (fire-and-forget)
   ipcMain.on('close-ssh-session', (event, { connectionId }) => {
-    // Clean up buffer state first
-    cleanupBuffer(connectionId);
-
     // Check if it's an SSH session
     const sshSession = getSSHSession(connectionId);
     if (sshSession) {

@@ -107,19 +107,23 @@ export function createLocalTerminal(connectionId: string, cwd?: string): Promise
 
       // Forward PTY data to renderer with buffering
       ptyProcess.onData((data: string) => {
+        // Guard: skip if session was already cleaned up (prevents orphaned buffers)
+        const session = localSessions.get(connectionId);
+        if (!session) return;
+
         // Scan output for prompt patterns to track real CWD
         const detectedCwd = feedOutput(connectionId, data);
         if (detectedCwd) {
-          const session = localSessions.get(connectionId);
-          if (session) {
-            session.cwd = detectedCwd;
-          }
+          session.cwd = detectedCwd;
         }
         bufferData(connectionId, data);
       });
 
       // Handle process exit
       ptyProcess.onExit((e) => {
+        // Guard: skip if session was already cleaned up by closeLocalTerminal
+        if (!localSessions.has(connectionId)) return;
+
         // Cleanup buffer state
         cleanupBuffer(connectionId);
         cleanupCwdTracker(connectionId);

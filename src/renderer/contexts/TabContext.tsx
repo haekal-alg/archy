@@ -258,6 +258,7 @@ export const TabProvider: React.FC<TabProviderProps> = ({ children }) => {
       clearInterval(reconnectInterval);
       reconnectIntervals.current.delete(id);
     }
+    reconnectCountdowns.current.delete(id);
 
     // Close SSH session
     window.electron.closeSSHSession(id);
@@ -284,6 +285,19 @@ export const TabProvider: React.FC<TabProviderProps> = ({ children }) => {
   const removeConnection = useCallback((id: string) => {
     // Clear any pending timeout
     clearConnectionTimeout(id);
+
+    // Cancel any active auto-reconnect timers and intervals
+    const reconnectTimer = reconnectTimers.current.get(id);
+    if (reconnectTimer) {
+      clearTimeout(reconnectTimer);
+      reconnectTimers.current.delete(id);
+    }
+    const reconnectInterval = reconnectIntervals.current.get(id);
+    if (reconnectInterval) {
+      clearInterval(reconnectInterval);
+      reconnectIntervals.current.delete(id);
+    }
+    reconnectCountdowns.current.delete(id);
 
     // Close SSH session
     window.electron.closeSSHSession(id);
@@ -600,6 +614,10 @@ export const TabProvider: React.FC<TabProviderProps> = ({ children }) => {
       if (reason !== 'user' && reason !== 'auth' && connection.connectionType !== 'local') {
         startAutoReconnect(data.connectionId, reason);
       } else {
+        // Clean up terminal instance to prevent xterm/WebGL context leaks
+        // (safe no-op if already cleaned up by disconnectConnection)
+        cleanupTerminal(data.connectionId);
+
         // Just update status to disconnected
         setConnections(prev =>
           prev.map(conn =>
