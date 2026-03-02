@@ -15,6 +15,13 @@ import {
   bufferData,
   cleanupBuffer,
 } from './buffer-manager';
+import {
+  initCwdTracker,
+  feedOutput,
+  getTrackedCwd,
+  queryOsCwd,
+  cleanupCwdTracker,
+} from './cwd-tracker';
 
 /**
  * Local terminal session state
@@ -94,8 +101,20 @@ export function createLocalTerminal(connectionId: string, cwd?: string): Promise
       localInputBuffers.set(connectionId, '');
       localDirStacks.set(connectionId, []);
 
+      // Initialize output-based CWD tracking
+      const shellType = process.platform === 'win32' ? 'cmd' as const : 'bash' as const;
+      initCwdTracker(connectionId, ptyProcess.pid, shellType, initialCwd);
+
       // Forward PTY data to renderer with buffering
       ptyProcess.onData((data: string) => {
+        // Scan output for prompt patterns to track real CWD
+        const detectedCwd = feedOutput(connectionId, data);
+        if (detectedCwd) {
+          const session = localSessions.get(connectionId);
+          if (session) {
+            session.cwd = detectedCwd;
+          }
+        }
         bufferData(connectionId, data);
       });
 
@@ -103,6 +122,7 @@ export function createLocalTerminal(connectionId: string, cwd?: string): Promise
       ptyProcess.onExit((e) => {
         // Cleanup buffer state
         cleanupBuffer(connectionId);
+        cleanupCwdTracker(connectionId);
 
         localInputBuffers.delete(connectionId);
         localDirStacks.delete(connectionId);
@@ -191,6 +211,7 @@ export function resizeLocalTerminal(connectionId: string, cols: number, rows: nu
 export function closeLocalTerminal(connectionId: string): void {
   // Clean up buffer state first
   cleanupBuffer(connectionId);
+  cleanupCwdTracker(connectionId);
 
   const session = localSessions.get(connectionId);
   if (session) {
@@ -206,11 +227,25 @@ export function closeLocalTerminal(connectionId: string): void {
 }
 
 /**
- * Get the current working directory of a local terminal
+ * Get the current working directory of a local terminal (synchronous).
+ * Prefers output-based tracking, falls back to session.cwd.
  */
 export function getLocalTerminalCwd(connectionId: string): string | null {
+  const tracked = getTrackedCwd(connectionId);
+  if (tracked) return tracked;
   const session = localSessions.get(connectionId);
   return session?.cwd || null;
+}
+
+/**
+ * Get the current working directory of a local terminal (async).
+ * Uses OS-level query on Linux/macOS for authoritative result,
+ * falls back to prompt-detected or session CWD.
+ */
+export async function getLocalTerminalCwdAsync(connectionId: string): Promise<string | null> {
+  const osCwd = await queryOsCwd(connectionId);
+  if (osCwd) return osCwd;
+  return getLocalTerminalCwd(connectionId);
 }
 
 /**
