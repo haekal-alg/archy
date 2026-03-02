@@ -71,18 +71,46 @@ export function getAllLocalSessions(): Map<string, LocalSession> {
 }
 
 /**
+ * Resolve shell executable and arguments based on shell type
+ */
+function resolveShell(shellType?: string): { exe: string; args: string[]; trackerType: 'cmd' | 'bash' | 'powershell' } {
+  switch (shellType) {
+    case 'wsl':
+      return { exe: 'wsl.exe', args: [], trackerType: 'bash' };
+    case 'powershell':
+      return { exe: 'powershell.exe', args: ['-NoLogo'], trackerType: 'powershell' };
+    case 'cmd':
+    default:
+      return {
+        exe: process.platform === 'win32' ? 'cmd.exe' : '/bin/bash',
+        args: [],
+        trackerType: process.platform === 'win32' ? 'cmd' : 'bash',
+      };
+  }
+}
+
+/**
  * Create a local terminal session
  */
-export function createLocalTerminal(connectionId: string, cwd?: string): Promise<{ success: boolean; cwd: string }> {
+export function createLocalTerminal(connectionId: string, cwd?: string, shellType?: string): Promise<{ success: boolean; cwd: string }> {
   return new Promise((resolve, reject) => {
     try {
-      // Spawn PTY session for proper terminal emulation
-      const shell = process.platform === 'win32' ? 'cmd.exe' : '/bin/bash';
+      const shell = resolveShell(shellType);
 
       const defaultCwd = getHomeDirectory();
-      const initialCwd = resolveLocalCwd(defaultCwd, cwd) || defaultCwd;
+      // For WSL with a Unix-style CWD, pass it via --cd arg instead of pty cwd
+      let initialCwd = defaultCwd;
+      let shellArgs = [...shell.args];
 
-      const ptyProcess = pty.spawn(shell, [], {
+      if (shellType === 'wsl' && cwd && cwd.startsWith('/')) {
+        // WSL Unix path: use --cd to set starting directory
+        shellArgs = ['--cd', cwd, ...shellArgs];
+        initialCwd = defaultCwd; // pty cwd must be a valid Windows path
+      } else {
+        initialCwd = resolveLocalCwd(defaultCwd, cwd) || defaultCwd;
+      }
+
+      const ptyProcess = pty.spawn(shell.exe, shellArgs, {
         name: 'xterm-256color',
         cols: 80,
         rows: 24,
@@ -90,20 +118,22 @@ export function createLocalTerminal(connectionId: string, cwd?: string): Promise
         env: process.env as { [key: string]: string },
       });
 
+      // For WSL, the effective CWD is the Unix path if provided
+      const effectiveCwd = (shellType === 'wsl' && cwd && cwd.startsWith('/')) ? cwd : initialCwd;
+
       // Store the session with flow control state initialized
       localSessions.set(connectionId, {
         ptyProcess: ptyProcess,
         connectionId,
         isPaused: false,
         queuedBytes: 0,
-        cwd: initialCwd,
+        cwd: effectiveCwd,
       });
       localInputBuffers.set(connectionId, '');
       localDirStacks.set(connectionId, []);
 
-      // Initialize output-based CWD tracking
-      const shellType = process.platform === 'win32' ? 'cmd' as const : 'bash' as const;
-      initCwdTracker(connectionId, ptyProcess.pid, shellType, initialCwd);
+      // Initialize output-based CWD tracking with correct shell type
+      initCwdTracker(connectionId, ptyProcess.pid, shell.trackerType, effectiveCwd);
 
       // Forward PTY data to renderer with buffering
       ptyProcess.onData((data: string) => {

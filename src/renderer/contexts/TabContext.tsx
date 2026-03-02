@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useCallback, useRef, ReactNode } from 'react';
 import { TabType, SSHConnection, TabContextType, SSHPortForward, DisconnectReason, TopologyNodeInfo } from '../types/terminal';
 import { cleanupTerminal } from '../components/TerminalEmulator';
+import { useSettingsContext } from './SettingsContext';
 
 const TabContext = createContext<TabContextType | undefined>(undefined);
 
@@ -28,6 +29,7 @@ interface TabProviderProps {
 }
 
 export const TabProvider: React.FC<TabProviderProps> = ({ children }) => {
+  const { settings } = useSettingsContext();
   const [activeTab, setActiveTab] = useState<TabType>('design');
   const [connections, setConnections] = useState<SSHConnection[]>([]);
   const [activeConnectionId, setActiveConnectionId] = useState<string | null>(null);
@@ -196,9 +198,17 @@ export const TabProvider: React.FC<TabProviderProps> = ({ children }) => {
     const connectionId = `local-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
     const terminalNumber = connectionsRef.current.filter(c => c.connectionType === 'local').length + 1;
 
+    // Use configured shell settings; fall back to defaults
+    const shellType = settings.terminal.defaultShell || 'cmd';
+    const shellLabels: Record<string, string> = { cmd: 'CMD', wsl: 'WSL', powershell: 'PS' };
+    const shellLabel = shellLabels[shellType] || shellType.toUpperCase();
+
+    // If no explicit CWD provided (not a duplicate), use the per-shell configured default
+    const resolvedCwd = cwd || settings.terminal.shellCwd[shellType] || undefined;
+
     const newConnection: SSHConnection = {
       id: connectionId,
-      nodeName: `Local Terminal ${terminalNumber}`,
+      nodeName: `${shellLabel} Terminal ${terminalNumber}`,
       nodeType: 'local',
       host: 'localhost',
       port: 0,
@@ -213,7 +223,7 @@ export const TabProvider: React.FC<TabProviderProps> = ({ children }) => {
     setActiveTab('connections');
 
     try {
-      await window.electron.createLocalTerminal({ connectionId, cwd });
+      await window.electron.createLocalTerminal({ connectionId, cwd: resolvedCwd, shellType });
 
       setConnections(prev =>
         prev.map(conn =>
@@ -231,7 +241,7 @@ export const TabProvider: React.FC<TabProviderProps> = ({ children }) => {
         )
       );
     }
-  }, []);
+  }, [settings.terminal]);
 
   const renameConnection = useCallback((id: string, newLabel: string) => {
     setConnections(prev =>

@@ -4,6 +4,9 @@ contextBridge.exposeInMainWorld('electron', {
   // App information
   isPackaged: () => ipcRenderer.invoke('is-packaged'),
 
+  // Icon loading
+  loadIcons: () => ipcRenderer.invoke('load-icons'),
+
   connectRDP: (host: string, username: string, password: string) =>
     ipcRenderer.invoke('connect-rdp', { host, username, password }),
 
@@ -44,8 +47,12 @@ contextBridge.exposeInMainWorld('electron', {
   createSSHSession: (config: { connectionId: string; host: string; port: number; username: string; password: string; privateKeyPath?: string; portForwards?: Array<{ localPort: number; remoteHost: string; remotePort: number; bindAddress?: string }> }) =>
     ipcRenderer.invoke('create-ssh-session', config),
 
+  // Settings
+  getSettings: () => ipcRenderer.invoke('get-settings'),
+  saveSettings: (settings: any) => ipcRenderer.invoke('save-settings', settings),
+
   // Local Terminal Management
-  createLocalTerminal: (config: { connectionId: string; cwd?: string }) =>
+  createLocalTerminal: (config: { connectionId: string; cwd?: string; shellType?: string }) =>
     ipcRenderer.invoke('create-local-terminal', config),
 
   openTerminalInExplorer: (connectionId: string) =>

@@ -34,6 +34,8 @@ const KeyboardShortcuts = React.lazy(() => import('./components/KeyboardShortcut
 import LoadingSpinner from './components/LoadingSpinner';
 import ErrorBoundary from './components/ErrorBoundary';
 import { TabProvider, useTabContext } from './contexts/TabContext';
+import { SettingsProvider } from './contexts/SettingsContext';
+import SettingsModal from './components/SettingsModal';
 import { ToolPalette } from './components/ToolPalette';
 import { ToolType } from './types/tools';
 import { useToast } from './hooks/useToast';
@@ -82,6 +84,7 @@ const AppContent: React.FC = () => {
   const [activeTool, setActiveTool] = useState<ToolType>('selection');
   const [isHandToolTemporary, setIsHandToolTemporary] = useState(false);
   const [showKeyboardShortcuts, setShowKeyboardShortcuts] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [loadingText, setLoadingText] = useState('');
   const { showSuccess, showError, showWarning, showInfo, ToastContainer } = useToast();
@@ -366,6 +369,13 @@ const AppContent: React.FC = () => {
 
   const canUndo = historyIndex > 0;
   const canRedo = historyIndex < history.length - 1;
+
+  // Save history when a device node is resized via drag handle
+  useEffect(() => {
+    const handler = () => setTimeout(() => saveToHistory(), 0);
+    window.addEventListener('node-resize-end', handler);
+    return () => window.removeEventListener('node-resize-end', handler);
+  }, [saveToHistory]);
 
   // Handle manual tool changes (from UI or keyboard)
   const handleToolChange = useCallback((tool: ToolType) => {
@@ -1283,6 +1293,7 @@ const AppContent: React.FC = () => {
         onRedo={handleRedo}
         canUndo={canUndo}
         canRedo={canRedo}
+        onSettings={() => setShowSettings(true)}
       />
       <nav aria-label="Main navigation">
         <TabBar />
@@ -1780,18 +1791,23 @@ const AppContent: React.FC = () => {
         />
       )}
 
+      {/* Settings Modal */}
+      <SettingsModal open={showSettings} onClose={() => setShowSettings(false)} />
+
       {/* Toast Notifications */}
       <ToastContainer />
     </div>
   );
 };
 
-// Wrap AppContent with TabProvider
+// Wrap AppContent with providers
 const App: React.FC = () => {
   return (
-    <TabProvider>
-      <AppContent />
-    </TabProvider>
+    <SettingsProvider>
+      <TabProvider>
+        <AppContent />
+      </TabProvider>
+    </SettingsProvider>
   );
 };
 

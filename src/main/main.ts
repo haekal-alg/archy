@@ -27,6 +27,7 @@ import {
 import { registerTerminalIPCHandlers } from './terminal-ipc';
 import { registerDiagramIPCHandlers } from './diagram-manager';
 import { registerSFTPIPCHandlers } from './sftp-manager';
+import { registerIconIPCHandlers } from './icon-manager';
 
 // Electron store for persistence
 const Store = require('electron-store');
@@ -143,6 +144,22 @@ function createWindow(): void {
     mainWindow = null;
   });
 
+  // Handle beforeunload prevention in frameless window
+  // When renderer calls e.preventDefault() on beforeunload (unsaved changes),
+  // Electron fires will-prevent-unload. Show a native dialog instead of silently blocking.
+  mainWindow.webContents.on('will-prevent-unload', (event) => {
+    const choice = dialog.showMessageBoxSync(mainWindow!, {
+      type: 'question',
+      buttons: ['Close', 'Cancel'],
+      defaultId: 1,
+      title: 'Unsaved Changes',
+      message: 'You have unsaved changes. Are you sure you want to close?',
+    });
+    if (choice === 0) {
+      event.preventDefault(); // Allow the close to proceed
+    }
+  });
+
   // Forward maximize/unmaximize state to renderer
   mainWindow.on('maximize', () => {
     mainWindow?.webContents.send('window-maximized-change', true);
@@ -171,6 +188,7 @@ function initializeModules(): void {
   registerTerminalIPCHandlers();
   registerDiagramIPCHandlers(mainWindow, store);
   registerSFTPIPCHandlers();
+  registerIconIPCHandlers();
 }
 
 /**
@@ -215,6 +233,26 @@ app.on('activate', () => {
 });
 
 // ============================================================================
+// Settings IPC Handlers
+// ============================================================================
+
+const DEFAULT_SETTINGS = {
+  terminal: {
+    defaultShell: 'cmd',
+    shellCwd: { cmd: '', wsl: '', powershell: '' },
+  },
+};
+
+ipcMain.handle('get-settings', async () => {
+  return store.get('settings', DEFAULT_SETTINGS);
+});
+
+ipcMain.handle('save-settings', async (_event: any, settings: any) => {
+  store.set('settings', settings);
+  return { success: true };
+});
+
+// ============================================================================
 // Core IPC Handlers
 // ============================================================================
 
@@ -234,8 +272,8 @@ ipcMain.handle('create-ssh-session', async (event, config) => {
 });
 
 // Local terminal creation
-ipcMain.handle('create-local-terminal', async (event, { connectionId, cwd }) => {
-  return createLocalTerminal(connectionId, cwd);
+ipcMain.handle('create-local-terminal', async (event, { connectionId, cwd, shellType }) => {
+  return createLocalTerminal(connectionId, cwd, shellType);
 });
 
 // Open URL in default browser (validated scheme)
