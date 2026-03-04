@@ -758,43 +758,6 @@ const ConnectionsTab: React.FC = () => {
                 alignItems: 'center',
                 gap: theme.spacing.lg,
               }}>
-                {/* Latency Indicator */}
-                <div style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: theme.spacing.sm,
-                  padding: `${theme.spacing.xs} 10px`,
-                  backgroundColor: theme.background.tertiary,
-                  borderRadius: theme.radius.sm,
-                  border: `1px solid ${theme.border.default}`,
-                }}>
-                  {activeConnection.latency !== undefined ? (
-                    <>
-                      <LatencyDot
-                        size={10}
-                        color={activeConnection.latency < 100 ? theme.accent.green : activeConnection.latency < 300 ? theme.accent.orange : theme.accent.red}
-                      />
-                      <span style={{
-                        fontSize: '12px',
-                        color: activeConnection.latency < 100 ? theme.accent.green : activeConnection.latency < 300 ? theme.accent.orange : theme.accent.red,
-                        fontWeight: theme.fontWeight.medium,
-                        fontFamily: 'Consolas, monospace',
-                        minWidth: '45px',
-                      }}>
-                        {activeConnection.latency}ms
-                      </span>
-                    </>
-                  ) : (
-                    <span style={{
-                      fontSize: '12px',
-                      color: theme.text.disabled,
-                      fontFamily: 'Consolas, monospace',
-                      minWidth: '45px',
-                    }}>
-                      ---
-                    </span>
-                  )}
-                </div>
                 {/* Zoom Controls */}
                 <div style={{
                   display: 'flex',
@@ -848,6 +811,34 @@ const ConnectionsTab: React.FC = () => {
                     onMouseLeave={(e) => e.currentTarget.style.backgroundColor = theme.background.hover}
                   >
                     +
+                  </button>
+
+                  {/* Reconnect / refresh terminal session */}
+                  <button
+                    onClick={() => retryConnection(activeConnection.id)}
+                    style={{
+                      padding: `${theme.spacing.xs} ${theme.spacing.md}`,
+                      backgroundColor: theme.background.hover,
+                      color: theme.text.secondary,
+                      border: 'none',
+                      borderRadius: '3px',
+                      cursor: 'pointer',
+                      lineHeight: '1',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      transition: 'background-color 0.2s ease',
+                      marginLeft: theme.spacing.sm,
+                    }}
+                    title="Reconnect terminal"
+                    aria-label="Reconnect terminal session"
+                    onMouseEnter={(e) => e.currentTarget.style.backgroundColor = theme.background.active}
+                    onMouseLeave={(e) => e.currentTarget.style.backgroundColor = theme.background.hover}
+                  >
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <polyline points="23 4 23 10 17 10" />
+                      <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10" />
+                    </svg>
                   </button>
                 </div>
               </div>

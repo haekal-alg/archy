@@ -1,0 +1,39 @@
+{
+  "categories": [
+    {
+      "id": "devices",
+      "label": "Devices",
+      "icons": ["desktop", "linux", "laptop", "mobile", "generic"]
+    },
+    {
+      "id": "network",
+      "label": "Network",
+      "icons": ["router", "switch", "firewall"]
+    },
+    {
+      "id": "infra",
+      "label": "Infra",
+      "icons": ["server", "database", "cloud", "cloud2"]
+    },
+    {
+      "id": "security",
+      "label": "Security",
+      "icons": ["attacker", "firewall"]
+    }
+  ],
+  "icons": {
+    "router": { "label": "Router", "deviceType": "router" },
+    "server": { "label": "Server", "deviceType": "server" },
+    "firewall": { "label": "Firewall", "deviceType": "firewall" },
+    "desktop": { "label": "Windows", "deviceType": "windows" },
+    "linux": { "label": "Linux", "deviceType": "linux" },
+    "switch": { "label": "Switch", "deviceType": "switch" },
+    "cloud": { "label": "Cloud", "deviceType": "cloud" },
+    "cloud2": { "label": "Cloud 2", "deviceType": "cloud2" },
+    "database": { "label": "Database", "deviceType": "database" },
+    "generic": { "label": "Generic", "deviceType": "generic" },
+    "laptop": { "label": "Laptop", "deviceType": "laptop" },
+    "attacker": { "label": "Attacker", "deviceType": "attacker" },
+    "mobile": { "label": "Mobile", "deviceType": "mobile" }
+  }
+}

@@ -183,6 +183,19 @@ export const cleanupTerminal = (connectionId: string) => {
   cleanupBufferState(connectionId);
 };
 
+// Export function to refresh terminal rendering (redraws all rows and re-fits)
+export const refreshTerminal = (connectionId: string): void => {
+  const instance = terminalInstances.get(connectionId);
+  if (instance) {
+    instance.terminal.refresh(0, instance.terminal.rows - 1);
+    try {
+      instance.fitAddon.fit();
+    } catch (e) {
+      // fit can throw if container has zero dimensions
+    }
+  }
+};
+
 // Export function to get serialized terminal content (useful for debugging or future features)
 export const getTerminalContent = (connectionId: string): string | null => {
   const instance = terminalInstances.get(connectionId);

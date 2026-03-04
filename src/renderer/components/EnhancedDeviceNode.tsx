@@ -1,9 +1,9 @@
-import React, { useState, useMemo } from 'react';
-import { Handle, Position, NodeProps } from '@xyflow/react';
+import React, { useState, useMemo, useCallback, useRef } from 'react';
+import { Handle, Position, NodeProps, useReactFlow, useStoreApi } from '@xyflow/react';
 import CONFIG from '../../config';
 import theme from '../../theme';
-import { CheckIcon, WarningIcon } from './StatusIcons';
 import {
+  DynamicIcon,
   RouterIcon,
   ServerIcon,
   FirewallIcon,
@@ -54,6 +54,8 @@ export interface EnhancedDeviceData {
   operatingSystem?: string;
   customCommand?: string;
   connections?: ConnectionConfig[];
+  iconSize?: number;
+  labelSize?: number;
 }
 
 // Static style constants extracted to module scope (never re-created)
@@ -64,83 +66,41 @@ const HANDLE_BASE_STYLE: React.CSSProperties = {
   transition: 'opacity 0.2s ease-in-out',
 };
 
-const ICON_CONTAINER_STYLE: React.CSSProperties = {
-  marginBottom: theme.spacing.md,
-  display: 'flex',
-  justifyContent: 'center',
-  alignItems: 'center',
-};
-
-const LABEL_STYLE: React.CSSProperties = {
-  fontWeight: theme.fontWeight.bold,
-  marginBottom: theme.spacing.xs,
-  fontSize: theme.fontSize.md,
-  color: theme.text.primary,
-  wordWrap: 'break-word',
-};
-
-const OS_STYLE: React.CSSProperties = {
-  fontSize: theme.fontSize.sm,
-  color: theme.text.secondary,
-  marginTop: theme.spacing.xs,
-};
-
-const STATUS_CONNECTED_STYLE: React.CSSProperties = {
-  marginTop: theme.spacing.sm,
-  fontSize: theme.fontSize.xs,
-  color: theme.accent.green,
-  display: 'flex',
-  alignItems: 'center',
-  justifyContent: 'center',
-  gap: theme.spacing.xs,
-};
-
-const STATUS_DISCONNECTED_STYLE: React.CSSProperties = {
-  marginTop: theme.spacing.sm,
-  fontSize: theme.fontSize.xs,
-  color: theme.text.tertiary,
-  display: 'flex',
-  alignItems: 'center',
-  justifyContent: 'center',
-  gap: theme.spacing.xs,
-};
-
 const CENTER_STYLE: React.CSSProperties = { textAlign: 'center' };
 
-const EnhancedDeviceNode: React.FC<NodeProps> = React.memo(({ data, selected }) => {
+const EnhancedDeviceNode: React.FC<NodeProps> = React.memo(({ id, data, selected }) => {
   const deviceData = data as unknown as EnhancedDeviceData;
   const [isHovered, setIsHovered] = useState(false);
+  const [dragIconSize, setDragIconSize] = useState<number | null>(null);
+  const dragRef = useRef<{ startX: number; startY: number; startSize: number } | null>(null);
+  const { updateNodeData } = useReactFlow();
+  const storeApi = useStoreApi();
+
+  const iconSize = deviceData.iconSize ?? CONFIG.deviceNodes.defaultIconSize;
+  const labelSize = deviceData.labelSize ?? CONFIG.deviceNodes.defaultLabelSize;
+  const effectiveIconSize = dragIconSize ?? iconSize;
 
   const getIcon = () => {
     const color = deviceData.color;
-    switch (deviceData.type) {
-      case 'router':
-        return <RouterIcon color={color} />;
-      case 'server':
-        return <ServerIcon color={color} />;
-      case 'firewall':
-        return <FirewallIcon color={color} />;
-      case 'windows':
-        return <DesktopIcon color={color} />;
-      case 'linux':
-        return <LinuxIcon color={color} />;
-      case 'switch':
-        return <SwitchIcon color={color} />;
-      case 'cloud':
-        return <CloudIcon color={color} />;
-      case 'cloud2':
-        return <CloudIcon2 color={color} />;
-      case 'database':
-        return <DatabaseIcon color={color} />;
-      case 'laptop':
-        return <LaptopIcon color={color} />;
-      case 'mobile':
-        return <MobileIcon color={color} />;
-      case 'attacker':
-        return <AttackIcon color={color} />;
-      default:
-        return <GenericIcon color={color} />;
-    }
+    const size = effectiveIconSize;
+    const builtIn = (() => {
+      switch (deviceData.type) {
+        case 'router': return <RouterIcon color={color} size={size} />;
+        case 'server': return <ServerIcon color={color} size={size} />;
+        case 'firewall': return <FirewallIcon color={color} size={size} />;
+        case 'windows': return <DesktopIcon color={color} size={size} />;
+        case 'linux': return <LinuxIcon color={color} size={size} />;
+        case 'switch': return <SwitchIcon color={color} size={size} />;
+        case 'cloud': return <CloudIcon color={color} size={size} />;
+        case 'cloud2': return <CloudIcon2 color={color} size={size} />;
+        case 'database': return <DatabaseIcon color={color} size={size} />;
+        case 'laptop': return <LaptopIcon color={color} size={size} />;
+        case 'mobile': return <MobileIcon color={color} size={size} />;
+        case 'attacker': return <AttackIcon color={color} size={size} />;
+        default: return <GenericIcon color={color} size={size} />;
+      }
+    })();
+    return <DynamicIcon deviceType={deviceData.type} fallback={builtIn} size={size} />;
   };
 
   const getDefaultColor = () => {
@@ -172,18 +132,46 @@ const EnhancedDeviceNode: React.FC<NodeProps> = React.memo(({ data, selected }) 
     left: { ...HANDLE_BASE_STYLE, background: borderColor, opacity: handleOpacity, left: 0 } as React.CSSProperties,
   }), [borderColor, handleOpacity]);
 
+  // Resize handle drag logic
+  const onResizePointerDown = useCallback((e: React.PointerEvent) => {
+    e.stopPropagation();
+    e.preventDefault();
+    (e.target as HTMLElement).setPointerCapture(e.pointerId);
+    dragRef.current = { startX: e.clientX, startY: e.clientY, startSize: effectiveIconSize };
+  }, [effectiveIconSize]);
+
+  const onResizePointerMove = useCallback((e: React.PointerEvent) => {
+    if (!dragRef.current) return;
+    const zoom = storeApi.getState().transform[2];
+    const dx = (e.clientX - dragRef.current.startX) / zoom;
+    const dy = (e.clientY - dragRef.current.startY) / zoom;
+    const delta = (dx + dy) / 2;
+    const newSize = Math.round(
+      Math.min(CONFIG.deviceNodes.maxIconSize,
+        Math.max(CONFIG.deviceNodes.minIconSize, dragRef.current.startSize + delta))
+    );
+    setDragIconSize(newSize);
+  }, [storeApi]);
+
+  const onResizePointerUp = useCallback((e: React.PointerEvent) => {
+    if (!dragRef.current) return;
+    (e.target as HTMLElement).releasePointerCapture(e.pointerId);
+    const finalSize = dragIconSize ?? effectiveIconSize;
+    dragRef.current = null;
+    setDragIconSize(null);
+    updateNodeData(id, { iconSize: finalSize });
+    window.dispatchEvent(new CustomEvent('node-resize-end'));
+  }, [dragIconSize, effectiveIconSize, id, updateNodeData]);
+
+  const showResizeHandle = selected && isHovered;
+  const handleSize = CONFIG.deviceNodes.resizeHandleSize;
+
   return (
     <div
       style={{
-        padding: theme.spacing.lg,
-        borderRadius: theme.radius.xl,
-        border: `2px solid ${borderColor}`,
-        background: isHovered ? theme.gradient.nodeHover : theme.gradient.nodeDefault,
-        minWidth: '140px',
-        maxWidth: '200px',
-        boxShadow: selected
-          ? `0 0 0 3px #9ca3af`
-          : 'none',
+        padding: theme.spacing.md,
+        background: 'transparent',
+        minWidth: `${effectiveIconSize + 20}px`,
         cursor: 'pointer',
         position: 'relative',
       }}
@@ -202,35 +190,52 @@ const EnhancedDeviceNode: React.FC<NodeProps> = React.memo(({ data, selected }) 
       <Handle type="target" position={Position.Left} id="left-target" style={handleStyles.left} />
 
       <div style={CENTER_STYLE}>
-        {/* Icon */}
-        <div style={ICON_CONTAINER_STYLE}>
+        {/* Icon with selection glow */}
+        <div style={{
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
+          filter: selected ? `drop-shadow(0 0 8px ${borderColor})` : 'none',
+          transition: 'filter 0.2s ease',
+          position: 'relative',
+        }}>
           {getIcon()}
+
+          {/* Resize handle */}
+          {showResizeHandle && (
+            <div
+              className="nodrag nopan"
+              onPointerDown={onResizePointerDown}
+              onPointerMove={onResizePointerMove}
+              onPointerUp={onResizePointerUp}
+              style={{
+                position: 'absolute',
+                right: -handleSize / 2,
+                bottom: -handleSize / 2,
+                width: handleSize,
+                height: handleSize,
+                cursor: 'nwse-resize',
+                background: borderColor,
+                border: `1px solid ${theme.text.primary}`,
+                borderRadius: 2,
+                opacity: 0.8,
+                zIndex: 10,
+              }}
+            />
+          )}
         </div>
 
         {/* Label */}
-        <div style={LABEL_STYLE}>
+        <div style={{
+          fontWeight: theme.fontWeight.semibold,
+          fontSize: `${labelSize}px`,
+          color: theme.text.primary,
+          wordWrap: 'break-word',
+          lineHeight: '1.3',
+          marginTop: theme.spacing.xs,
+        }}>
           {deviceData.label}
         </div>
-
-        {/* Operating System */}
-        {deviceData.operatingSystem && (
-          <div style={OS_STYLE}>
-            {deviceData.operatingSystem}
-          </div>
-        )}
-
-        {/* Connection Status Indicator */}
-        {deviceData.connections && deviceData.connections.length > 0 ? (
-          <div style={STATUS_CONNECTED_STYLE}>
-            <CheckIcon size={13} color={theme.accent.green} />
-            <span>{deviceData.connections.length} connection{deviceData.connections.length > 1 ? 's' : ''}</span>
-          </div>
-        ) : (
-          <div style={STATUS_DISCONNECTED_STYLE}>
-            <WarningIcon size={13} color={theme.text.tertiary} />
-            <span>No connection</span>
-          </div>
-        )}
       </div>
     </div>
   );

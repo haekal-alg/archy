@@ -94,25 +94,29 @@ const TabBar: React.FC = () => {
           >
             {tab.label}
 
-            {/* Connection count badge - colored by most severe status */}
+            {/* Connection count badge - muted colors matching dark theme */}
             {tab.id === 'connections' && totalCount > 0 && (
               <span
                 className={`tab-badge${errorCount > 0 ? ' pulse-red' : ''}`}
                 aria-label={`${totalCount} connection${totalCount !== 1 ? 's' : ''}${errorCount > 0 ? `, ${errorCount} error${errorCount !== 1 ? 's' : ''}` : ''}`}
                 style={{
                   backgroundColor: errorCount > 0
-                    ? theme.accent.red
+                    ? 'rgba(255, 92, 92, 0.15)'
                     : connectingCount > 0
-                      ? theme.accent.orange
-                      : theme.status.success,
-                  color: theme.text.inverted,
+                      ? 'rgba(255, 171, 64, 0.15)'
+                      : 'rgba(61, 214, 140, 0.15)',
+                  color: errorCount > 0
+                    ? '#e87272'
+                    : connectingCount > 0
+                      ? '#d4943a'
+                      : '#5ab882',
                 }}
               >
                 {totalCount}
               </span>
             )}
 
-            {/* Red alert dot when errors exist and user is on another tab */}
+            {/* Alert dot when errors exist and user is on another tab */}
             {tab.id === 'connections' && errorCount > 0 && activeTab !== 'connections' && (
               <span
                 className="pulse-dot"
@@ -124,7 +128,7 @@ const TabBar: React.FC = () => {
                   width: '6px',
                   height: '6px',
                   borderRadius: '50%',
-                  backgroundColor: theme.accent.red,
+                  backgroundColor: '#e87272',
                 }}
               />
             )}

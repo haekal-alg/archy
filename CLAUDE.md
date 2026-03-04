@@ -2,6 +2,9 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## IMPORTANT INSTRUCTION
+- 
+
 ## Project Overview
 
 **Archy** is an Electron-based desktop application combining network topology visualization (using React Flow) with integrated remote access management. It allows users to create visual network diagrams and connect directly to devices via RDP/SSH with embedded credentials.

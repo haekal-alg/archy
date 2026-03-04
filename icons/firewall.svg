@@ -1,0 +1,28 @@
+<svg width="96" height="96" viewBox="0 0 56 56" fill="none" xmlns="http://www.w3.org/2000/svg" style="filter: drop-shadow(0 2px 4px rgba(0,0,0,0.45))">
+  <!-- Cast shadow -->
+  <path d="M29 8 L46 16 V30 C46 38 40 44 29 48 C18 44 12 38 12 30 V16 L29 8Z" fill="black" opacity="0.18" />
+  <!-- Outer shield -->
+  <path d="M28 6 L44 14 V28 C44 36 38 42 28 46 C18 42 12 36 12 28 V14 L28 6Z" fill="#ff5c5c" />
+  <!-- Left highlight bevel -->
+  <path d="M28 6 L12 14 V28 C12 30 13 32 14 34 L28 9 Z" fill="white" opacity="0.18" />
+  <!-- Right shadow bevel -->
+  <path d="M28 6 L44 14 V28 C44 36 38 42 28 46 L28 43 C36 40 40 35 40 28 V16 L28 9 Z" fill="black" opacity="0.1" />
+  <!-- Inner shield -->
+  <path d="M28 10 L40 16 V28 C40 34 35 39 28 42 C21 39 16 34 16 28 V16 L28 10Z" fill="white" opacity="0.08" />
+  <!-- Brick wall pattern -->
+  <rect x="18" y="17" width="9" height="4" rx="0.8" fill="white" opacity="0.12" />
+  <rect x="29" y="17" width="9" height="4" rx="0.8" fill="white" opacity="0.12" />
+  <rect x="15" y="23" width="8" height="4" rx="0.8" fill="white" opacity="0.1" />
+  <rect x="25" y="23" width="8" height="4" rx="0.8" fill="white" opacity="0.1" />
+  <rect x="35" y="23" width="5" height="4" rx="0.8" fill="white" opacity="0.1" />
+  <rect x="18" y="29" width="9" height="4" rx="0.8" fill="white" opacity="0.08" />
+  <rect x="29" y="29" width="7" height="4" rx="0.8" fill="white" opacity="0.08" />
+  <!-- Lock body -->
+  <rect x="24" y="26" width="8" height="7" rx="1.5" fill="white" opacity="0.85" />
+  <rect x="24.5" y="26.5" width="7" height="6" rx="1" fill="#ff5c5c" opacity="0.25" />
+  <!-- Lock shackle -->
+  <path d="M26 26 V23 Q26 20 28 20 Q30 20 30 23 V26" stroke="white" stroke-width="2" fill="none" opacity="0.85" stroke-linecap="round" />
+  <!-- Keyhole -->
+  <circle cx="28" cy="29.5" r="1.5" fill="#ff5c5c" opacity="0.6" />
+  <rect x="27.3" y="30.5" width="1.4" height="2" rx="0.5" fill="#ff5c5c" opacity="0.6" />
+</svg>

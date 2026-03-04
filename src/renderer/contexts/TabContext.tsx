@@ -327,14 +327,32 @@ export const TabProvider: React.FC<TabProviderProps> = ({ children }) => {
     const connection = connectionsRef.current.find(c => c.id === id);
     if (!connection) return;
 
-    // Cleanup old terminal if exists
+    // Cancel any active auto-reconnect for this connection
+    const reconnectTimer = reconnectTimers.current.get(id);
+    if (reconnectTimer) {
+      clearTimeout(reconnectTimer);
+      reconnectTimers.current.delete(id);
+    }
+    const reconnectInterval = reconnectIntervals.current.get(id);
+    if (reconnectInterval) {
+      clearInterval(reconnectInterval);
+      reconnectIntervals.current.delete(id);
+    }
+    reconnectCountdowns.current.delete(id);
+
+    // Close the backend session first (pty process) before renderer cleanup.
+    // This ensures the old process is killed and marked as user-initiated so
+    // the onSSHClosed handler won't trigger auto-reconnect for the old session.
+    window.electron.closeSSHSession(id);
+
+    // Cleanup renderer-side terminal instance (xterm, WebGL, listeners, buffers)
     cleanupTerminal(id);
 
     // Reset to connecting state
     setConnections(prev =>
       prev.map(conn =>
         conn.id === id
-          ? { ...conn, status: 'connecting', error: undefined, lastActivity: new Date() }
+          ? { ...conn, status: 'connecting', error: undefined, reconnectState: undefined, lastActivity: new Date() }
           : conn
       )
     );
@@ -344,15 +362,23 @@ export const TabProvider: React.FC<TabProviderProps> = ({ children }) => {
     setActiveTab('connections');
 
     try {
-      await window.electron.createSSHSession({
-        connectionId: id,
-        host: connection.host,
-        port: connection.port,
-        username: connection.username,
-        password: connection.password || '',
-        privateKeyPath: connection.privateKeyPath,
-        portForwards: connection.portForwards,
-      });
+      if (connection.connectionType === 'local') {
+        // Reconnect local terminal
+        const shellType = settings.terminal.defaultShell || 'cmd';
+        const resolvedCwd = settings.terminal.shellCwd[shellType] || undefined;
+        await window.electron.createLocalTerminal({ connectionId: id, cwd: resolvedCwd, shellType });
+      } else {
+        // Reconnect SSH session
+        await window.electron.createSSHSession({
+          connectionId: id,
+          host: connection.host,
+          port: connection.port,
+          username: connection.username,
+          password: connection.password || '',
+          privateKeyPath: connection.privateKeyPath,
+          portForwards: connection.portForwards,
+        });
+      }
 
       setConnections(prev =>
         prev.map(conn =>
@@ -370,7 +396,7 @@ export const TabProvider: React.FC<TabProviderProps> = ({ children }) => {
         )
       );
     }
-  }, []);
+  }, [settings.terminal]);
 
   // Calculate exponential backoff delay for reconnect attempts
   const getReconnectDelay = useCallback((attempt: number): number => {
@@ -613,8 +639,12 @@ export const TabProvider: React.FC<TabProviderProps> = ({ children }) => {
       const connection = connectionsRef.current.find(c => c.id === data.connectionId);
       if (!connection) return;
 
-      // Skip if already disconnected or has active reconnect state
+      // Skip if already disconnected, has active reconnect state, or is mid-retry
+      // (status 'connecting' with no reconnectState means retryConnection is in progress)
       if (connection.status === 'disconnected' || connection.reconnectState?.isReconnecting) {
+        return;
+      }
+      if (connection.status === 'connecting' && !connection.reconnectState) {
         return;
       }
 

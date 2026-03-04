@@ -45,6 +45,17 @@ export const CONFIG = {
     borderRadius: 16, // Border radius in pixels
   },
 
+  // Device Node Settings
+  deviceNodes: {
+    defaultIconSize: 52,
+    minIconSize: 24,
+    maxIconSize: 128,
+    defaultLabelSize: 11,
+    minLabelSize: 8,
+    maxLabelSize: 24,
+    resizeHandleSize: 8,
+  },
+
   // Text Node Settings
   textNodes: {
     minFontSize: 8, // Minimum font size

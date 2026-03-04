@@ -304,6 +304,18 @@ export function createSSHSession(config: SSHSessionConfig): Promise<{ success: b
           return;
         }
 
+        // Guard: skip if a new session has replaced this one (retry scenario).
+        // The old pty's onExit fires asynchronously after kill() and can arrive
+        // after a new session with the same connectionId is already stored.
+        const currentSession = sshSessions.get(connectionId);
+        if (currentSession && currentSession.ptyProcess !== ptyProcess) {
+          console.log(`[${connectionId}] Ignoring stale onExit from previous session`);
+          if (!connectionEstablished && !authFailed) {
+            reject(new Error(`SSH connection failed: exit code ${exitCode}`));
+          }
+          return;
+        }
+
         // Clear connection timeout if still pending
         if (session.connectionTimeout) {
           clearTimeout(session.connectionTimeout);

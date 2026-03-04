@@ -1,0 +1,33 @@
+<svg width="96" height="96" viewBox="0 0 56 56" fill="none" xmlns="http://www.w3.org/2000/svg" style="filter: drop-shadow(0 2px 4px rgba(0,0,0,0.45))">
+  <!-- Cast shadow -->
+  <path d="M29 8 L46 16 V30 C46 38 40 44 29 48 C18 44 12 38 12 30 V16 L29 8Z" fill="black" opacity="0.18" />
+  <!-- Shield body -->
+  <path d="M28 6 L44 14 V28 C44 36 38 42 28 46 C18 42 12 36 12 28 V14 L28 6Z" fill="#ff5c9d" />
+  <!-- Left highlight bevel -->
+  <path d="M28 6 L12 14 V28 C12 30 13 32 14 34 L28 9 Z" fill="white" opacity="0.15" />
+  <!-- Right shadow bevel -->
+  <path d="M28 6 L44 14 V28 C44 36 38 42 28 46 L28 43 C36 40 40 35 40 28 V16 L28 9 Z" fill="black" opacity="0.1" />
+  <!-- Inner shield border -->
+  <path d="M28 10 L40 16 V28 C40 34 35 39 28 42 C21 39 16 34 16 28 V16 L28 10Z" fill="white" opacity="0.06" />
+  <!-- Skull cranium -->
+  <circle cx="28" cy="21" r="7.5" fill="white" opacity="0.88" />
+  <!-- Skull cranium highlight -->
+  <circle cx="26" cy="19" r="3.5" fill="white" opacity="0.15" />
+  <!-- Skull jaw -->
+  <path d="M21.5 24 Q21 30 24 31 L25.5 31 L25.5 29 L27 31 L29 31 L30.5 29 L30.5 31 L32 31 Q35 30 34.5 24" fill="white" opacity="0.8" />
+  <!-- Left eye socket -->
+  <ellipse cx="25" cy="21" rx="2.5" ry="2.8" fill="#ff5c9d" />
+  <ellipse cx="25.3" cy="21.3" rx="1" ry="1.2" fill="black" opacity="0.3" />
+  <!-- Right eye socket -->
+  <ellipse cx="31" cy="21" rx="2.5" ry="2.8" fill="#ff5c9d" />
+  <ellipse cx="31.3" cy="21.3" rx="1" ry="1.2" fill="black" opacity="0.3" />
+  <!-- Nose cavity -->
+  <path d="M27 25 L29 25 L28 27.5 Z" fill="#ff5c9d" opacity="0.65" />
+  <!-- Crossbones behind -->
+  <path d="M18 35 L38 35" stroke="white" stroke-width="2.5" stroke-linecap="round" opacity="0.5" />
+  <circle cx="17" cy="35" r="2" fill="white" opacity="0.4" />
+  <circle cx="39" cy="35" r="2" fill="white" opacity="0.4" />
+  <path d="M18 39 L38 39" stroke="white" stroke-width="2.5" stroke-linecap="round" opacity="0.4" />
+  <circle cx="17" cy="39" r="2" fill="white" opacity="0.3" />
+  <circle cx="39" cy="39" r="2" fill="white" opacity="0.3" />
+</svg>

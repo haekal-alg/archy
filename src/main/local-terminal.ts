@@ -95,6 +95,22 @@ function resolveShell(shellType?: string): { exe: string; args: string[]; tracke
 export function createLocalTerminal(connectionId: string, cwd?: string, shellType?: string): Promise<{ success: boolean; cwd: string }> {
   return new Promise((resolve, reject) => {
     try {
+      // Clean up any existing session with the same ID (for retry support)
+      const existingSession = localSessions.get(connectionId);
+      if (existingSession) {
+        console.log(`[${connectionId}] Cleaning up existing local session for retry`);
+        try {
+          existingSession.ptyProcess.kill();
+        } catch (e) {
+          // Ignore kill errors for already-dead processes
+        }
+        localSessions.delete(connectionId);
+        localInputBuffers.delete(connectionId);
+        localDirStacks.delete(connectionId);
+        cleanupBuffer(connectionId);
+        cleanupCwdTracker(connectionId);
+      }
+
       const shell = resolveShell(shellType);
 
       const defaultCwd = getHomeDirectory();
@@ -153,6 +169,13 @@ export function createLocalTerminal(connectionId: string, cwd?: string, shellTyp
       ptyProcess.onExit((e) => {
         // Guard: skip if session was already cleaned up by closeLocalTerminal
         if (!localSessions.has(connectionId)) return;
+
+        // Guard: skip if a new session has replaced this one (retry scenario)
+        const currentSession = localSessions.get(connectionId);
+        if (currentSession && currentSession.ptyProcess !== ptyProcess) {
+          console.log(`[${connectionId}] Ignoring stale onExit from previous local session`);
+          return;
+        }
 
         // Cleanup buffer state
         cleanupBuffer(connectionId);

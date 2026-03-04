@@ -1,0 +1,31 @@
+<svg width="96" height="96" viewBox="0 0 56 56" fill="none" xmlns="http://www.w3.org/2000/svg" style="filter: drop-shadow(0 2px 4px rgba(0,0,0,0.45))">
+  <!-- Cast shadow -->
+  <rect x="12" y="14" width="34" height="30" rx="3" fill="black" opacity="0.18" />
+  <!-- Main body -->
+  <rect x="10" y="12" width="34" height="30" rx="3" fill="#8892a6" />
+  <!-- Top highlight -->
+  <path d="M13 12 H41 Q44 12 44 15 V18 H10 V15 Q10 12 13 12Z" fill="white" opacity="0.18" />
+  <!-- Right edge depth -->
+  <path d="M40 12 H41 Q44 12 44 15 V39 Q44 42 41 42 H40 V12Z" fill="black" opacity="0.12" />
+  <!-- Bottom edge -->
+  <rect x="10" y="38" width="34" height="4" rx="0 0 3 3" fill="black" opacity="0.08" />
+  <!-- Screen area -->
+  <rect x="13" y="15" width="22" height="14" rx="1.5" fill="black" opacity="0.3" />
+  <rect x="13.5" y="15.5" width="21" height="13" rx="1" fill="white" opacity="0.12" />
+  <!-- Screen content lines -->
+  <rect x="15" y="18" width="12" height="1.2" rx="0.5" fill="white" opacity="0.3" />
+  <rect x="15" y="20.5" width="16" height="1.2" rx="0.5" fill="white" opacity="0.2" />
+  <rect x="15" y="23" width="10" height="1.2" rx="0.5" fill="white" opacity="0.15" />
+  <!-- Power button -->
+  <circle cx="39" cy="17" r="2" fill="black" opacity="0.2" />
+  <circle cx="39" cy="17" r="1.5" fill="#4caf50" opacity="0.7" />
+  <circle cx="38.5" cy="16.5" r="0.5" fill="white" opacity="0.3" />
+  <!-- Status indicators -->
+  <circle cx="15" cy="35" r="1.5" fill="#4caf50" opacity="0.6" />
+  <circle cx="19" cy="35" r="1.5" fill="#ffab40" opacity="0.5" />
+  <rect x="23" y="34" width="8" height="2" rx="1" fill="white" opacity="0.12" />
+  <!-- Ventilation -->
+  <rect x="37" y="30" width="4" height="1" rx="0.5" fill="white" opacity="0.1" />
+  <rect x="37" y="32.5" width="4" height="1" rx="0.5" fill="white" opacity="0.1" />
+  <rect x="37" y="35" width="4" height="1" rx="0.5" fill="white" opacity="0.1" />
+</svg>

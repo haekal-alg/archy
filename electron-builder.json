@@ -46,7 +46,7 @@
       "target": "portable",
       "arch": ["x64"]
     }],
-    "icon": "build/icon.ico",
+    "icon": "build/icon.png",
     "forceCodeSigning": false,
     "signAndEditExecutable": false
   },

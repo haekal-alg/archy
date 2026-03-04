@@ -6,6 +6,7 @@ import { TextNodeData } from './TextNode';
 import { PencilIcon, ChevronLeftIcon, ChevronRightIcon } from './StatusIcons';
 import ConnectionConfigPanel from './ConnectionConfigPanel';
 import theme from '../../theme';
+import CONFIG from '../../config';
 
 interface StylePanelProps {
   selectedNode: Node | null;
@@ -135,6 +136,10 @@ const StylePanel: React.FC<StylePanelProps> = ({
   const [edgeMarkerEnd, setEdgeMarkerEnd] = useState<string>('arrow');
   const [edgeStrokeWidth, setEdgeStrokeWidth] = useState<number>(4);
 
+  // Device node icon/label size
+  const [nodeIconSize, setNodeIconSize] = useState(CONFIG.deviceNodes.defaultIconSize);
+  const [nodeLabelSize, setNodeLabelSize] = useState(CONFIG.deviceNodes.defaultLabelSize);
+
   // Background opacity and transparency controls
   const [textBgOpacity, setTextBgOpacity] = useState(100);
   const [textBgTransparent, setTextBgTransparent] = useState(false);
@@ -222,6 +227,8 @@ const StylePanel: React.FC<StylePanelProps> = ({
         setNodeColor((data as any).color || '#1976d2');
         setNodeDescription((data as any).description || '');
         setNodeOS((data as EnhancedDeviceData).operatingSystem || '');
+        setNodeIconSize((data as EnhancedDeviceData).iconSize ?? CONFIG.deviceNodes.defaultIconSize);
+        setNodeLabelSize((data as EnhancedDeviceData).labelSize ?? CONFIG.deviceNodes.defaultLabelSize);
       }
     }
   }, [selectedNode]);
@@ -283,6 +290,8 @@ const StylePanel: React.FC<StylePanelProps> = ({
         updates.color = nodeColor;
         updates.operatingSystem = nodeOS;
         updates.description = nodeDescription;
+        updates.iconSize = nodeIconSize;
+        updates.labelSize = nodeLabelSize;
       }
 
       onUpdateNode(selectedNode.id, updates);
@@ -754,6 +763,38 @@ const StylePanel: React.FC<StylePanelProps> = ({
                             onChange={(e) => setNodeOS(e.target.value)}
                             onBlur={handleNodeUpdate}
                             style={inputStyle}
+                          />
+                        </div>
+                      )}
+
+                      {/* Icon Size - only for enhanced nodes */}
+                      {selectedNode.type !== 'group' && (
+                        <div style={fieldGroupStyle}>
+                          <label style={labelStyle}>Icon Size ({nodeIconSize}px)</label>
+                          <input
+                            type="range"
+                            min={CONFIG.deviceNodes.minIconSize}
+                            max={CONFIG.deviceNodes.maxIconSize}
+                            value={nodeIconSize}
+                            onChange={(e) => setNodeIconSize(parseInt(e.target.value))}
+                            onMouseUp={handleNodeUpdate}
+                            style={{ width: '100%', cursor: 'pointer' }}
+                          />
+                        </div>
+                      )}
+
+                      {/* Label Size - only for enhanced nodes */}
+                      {selectedNode.type !== 'group' && (
+                        <div style={fieldGroupStyle}>
+                          <label style={labelStyle}>Label Size ({nodeLabelSize}px)</label>
+                          <input
+                            type="range"
+                            min={CONFIG.deviceNodes.minLabelSize}
+                            max={CONFIG.deviceNodes.maxLabelSize}
+                            value={nodeLabelSize}
+                            onChange={(e) => setNodeLabelSize(parseInt(e.target.value))}
+                            onMouseUp={handleNodeUpdate}
+                            style={{ width: '100%', cursor: 'pointer' }}
                           />
                         </div>
                       )}
