@@ -129,24 +129,6 @@ const TitleBar: React.FC<TitleBarProps> = ({
         flexShrink: 0,
       }}
     >
-      {/* App icon + title */}
-      <div
-        className="titlebar-drag"
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: 6,
-          padding: '0 12px',
-          height: '100%',
-        }}
-      >
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#4d7cfe" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-          <polyline points="16 18 22 12 16 6" />
-          <polyline points="8 6 2 12 8 18" />
-        </svg>
-        <span style={{ color: '#8892a6', fontSize: 12, fontWeight: 500 }}>Archy</span>
-      </div>
-
       {/* Menu bar */}
       <div
         ref={menuBarRef}

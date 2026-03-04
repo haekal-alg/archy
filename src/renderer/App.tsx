@@ -30,12 +30,11 @@ import ContextMenu from './components/ContextMenu';
 import TabBar from './components/TabBar';
 import DesignTab from './components/DesignTab';
 import ConnectionsTab from './components/ConnectionsTab';
-const KeyboardShortcuts = React.lazy(() => import('./components/KeyboardShortcuts'));
 import LoadingSpinner from './components/LoadingSpinner';
 import ErrorBoundary from './components/ErrorBoundary';
 import { TabProvider, useTabContext } from './contexts/TabContext';
 import { SettingsProvider } from './contexts/SettingsContext';
-import SettingsModal from './components/SettingsModal';
+import SettingsModal, { SettingsTab } from './components/SettingsModal';
 import { ToolPalette } from './components/ToolPalette';
 import { ToolType } from './types/tools';
 import { useToast } from './hooks/useToast';
@@ -83,8 +82,7 @@ const AppContent: React.FC = () => {
   const [isStylePanelOpen, setIsStylePanelOpen] = useState(true);
   const [activeTool, setActiveTool] = useState<ToolType>('selection');
   const [isHandToolTemporary, setIsHandToolTemporary] = useState(false);
-  const [showKeyboardShortcuts, setShowKeyboardShortcuts] = useState(false);
-  const [showSettings, setShowSettings] = useState(false);
+  const [settingsModal, setSettingsModal] = useState<{ open: boolean; tab: SettingsTab }>({ open: false, tab: 'terminal' });
   const [isLoading, setIsLoading] = useState(false);
   const [loadingText, setLoadingText] = useState('');
   const { showSuccess, showError, showWarning, showInfo, ToastContainer } = useToast();
@@ -405,15 +403,15 @@ const AppContent: React.FC = () => {
       const target = event.target as HTMLElement;
       const isInputField = target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable;
 
-      // Toggle keyboard shortcuts modal with ?
+      // Toggle settings modal with ?
       if (!isInputField && event.key === '?') {
         event.preventDefault();
-        setShowKeyboardShortcuts(true);
+        setSettingsModal(prev => prev.open ? { ...prev, open: false } : { open: true, tab: 'terminal' });
       } else if (event.key === 'Escape') {
-        // Close keyboard shortcuts modal or deselect
-        if (showKeyboardShortcuts) {
+        // Close settings modal or deselect
+        if (settingsModal.open) {
           event.preventDefault();
-          setShowKeyboardShortcuts(false);
+          setSettingsModal(prev => ({ ...prev, open: false }));
         } else {
           setSelectedNode(null);
           setSelectedEdge(null);
@@ -457,7 +455,7 @@ const AppContent: React.FC = () => {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [handleUndo, handleRedo, handleToolChange, showKeyboardShortcuts, setActiveTab]);
+  }, [handleUndo, handleRedo, handleToolChange, settingsModal.open, setActiveTab]);
 
   // Track node position changes and save to history when dragging ends
   const nodesMoveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -1293,7 +1291,7 @@ const AppContent: React.FC = () => {
         onRedo={handleRedo}
         canUndo={canUndo}
         canRedo={canRedo}
-        onSettings={() => setShowSettings(true)}
+        onSettings={() => setSettingsModal({ open: true, tab: 'terminal' })}
       />
       <nav aria-label="Main navigation">
         <TabBar />
@@ -1774,14 +1772,6 @@ const AppContent: React.FC = () => {
         </div>
       )}
 
-      {/* Keyboard Shortcuts Modal */}
-      <React.Suspense fallback={null}>
-        <KeyboardShortcuts
-          isOpen={showKeyboardShortcuts}
-          onClose={() => setShowKeyboardShortcuts(false)}
-        />
-      </React.Suspense>
-
       {/* Loading Overlay */}
       {isLoading && (
         <LoadingSpinner
@@ -1791,8 +1781,12 @@ const AppContent: React.FC = () => {
         />
       )}
 
-      {/* Settings Modal */}
-      <SettingsModal open={showSettings} onClose={() => setShowSettings(false)} />
+      {/* Unified Settings Modal (Terminal + Keyboard Shortcuts) */}
+      <SettingsModal
+        open={settingsModal.open}
+        onClose={() => setSettingsModal(prev => ({ ...prev, open: false }))}
+        initialTab={settingsModal.tab}
+      />
 
       {/* Toast Notifications */}
       <ToastContainer />
