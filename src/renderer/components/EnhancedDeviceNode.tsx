@@ -2,6 +2,7 @@ import React, { useState, useMemo, useCallback, useRef } from 'react';
 import { Handle, Position, NodeProps, useReactFlow, useStoreApi } from '@xyflow/react';
 import CONFIG from '../../config';
 import theme from '../../theme';
+import { useNodeConnectionStatus, NodeConnectionStatus } from '../contexts/NodeConnectionStatusContext';
 import {
   DynamicIcon,
   RouterIcon,
@@ -68,6 +69,13 @@ const HANDLE_BASE_STYLE: React.CSSProperties = {
 
 const CENTER_STYLE: React.CSSProperties = { textAlign: 'center' };
 
+const STATUS_COLORS: Record<NodeConnectionStatus, string> = {
+  connected: theme.accent.green,
+  connecting: theme.accent.orange,
+  error: theme.accent.red,
+  disconnected: theme.text.disabled,
+};
+
 const EnhancedDeviceNode: React.FC<NodeProps> = React.memo(({ id, data, selected }) => {
   const deviceData = data as unknown as EnhancedDeviceData;
   const [isHovered, setIsHovered] = useState(false);
@@ -75,6 +83,7 @@ const EnhancedDeviceNode: React.FC<NodeProps> = React.memo(({ id, data, selected
   const dragRef = useRef<{ startX: number; startY: number; startSize: number } | null>(null);
   const { updateNodeData } = useReactFlow();
   const storeApi = useStoreApi();
+  const connectionStatus = useNodeConnectionStatus(id);
 
   const iconSize = deviceData.iconSize ?? CONFIG.deviceNodes.defaultIconSize;
   const labelSize = deviceData.labelSize ?? CONFIG.deviceNodes.defaultLabelSize;
@@ -225,6 +234,27 @@ const EnhancedDeviceNode: React.FC<NodeProps> = React.memo(({ id, data, selected
           )}
         </div>
 
+        {/* Connection status indicator */}
+        {connectionStatus && connectionStatus !== 'disconnected' && (
+          <div
+            aria-label={`Connection status: ${connectionStatus}`}
+            style={{
+              position: 'absolute',
+              top: 2,
+              right: 2,
+              width: 8,
+              height: 8,
+              borderRadius: '50%',
+              backgroundColor: STATUS_COLORS[connectionStatus],
+              border: `1px solid ${theme.background.primary}`,
+              boxShadow: connectionStatus === 'connected'
+                ? `0 0 6px ${STATUS_COLORS[connectionStatus]}80`
+                : 'none',
+              animation: connectionStatus === 'connecting' ? 'pulse-status 1.5s ease-in-out infinite' : 'none',
+            }}
+          />
+        )}
+
         {/* Label */}
         <div style={{
           fontWeight: theme.fontWeight.semibold,
@@ -236,6 +266,18 @@ const EnhancedDeviceNode: React.FC<NodeProps> = React.memo(({ id, data, selected
         }}>
           {deviceData.label}
         </div>
+
+        {/* Discoverability hint on selection */}
+        {selected && (
+          <div style={{
+            fontSize: '9px',
+            color: theme.text.disabled,
+            marginTop: '2px',
+            whiteSpace: 'nowrap',
+          }}>
+            Double-click to configure
+          </div>
+        )}
       </div>
     </div>
   );

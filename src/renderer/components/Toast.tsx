@@ -15,13 +15,22 @@ interface ToastProps {
   };
 }
 
+// Duration defaults by type: errors stay longer so users can read them
+const DEFAULT_DURATIONS: Record<ToastType, number> = {
+  success: 2000,
+  info: 2500,
+  warning: 3500,
+  error: 5000,
+};
+
 const Toast: React.FC<ToastProps> = ({
   message,
   type = 'info',
-  duration = 2000,
+  duration,
   onClose,
   action,
 }) => {
+  const effectiveDuration = duration ?? DEFAULT_DURATIONS[type];
   const [isVisible, setIsVisible] = useState(false);
   const [isFadingOut, setIsFadingOut] = useState(false);
   const [progress, setProgress] = useState(100);
@@ -41,7 +50,7 @@ const Toast: React.FC<ToastProps> = ({
     // Animate progress bar
     const progressInterval = setInterval(() => {
       setProgress((prev) => {
-        const newProgress = prev - (100 / (duration / 50));
+        const newProgress = prev - (100 / (effectiveDuration / 50));
         return newProgress > 0 ? newProgress : 0;
       });
     }, 50);
@@ -49,19 +58,19 @@ const Toast: React.FC<ToastProps> = ({
     // Auto-close timer - start fade out animation, then close
     const fadeOutTimer = setTimeout(() => {
       setIsFadingOut(true);
-    }, duration);
+    }, effectiveDuration);
 
     // Close timer - actually remove the toast after fade out
     const closeTimer = setTimeout(() => {
       onCloseRef.current();
-    }, duration + 300); // Duration + fade out animation
+    }, effectiveDuration + 300); // Duration + fade out animation
 
     return () => {
       clearTimeout(fadeOutTimer);
       clearTimeout(closeTimer);
       clearInterval(progressInterval);
     };
-  }, [duration]);
+  }, [effectiveDuration]);
 
   const getTypeConfig = () => {
     switch (type) {

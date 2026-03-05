@@ -94,7 +94,7 @@ const TabBar: React.FC = () => {
           >
             {tab.label}
 
-            {/* Connection count badge - muted colors matching dark theme */}
+            {/* Connection count badge with status icon for accessibility */}
             {tab.id === 'connections' && totalCount > 0 && (
               <span
                 className={`tab-badge${errorCount > 0 ? ' pulse-red' : ''}`}
@@ -110,8 +110,27 @@ const TabBar: React.FC = () => {
                     : connectingCount > 0
                       ? '#d4943a'
                       : '#5ab882',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '3px',
                 }}
               >
+                {/* Status icon: differentiates states beyond color alone */}
+                {errorCount > 0 ? (
+                  <svg width="10" height="10" viewBox="0 0 10 10" fill="none" aria-hidden="true">
+                    <path d="M5 1L9 9H1L5 1Z" stroke="currentColor" strokeWidth="1.2" fill="none" />
+                    <line x1="5" y1="4" x2="5" y2="6" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
+                    <circle cx="5" cy="7.5" r="0.5" fill="currentColor" />
+                  </svg>
+                ) : connectingCount > 0 ? (
+                  <svg width="10" height="10" viewBox="0 0 10 10" fill="none" aria-hidden="true" style={{ animation: 'spin 1.5s linear infinite' }}>
+                    <path d="M5 1A4 4 0 0 1 9 5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
+                  </svg>
+                ) : (
+                  <svg width="10" height="10" viewBox="0 0 10 10" fill="none" aria-hidden="true">
+                    <path d="M2 5L4.5 7.5L8 3" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                )}
                 {totalCount}
               </span>
             )}

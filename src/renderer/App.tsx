@@ -34,6 +34,7 @@ import LoadingSpinner from './components/LoadingSpinner';
 import ErrorBoundary from './components/ErrorBoundary';
 import { TabProvider, useTabContext } from './contexts/TabContext';
 import { SettingsProvider } from './contexts/SettingsContext';
+import { NodeConnectionStatusProvider } from './contexts/NodeConnectionStatusContext';
 import SettingsModal, { SettingsTab } from './components/SettingsModal';
 import { ToolPalette } from './components/ToolPalette';
 import { ToolType } from './types/tools';
@@ -1799,7 +1800,9 @@ const App: React.FC = () => {
   return (
     <SettingsProvider>
       <TabProvider>
-        <AppContent />
+        <NodeConnectionStatusProvider>
+          <AppContent />
+        </NodeConnectionStatusProvider>
       </TabProvider>
     </SettingsProvider>
   );

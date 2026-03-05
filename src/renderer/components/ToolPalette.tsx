@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React from 'react';
 import { ToolType, TOOLS } from '../types/tools';
 import { darkTheme } from '../../theme';
 
@@ -12,12 +12,6 @@ interface ToolPaletteProps {
 }
 
 export const ToolPalette: React.FC<ToolPaletteProps> = ({ activeTool, onToolChange }) => {
-  console.log('ToolPalette RENDER - activeTool prop:', activeTool);
-
-  // Force re-render when activeTool changes
-  useEffect(() => {
-    console.log('ToolPalette useEffect - activeTool changed to:', activeTool);
-  }, [activeTool]);
 
   return (
     <div style={styles.container}>
@@ -25,7 +19,6 @@ export const ToolPalette: React.FC<ToolPaletteProps> = ({ activeTool, onToolChan
         {(Object.keys(TOOLS) as ToolType[]).map((toolType) => {
           const tool = TOOLS[toolType];
           const isActive = activeTool === toolType;
-          console.log(`Tool ${toolType}: isActive = ${isActive}, activeTool = ${activeTool}`);
 
           return (
             <button

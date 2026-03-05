@@ -95,6 +95,7 @@ const ShapeLibrary: React.FC<ShapeLibraryProps> = ({ onAddNode, onAddGroup, onAd
       const previewSize = 36;
       return (
         <div
+          aria-hidden="true"
           style={{ width: previewSize, height: previewSize, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
           dangerouslySetInnerHTML={{
             __html: loaded.svg
@@ -123,7 +124,7 @@ const ShapeLibrary: React.FC<ShapeLibraryProps> = ({ onAddNode, onAddGroup, onAd
         top: 0,
         width: '240px',
         height: '100%',
-        background: 'rgba(30, 33, 51, 0.65)',
+        background: 'rgba(30, 33, 51, 0.88)',
         backdropFilter: 'blur(60px) saturate(200%) brightness(1.1)',
         WebkitBackdropFilter: 'blur(60px) saturate(200%) brightness(1.1)',
         boxShadow: '0 8px 32px rgba(0, 0, 0, 0.5), 0 2px 8px rgba(0, 0, 0, 0.3), inset 1px 0 0 rgba(255, 255, 255, 0.1)',

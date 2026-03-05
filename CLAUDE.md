@@ -3,7 +3,15 @@
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
 ## IMPORTANT INSTRUCTION
-- 
+- when creating commit, follow these rules: 
+	- do not add any mention of claude or anthropics in the commit message or description. make sure the commit author is the user lone.
+	- for commit message use the fpollowing format: <type>(optional-scope): <short summary> with [optional body] & [optional footer(s)]
+	- Keep it concise and clear: Limit your subject line to 50 characters. If you need more explanation, use the body section.
+	- Use the imperative mood: Write “Fix user authentication bug” instead of “Fixed bug” or “Fixes bug.”
+	- Capitalize and skip the period: Start with a capital letter, but don’t end with a period. It’s cleaner and more consistent.
+	- Explain the why, not just the what: If the change isn’t obvious, use the body to explain your reasoning.
+	- Always maintain a proper .gitignore for your project type. Environment files (.env), dependency folders (node_modules), and build artifacts (dist, build) should never make it into your repository.
+
 
 ## Project Overview
 
@@ -56,18 +64,21 @@ The project uses separate TypeScript compilation for main/preload (via tsc) and 
 - Native menu (`menu-system.ts`) remains set for keyboard accelerator registration (hidden behind frameless window)
 - Window control IPC handlers (minimize, maximize, close, zoom, reload, devtools)
 - Uses electron-store for persistent data storage
+- Icon loading from disk via `icon-manager.ts`
+- Settings persistence via `get-settings`/`save-settings` IPC handlers
+- CWD tracking for local terminals via `cwd-tracker.ts`
 
 **Preload Script** (`src/main/preload.ts`):
 - Creates secure IPC bridge using `contextBridge.exposeInMainWorld`
 - Exposes `window.electron` API to renderer process
-- Provides type-safe methods for SSH operations, file dialogs, clipboard, menu events, and window controls
+- Provides type-safe methods for SSH operations, SFTP operations, file dialogs, clipboard, menu events, settings, icon loading, and window controls
 
 **Renderer Process** (`src/renderer/`):
 - React application using React Flow for diagram visualization
 - Custom title bar (`TitleBar.tsx`) with File/Edit/View menus and window controls
 - Tab-based UI with Design and Connections tabs
-- Context-based state management (TabContext)
-- Component-based architecture
+- Context-based state management (TabContext, SettingsContext)
+- Component-based architecture with hooks pattern (useConfirm, useToast)
 
 ### SSH Session Architecture
 
@@ -105,11 +116,65 @@ The application implements a sophisticated SSH session management system with pe
   - Stores connection metadata (host, port, username, latency, zoom level)
   - Provides retry functionality preserving credentials
 
+### Custom Icon System
+
+The application uses a file-based SVG icon system for device nodes:
+
+**Icon Storage** (`icons/` directory):
+- `categories.json` - Defines icon categories (Devices, Network, Infra, Security) and metadata
+- 13+ SVG icon files: attacker, cloud, cloud2, database, desktop, firewall, generic, laptop, linux, mobile, router, server, switch
+
+**Icon Loading Pipeline**:
+- `src/main/icon-manager.ts` - Loads SVG files from disk, registers `load-icons` IPC handler
+- `src/renderer/iconStore.ts` - Client-side icon caching, category mapping, and `onIconsLoaded` callbacks
+- `NetworkIcons.tsx` - `DynamicIcon` component renders SVGs with auto-resize and drop-shadow; falls back to built-in detailed icons (RouterIcon, ServerIcon, etc.)
+
+### Settings System
+
+**SettingsContext** (`src/renderer/contexts/SettingsContext.tsx`):
+- App-wide settings management with `useSettingsContext` hook
+- Persisted via `get-settings`/`save-settings` IPC handlers
+
+**Settings Types** (`src/renderer/types/settings.ts`):
+- `AppSettings`, `TerminalSettings`, `ShellType` ('cmd' | 'wsl' | 'powershell')
+- Per-shell working directory configuration (`shellCwd` record)
+
+**SettingsModal** (`src/renderer/components/SettingsModal.tsx`):
+- Terminal shell configuration (CMD/WSL/PowerShell) with directory picker
+- Keyboard shortcuts reference
+- Focus trap and keyboard navigation
+
+### SFTP File Transfer
+
+**Main Process** (`src/main/sftp-manager.ts`):
+- Full SFTP operations: list, upload, download, delete, rename, mkdir
+- Transfer progress events via `onSFTPProgress`
+- Local file operations: delete, rename, mkdir
+
+**Renderer**:
+- `SFTPModal.tsx` - Dual-pane file browser modal
+- `src/renderer/components/sftp/` - Subcomponents:
+  - `FilePane.tsx` - File browser pane
+  - `EditablePathBar.tsx` - Editable path navigation
+  - `FileContextMenu.tsx` - File operation context menu
+  - `TransferFooter.tsx` - Transfer progress display
+  - `SFTPIcons.tsx` - SFTP-specific icons
+  - `ConfirmDialog.tsx` - SFTP-specific confirmation dialog
+  - `sftpReducer.ts` - State management reducer for SFTP operations
+
+### Local Terminal CWD Tracking
+
+**CWD Detection** (`src/main/cwd-tracker.ts`, `src/main/shell-utils.ts`):
+- Output-based prompt pattern detection (primary strategy)
+- On-demand OS-level query via `/proc` or `lsof` (fallback)
+- Input-based command parsing (last resort)
+- Shell-specific prompt patterns with ANSI escape stripping
+
 ### React Flow Integration
 
 **Node Types**:
 - `device`: Basic device nodes (legacy)
-- `enhanced`: Feature-rich device nodes with connection credentials (EnhancedDeviceNode)
+- `enhanced`: Feature-rich device nodes with connection credentials and custom SVG icons (EnhancedDeviceNode)
 - `group`: Zone/container nodes for network segmentation (GroupNode)
 - `text`: Annotation nodes (TextNode)
 
@@ -117,7 +182,7 @@ The application implements a sophisticated SSH session management system with pe
 - `TitleBar.tsx`: Custom frameless title bar with File/Edit/View menus and window controls
 - `CustomEdge.tsx`: Configurable network connections with line styles, colors, and arrow types
 - `StylePanel.tsx`: Live edge styling (stroke width, color, type, arrows)
-- `ShapeLibrary.tsx`: Draggable device library (11+ device icons)
+- `ShapeLibrary.tsx`: Draggable device library with categorized icons from custom icon system
 - `ToolPalette.tsx`: Canvas tools (selection, hand/pan)
 - `ContextMenu.tsx`: Right-click actions for nodes/edges
 
@@ -149,28 +214,55 @@ Centralized theme configuration in `src/theme.ts`:
 - `src/main/diagram-manager.ts` - Diagram save/load/list file operations
 - `src/main/sftp-manager.ts` - SFTP file transfer operations
 - `src/main/rdp-handler.ts` - RDP connection via cmdkey/mstsc
+- `src/main/icon-manager.ts` - SVG icon loading from disk
+- `src/main/shell-utils.ts` - Shell utilities (directory navigation, env vars, command parsing)
+- `src/main/cwd-tracker.ts` - Output-based CWD tracking for local terminals
 
 ### Renderer
 - `src/renderer/App.tsx` - Main React component, React Flow integration, canvas logic
-- `src/renderer/index.tsx` - React entry point, wraps App with TabProvider
+- `src/renderer/index.tsx` - React entry point, wraps App with TabProvider and SettingsProvider
+- `src/renderer/iconStore.ts` - Icon loading, caching, and category mapping
 - `src/renderer/contexts/TabContext.tsx` - SSH connection state management
+- `src/renderer/contexts/SettingsContext.tsx` - App-wide settings management
+- `src/renderer/hooks/useConfirm.tsx` - Confirmation dialog hook (promise-based)
+- `src/renderer/hooks/useToast.tsx` - Toast notification hook (success/error/warning/info)
+- `src/renderer/utils/errorMessages.ts` - Maps technical errors to user-friendly messages
 - `src/renderer/components/` - All React components
   - `TitleBar.tsx` - Custom frameless title bar (menus, window controls)
   - `TerminalEmulator.tsx` - xterm.js integration with WebGL rendering
-  - `EnhancedDeviceNode.tsx` - Primary node type with credentials
-  - `ConnectionsTab.tsx` - SSH session UI with tabs
+  - `EnhancedDeviceNode.tsx` - Primary node type with credentials and custom SVG icons
+  - `ConnectionsTab.tsx` - SSH session UI with tabs, SFTP modal, context menus
   - `DesignTab.tsx` - Main diagram canvas
   - `StylePanel.tsx` - Node/edge property editor
+  - `SettingsModal.tsx` - Settings modal (shell config, keyboard shortcuts)
+  - `SFTPModal.tsx` - Dual-pane SFTP file browser
+  - `ConnectionContextMenu.tsx` - Context menu for SSH connection tabs
+  - `ConnectionConfigPanel.tsx` - Configuration panel for SSH connections
+  - `TabBar.tsx` - Tab bar component for connection management
+  - `ConfirmDialog.tsx` - Confirmation dialog with focus trap
+  - `Toast.tsx` - Toast notification with auto-close and progress bar
+  - `StatusIcons.tsx` - Status indicator icons (Plug, Latency, Lightning, etc.)
+  - `Skeleton.tsx` - Loading skeleton component
+  - `Tooltip.tsx` - Tooltip component
+- `src/renderer/components/sftp/` - SFTP subcomponents
+  - `FilePane.tsx`, `EditablePathBar.tsx`, `FileContextMenu.tsx`
+  - `TransferFooter.tsx`, `SFTPIcons.tsx`, `ConfirmDialog.tsx`, `sftpReducer.ts`
 
 ### Types
 - `src/renderer/types.d.ts` - ElectronAPI interface (window.electron type declarations)
 - `src/renderer/types/terminal.ts` - SSH connection and tab types
 - `src/renderer/types/tools.ts` - Canvas tool definitions
+- `src/renderer/types/settings.ts` - AppSettings, TerminalSettings, ShellType definitions
 
 ### Configuration
+- `src/config.ts` - Centralized UI configuration (handle sizing, edge settings, panel widths, node sizing, zoom ranges)
 - `webpack.config.js` - Renderer build configuration
 - `tsconfig.json` - TypeScript compiler options
 - `electron-builder.json` - Packaging configuration (portable Windows exe, AppImage, DMG)
+
+### Icons
+- `icons/categories.json` - Icon category definitions and metadata
+- `icons/*.svg` - Device icon SVG files (13+ icons)
 
 ## Data Flow Patterns
 
@@ -220,10 +312,11 @@ Key constants in `src/main/buffer-manager.ts`:
   - WebGL rendering: Can be disabled by not loading WebglAddon
 
 ### Adding Device Icons
-1. Add SVG icon to `src/renderer/components/NetworkIcons.tsx`
-2. Update `deviceIcons` mapping with device type
-3. Add color to `theme.device` in `src/theme.ts`
-4. Update ShapeLibrary.tsx to include in palette
+1. Add SVG file to `icons/` directory
+2. Register icon in `icons/categories.json` under the appropriate category
+3. Add color to `theme.device` in `src/theme.ts` if needed
+4. Icon automatically loads via `icon-manager.ts` → `iconStore.ts` → `DynamicIcon` in `NetworkIcons.tsx`
+5. For built-in fallback icons, add to `NetworkIcons.tsx` directly
 
 ## Testing Connections
 

@@ -133,6 +133,8 @@ const TitleBar: React.FC<TitleBarProps> = ({
       <div
         ref={menuBarRef}
         className="titlebar-no-drag"
+        role="menubar"
+        aria-label="Application menu"
         style={{ display: 'flex', height: '100%', alignItems: 'stretch' }}
       >
         {menuOrder.map(id => (
@@ -141,19 +143,25 @@ const TitleBar: React.FC<TitleBarProps> = ({
               className={`titlebar-menu-btn${openMenu === id ? ' active' : ''}`}
               onClick={() => handleMenuClick(id)}
               onMouseEnter={() => handleMenuHover(id)}
+              role="menuitem"
+              aria-haspopup="true"
+              aria-expanded={openMenu === id}
+              aria-label={`${menus[id].label} menu`}
             >
               {menus[id].label}
             </button>
             {openMenu === id && (
-              <div className="titlebar-menu-dropdown">
+              <div className="titlebar-menu-dropdown" role="menu" aria-label={`${menus[id].label} menu`}>
                 {menus[id].items.map((item, i) =>
                   item.separator ? (
-                    <div key={`sep-${i}`} className="titlebar-menu-separator" />
+                    <div key={`sep-${i}`} className="titlebar-menu-separator" role="separator" />
                   ) : (
                     <button
                       key={item.label}
                       className={`titlebar-menu-item${item.disabled ? ' disabled' : ''}`}
                       onClick={() => handleItemClick(item.action, item.disabled)}
+                      role="menuitem"
+                      aria-disabled={item.disabled || false}
                     >
                       <span>{item.label}</span>
                       {item.shortcut && (

@@ -25,11 +25,11 @@ a,
   cursor: pointer !important;
 }
 
-/* Node Hover Effect - Enhanced for Dark Theme */
+/* Node Hover Effect - Enhanced for Dark Theme (no scale to prevent layout shift) */
 .device-node:hover {
-  transform: scale(1.05);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.8), 0 0 20px rgba(77, 124, 254, 0.2) !important;
-  transition: all 0.2s ease;
+  filter: brightness(1.1);
+  box-shadow: 0 0 16px rgba(77, 124, 254, 0.25), 0 4px 12px rgba(0, 0, 0, 0.6) !important;
+  transition: filter 0.2s ease, box-shadow 0.2s ease;
 }
 
 /* Selected Node - Gray Outline */
@@ -37,16 +37,9 @@ a,
   box-shadow: 0 0 0 3px #9ca3af !important;
 }
 
-/* Button Interactions */
-button:hover {
-  opacity: 0.9;
-  transform: translateY(-1px);
-  transition: all 0.15s ease;
-}
-
-button:active {
-  transform: translateY(0);
-}
+/* Button Interactions - scoped to interactive controls, not global */
+/* Hover/active transforms removed globally to prevent layout jitter.
+   Use component-level hover styles (background-color, border-color) instead. */
 
 /* Input Focus - Modern Blue Glow */
 input:focus,
@@ -104,9 +97,11 @@ textarea:focus {
   border: 1px solid #3a4556 !important;
 }
 
-/* Smooth Transitions - Exclude ReactFlow elements for better performance */
-*:not(.react-flow):not(.react-flow *) {
-  transition-property: background-color, border-color, color, fill, stroke, opacity, box-shadow;
+/* Smooth Transitions - Scoped to interactive elements for performance */
+button, a, input, select, textarea,
+[role="tab"], [role="menuitem"], [role="button"],
+[tabindex]:not([tabindex="-1"]) {
+  transition-property: background-color, border-color, color, opacity, box-shadow;
   transition-duration: 0.15s;
   transition-timing-function: ease-in-out;
 }
@@ -169,8 +164,8 @@ body.using-keyboard *:focus {
 
 /* ===== Phase 4: Enhanced Micro-interactions ===== */
 
-/* Button press animation */
-button:active:not(:disabled) {
+/* Button press animation - scoped to avoid layout shift on non-interactive buttons */
+button:active:not(:disabled):not(.titlebar-window-btn):not(.titlebar-menu-btn) {
   transform: scale(0.98);
   transition: transform 0.05s ease;
 }
@@ -278,4 +273,24 @@ a:hover {
 @keyframes spin {
   0% { transform: rotate(0deg); }
   100% { transform: rotate(360deg); }
+}
+
+/* ===== Node Connection Status Pulse ===== */
+
+@keyframes pulse-status {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+
+/* ===== Reduced Motion: Accessibility ===== */
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }
