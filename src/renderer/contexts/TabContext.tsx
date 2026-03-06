@@ -611,20 +611,6 @@ export const TabProvider: React.FC<TabProviderProps> = ({ children }) => {
     reconnectTimers.current.set(connectionId, timer);
   }, [executeReconnectAttempt, notifyReconnectListeners]);
 
-  // Listen for latency updates - use useEffect for proper cleanup
-  React.useEffect(() => {
-    const unsubscribe = window.electron.onSSHLatency((data: { connectionId: string; latency: number }) => {
-      setConnections(prev =>
-        prev.map(conn =>
-          conn.id === data.connectionId
-            ? { ...conn, latency: data.latency, lastActivity: new Date() }
-            : conn
-        )
-      );
-    });
-    return unsubscribe; // Cleanup on unmount
-  }, []);
-
   // Listen for SSH close events to cleanup timeouts and trigger auto-reconnect
   React.useEffect(() => {
     const unsubscribe = window.electron.onSSHClosed((data: { connectionId: string; reason?: string; exitCode?: number; signal?: number }) => {
@@ -691,6 +677,18 @@ export const TabProvider: React.FC<TabProviderProps> = ({ children }) => {
     };
   }, []);
 
+  const reorderConnection = useCallback((id: string, direction: 'up' | 'down') => {
+    setConnections(prev => {
+      const index = prev.findIndex(c => c.id === id);
+      if (index < 0) return prev;
+      const targetIndex = direction === 'up' ? index - 1 : index + 1;
+      if (targetIndex < 0 || targetIndex >= prev.length) return prev;
+      const next = [...prev];
+      [next[index], next[targetIndex]] = [next[targetIndex], next[index]];
+      return next;
+    });
+  }, []);
+
   const value: TabContextType = {
     activeTab,
     setActiveTab,
@@ -702,6 +700,7 @@ export const TabProvider: React.FC<TabProviderProps> = ({ children }) => {
     renameConnection,
     disconnectConnection,
     removeConnection,
+    reorderConnection,
     retryConnection,
     cancelAutoReconnect,
     subscribeReconnectUpdates,

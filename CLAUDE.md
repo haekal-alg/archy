@@ -2,16 +2,6 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-## IMPORTANT INSTRUCTION
-- when creating commit, follow these rules: 
-	- do not add any mention of claude or anthropics in the commit message or description. make sure the commit author is the user lone.
-	- for commit message use the fpollowing format: <type>(optional-scope): <short summary> with [optional body] & [optional footer(s)]
-	- Keep it concise and clear: Limit your subject line to 50 characters. If you need more explanation, use the body section.
-	- Use the imperative mood: Write “Fix user authentication bug” instead of “Fixed bug” or “Fixes bug.”
-	- Capitalize and skip the period: Start with a capital letter, but don’t end with a period. It’s cleaner and more consistent.
-	- Explain the why, not just the what: If the change isn’t obvious, use the body to explain your reasoning.
-	- Always maintain a proper .gitignore for your project type. Environment files (.env), dependency folders (node_modules), and build artifacts (dist, build) should never make it into your repository.
-
 
 ## Project Overview
 

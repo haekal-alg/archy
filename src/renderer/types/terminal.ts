@@ -45,7 +45,6 @@ export interface SSHConnection {
   lastActivity: Date;
   error?: string;
   zoom?: number; // Terminal zoom level (default 1.0)
-  latency?: number; // Connection latency in milliseconds
   connectionType?: 'ssh' | 'local'; // Type of connection (default: ssh)
   customLabel?: string; // User-defined label for the connection
   // Store credentials for retry functionality
@@ -82,6 +81,7 @@ export interface TabContextType {
   renameConnection: (id: string, newLabel: string) => void;
   disconnectConnection: (id: string) => void;
   removeConnection: (id: string) => void;
+  reorderConnection: (id: string, direction: 'up' | 'down') => void;
   retryConnection: (id: string) => Promise<void>;
   cancelAutoReconnect: (id: string) => void;
   // Reconnect countdown (ref-based, does not trigger full re-render)
