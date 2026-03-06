@@ -28,13 +28,32 @@ a,
 /* Node Hover Effect - Enhanced for Dark Theme (no scale to prevent layout shift) */
 .device-node:hover {
   filter: brightness(1.1);
-  box-shadow: 0 0 16px rgba(77, 124, 254, 0.25), 0 4px 12px rgba(0, 0, 0, 0.6) !important;
-  transition: filter 0.2s ease, box-shadow 0.2s ease;
+  transition: filter 0.2s ease;
 }
 
-/* Selected Node - Gray Outline */
+/* Remove default selection outline from node wrapper */
 .react-flow__node.selected .device-node {
-  box-shadow: 0 0 0 3px #9ca3af !important;
+  box-shadow: none !important;
+}
+
+/* Selection outline on icon only */
+.react-flow__node.selected .device-node-icon-wrapper {
+  box-shadow: 0 0 0 2px #9ca3af;
+  border-radius: 6px;
+}
+
+/* Inline label editing */
+.device-node-label-input {
+  background: transparent;
+  border: 1px solid #4d7cfe;
+  border-radius: 3px;
+  color: inherit;
+  font: inherit;
+  text-align: center;
+  outline: none;
+  padding: 1px 4px;
+  width: 100%;
+  box-shadow: 0 0 0 2px rgba(77, 124, 254, 0.25);
 }
 
 /* Button Interactions - scoped to interactive controls, not global */

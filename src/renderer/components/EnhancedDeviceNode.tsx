@@ -80,6 +80,9 @@ const EnhancedDeviceNode: React.FC<NodeProps> = React.memo(({ id, data, selected
   const deviceData = data as unknown as EnhancedDeviceData;
   const [isHovered, setIsHovered] = useState(false);
   const [dragIconSize, setDragIconSize] = useState<number | null>(null);
+  const [isEditingLabel, setIsEditingLabel] = useState(false);
+  const [editValue, setEditValue] = useState('');
+  const labelInputRef = useRef<HTMLInputElement>(null);
   const dragRef = useRef<{ startX: number; startY: number; startSize: number } | null>(null);
   const { updateNodeData } = useReactFlow();
   const storeApi = useStoreApi();
@@ -133,13 +136,21 @@ const EnhancedDeviceNode: React.FC<NodeProps> = React.memo(({ id, data, selected
   const borderColor = getDefaultColor();
   const handleOpacity = isHovered ? 1 : 0;
 
-  // Memoize handle styles that depend on borderColor and hover state
-  const handleStyles = useMemo(() => ({
-    top: { ...HANDLE_BASE_STYLE, background: borderColor, opacity: handleOpacity, top: 0 } as React.CSSProperties,
-    right: { ...HANDLE_BASE_STYLE, background: borderColor, opacity: handleOpacity, right: 0 } as React.CSSProperties,
-    bottom: { ...HANDLE_BASE_STYLE, background: borderColor, opacity: handleOpacity, bottom: 0 } as React.CSSProperties,
-    left: { ...HANDLE_BASE_STYLE, background: borderColor, opacity: handleOpacity, left: 0 } as React.CSSProperties,
-  }), [borderColor, handleOpacity]);
+  // Connection handle styles - small rounded squares that appear on hover
+  const handleStyles = useMemo(() => {
+    const base: React.CSSProperties = {
+      ...HANDLE_BASE_STYLE,
+      background: borderColor,
+      opacity: handleOpacity,
+      borderRadius: '50%',
+    };
+    return {
+      top: { ...base, top: -4 } as React.CSSProperties,
+      right: { ...base, right: -4 } as React.CSSProperties,
+      bottom: { ...base, bottom: -4 } as React.CSSProperties,
+      left: { ...base, left: -4 } as React.CSSProperties,
+    };
+  }, [borderColor, handleOpacity]);
 
   // Resize handle drag logic
   const onResizePointerDown = useCallback((e: React.PointerEvent) => {
@@ -172,6 +183,27 @@ const EnhancedDeviceNode: React.FC<NodeProps> = React.memo(({ id, data, selected
     window.dispatchEvent(new CustomEvent('node-resize-end'));
   }, [dragIconSize, effectiveIconSize, id, updateNodeData]);
 
+  // Label inline editing
+  const onLabelDoubleClick = useCallback((e: React.MouseEvent) => {
+    e.stopPropagation();
+    setEditValue(deviceData.label);
+    setIsEditingLabel(true);
+    setTimeout(() => labelInputRef.current?.select(), 0);
+  }, [deviceData.label]);
+
+  const commitLabel = useCallback(() => {
+    const trimmed = editValue.trim();
+    if (trimmed && trimmed !== deviceData.label) {
+      updateNodeData(id, { label: trimmed });
+    }
+    setIsEditingLabel(false);
+  }, [editValue, deviceData.label, id, updateNodeData]);
+
+  const onLabelKeyDown = useCallback((e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') { e.preventDefault(); commitLabel(); }
+    if (e.key === 'Escape') { setIsEditingLabel(false); }
+  }, [commitLabel]);
+
   const showResizeHandle = selected && isHovered;
   const handleSize = CONFIG.deviceNodes.resizeHandleSize;
 
@@ -199,18 +231,22 @@ const EnhancedDeviceNode: React.FC<NodeProps> = React.memo(({ id, data, selected
       <Handle type="target" position={Position.Left} id="left-target" style={handleStyles.left} />
 
       <div style={CENTER_STYLE}>
-        {/* Icon with selection glow */}
-        <div style={{
-          display: 'flex',
-          justifyContent: 'center',
-          alignItems: 'center',
-          filter: selected ? `drop-shadow(0 0 8px ${borderColor})` : 'none',
-          transition: 'filter 0.2s ease',
-          position: 'relative',
-        }}>
+        {/* Icon wrapper - selection outline targets this */}
+        <div
+          className="device-node-icon-wrapper"
+          style={{
+            display: 'inline-flex',
+            justifyContent: 'center',
+            alignItems: 'center',
+            padding: 4,
+            filter: selected ? `drop-shadow(0 0 8px ${borderColor})` : 'none',
+            transition: 'filter 0.2s ease, box-shadow 0.2s ease',
+            position: 'relative',
+          }}
+        >
           {getIcon()}
 
-          {/* Resize handle */}
+          {/* Resize handle - square at bottom-right corner */}
           {showResizeHandle && (
             <div
               className="nodrag nopan"
@@ -255,20 +291,43 @@ const EnhancedDeviceNode: React.FC<NodeProps> = React.memo(({ id, data, selected
           />
         )}
 
-        {/* Label */}
-        <div style={{
-          fontWeight: theme.fontWeight.semibold,
-          fontSize: `${labelSize}px`,
-          color: theme.text.primary,
-          wordWrap: 'break-word',
-          lineHeight: '1.3',
-          marginTop: theme.spacing.xs,
-        }}>
-          {deviceData.label}
-        </div>
+        {/* Label - double-click to edit inline */}
+        {isEditingLabel ? (
+          <input
+            ref={labelInputRef}
+            className="device-node-label-input nodrag nopan"
+            value={editValue}
+            onChange={(e) => setEditValue(e.target.value)}
+            onBlur={commitLabel}
+            onKeyDown={onLabelKeyDown}
+            style={{
+              fontWeight: theme.fontWeight.semibold,
+              fontSize: `${labelSize}px`,
+              color: theme.text.primary,
+              lineHeight: '1.3',
+              marginTop: theme.spacing.xs,
+            }}
+            autoFocus
+          />
+        ) : (
+          <div
+            onDoubleClick={onLabelDoubleClick}
+            style={{
+              fontWeight: theme.fontWeight.semibold,
+              fontSize: `${labelSize}px`,
+              color: theme.text.primary,
+              wordWrap: 'break-word',
+              lineHeight: '1.3',
+              marginTop: theme.spacing.xs,
+              cursor: 'text',
+            }}
+          >
+            {deviceData.label}
+          </div>
+        )}
 
         {/* Discoverability hint on selection */}
-        {selected && (
+        {selected && !isEditingLabel && (
           <div style={{
             fontSize: '9px',
             color: theme.text.disabled,
