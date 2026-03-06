@@ -136,7 +136,7 @@ const EnhancedDeviceNode: React.FC<NodeProps> = React.memo(({ id, data, selected
   const borderColor = getDefaultColor();
   const handleOpacity = isHovered ? 1 : 0;
 
-  // Connection handle styles - small rounded squares that appear on hover
+  // Connection handle styles - sit exactly on the edge perimeter
   const handleStyles = useMemo(() => {
     const base: React.CSSProperties = {
       ...HANDLE_BASE_STYLE,
@@ -145,10 +145,10 @@ const EnhancedDeviceNode: React.FC<NodeProps> = React.memo(({ id, data, selected
       borderRadius: '50%',
     };
     return {
-      top: { ...base, top: -4 } as React.CSSProperties,
-      right: { ...base, right: -4 } as React.CSSProperties,
-      bottom: { ...base, bottom: -4 } as React.CSSProperties,
-      left: { ...base, left: -4 } as React.CSSProperties,
+      top: { ...base, top: 0 } as React.CSSProperties,
+      right: { ...base, right: 0 } as React.CSSProperties,
+      bottom: { ...base, bottom: 0 } as React.CSSProperties,
+      left: { ...base, left: 0 } as React.CSSProperties,
     };
   }, [borderColor, handleOpacity]);
 
@@ -220,33 +220,32 @@ const EnhancedDeviceNode: React.FC<NodeProps> = React.memo(({ id, data, selected
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
     >
-      {/* Connection Handles - All 4 directions as both source and target */}
-      <Handle type="source" position={Position.Top} id="top" style={handleStyles.top} />
-      <Handle type="target" position={Position.Top} id="top-target" style={handleStyles.top} />
-      <Handle type="source" position={Position.Right} id="right" style={handleStyles.right} />
-      <Handle type="target" position={Position.Right} id="right-target" style={handleStyles.right} />
-      <Handle type="source" position={Position.Bottom} id="bottom" style={handleStyles.bottom} />
-      <Handle type="target" position={Position.Bottom} id="bottom-target" style={handleStyles.bottom} />
-      <Handle type="source" position={Position.Left} id="left" style={handleStyles.left} />
-      <Handle type="target" position={Position.Left} id="left-target" style={handleStyles.left} />
-
       <div style={CENTER_STYLE}>
-        {/* Icon wrapper - selection outline targets this */}
+        {/* Icon wrapper - selection outline and connection handles on this perimeter */}
         <div
-          className="device-node-icon-wrapper"
+          className="device-node-icon-area"
           style={{
             display: 'inline-flex',
             justifyContent: 'center',
             alignItems: 'center',
             padding: 4,
-            filter: selected ? `drop-shadow(0 0 8px ${borderColor})` : 'none',
-            transition: 'filter 0.2s ease, box-shadow 0.2s ease',
+            transition: 'box-shadow 0.2s ease',
             position: 'relative',
           }}
         >
+          {/* Connection Handles - All 4 directions as both source and target */}
+          <Handle type="source" position={Position.Top} id="top" style={handleStyles.top} />
+          <Handle type="target" position={Position.Top} id="top-target" style={handleStyles.top} />
+          <Handle type="source" position={Position.Right} id="right" style={handleStyles.right} />
+          <Handle type="target" position={Position.Right} id="right-target" style={handleStyles.right} />
+          <Handle type="source" position={Position.Bottom} id="bottom" style={handleStyles.bottom} />
+          <Handle type="target" position={Position.Bottom} id="bottom-target" style={handleStyles.bottom} />
+          <Handle type="source" position={Position.Left} id="left" style={handleStyles.left} />
+          <Handle type="target" position={Position.Left} id="left-target" style={handleStyles.left} />
+
           {getIcon()}
 
-          {/* Resize handle - square at bottom-right corner */}
+          {/* Resize handle - triangle at bottom-right corner */}
           {showResizeHandle && (
             <div
               className="nodrag nopan"
@@ -255,15 +254,15 @@ const EnhancedDeviceNode: React.FC<NodeProps> = React.memo(({ id, data, selected
               onPointerUp={onResizePointerUp}
               style={{
                 position: 'absolute',
-                right: -handleSize / 2,
-                bottom: -handleSize / 2,
-                width: handleSize,
-                height: handleSize,
+                right: -2,
+                bottom: -2,
+                width: 0,
+                height: 0,
+                borderStyle: 'solid',
+                borderWidth: `0 0 ${handleSize + 4}px ${handleSize + 4}px`,
+                borderColor: `transparent transparent ${borderColor} transparent`,
                 cursor: 'nwse-resize',
-                background: borderColor,
-                border: `1px solid ${theme.text.primary}`,
-                borderRadius: 2,
-                opacity: 0.8,
+                opacity: 0.85,
                 zIndex: 10,
               }}
             />

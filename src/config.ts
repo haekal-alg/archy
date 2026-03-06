@@ -4,7 +4,7 @@
 export const CONFIG = {
   // Node Connection Handle Settings
   handles: {
-    size: 10, // Size in pixels for connection handles (width and height)
+    size: 6, // Size in pixels for connection handles (width and height)
     borderWidth: 2, // Border width for handles in pixels
     borderColor: 'white', // Border color for handles
   },

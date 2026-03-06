@@ -25,20 +25,17 @@ a,
   cursor: pointer !important;
 }
 
-/* Node Hover Effect - Enhanced for Dark Theme (no scale to prevent layout shift) */
-.device-node:hover {
-  filter: brightness(1.1);
-  transition: filter 0.2s ease;
-}
+/* Node Hover Effect removed - no size/brightness change on hover */
 
-/* Remove default selection outline from node wrapper */
+/* Remove default selection styling from full node */
 .react-flow__node.selected .device-node {
   box-shadow: none !important;
 }
 
-/* Selection outline on icon only */
-.react-flow__node.selected .device-node-icon-wrapper {
-  box-shadow: 0 0 0 2px #9ca3af;
+/* Selection outline - dashed, icon only */
+.react-flow__node.selected .device-node-icon-area {
+  outline: 2px dashed #9ca3af;
+  outline-offset: 2px;
   border-radius: 6px;
 }
 
