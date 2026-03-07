@@ -34,7 +34,7 @@ a,
 
 /* Selection outline - dashed, icon only */
 .react-flow__node.selected .device-node-icon-area {
-  outline: 2px dashed #9ca3af;
+  outline: 2px dashed var(--node-color, #9ca3af);
   outline-offset: 2px;
   border-radius: 6px;
 }
@@ -92,19 +92,31 @@ textarea:focus {
   color: #e8ecf4;
 }
 
-/* ReactFlow Controls - Dark Theme Override */
+/* ReactFlow Controls - Unified Glass Style */
 .react-flow__controls {
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.6) !important;
+  background: rgba(0, 0, 0, 0.85) !important;
+  backdrop-filter: blur(10px) !important;
+  border: 1px solid #3a4556 !important;
+  border-radius: 12px !important;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5), 0 2px 8px rgba(0, 0, 0, 0.3) !important;
+  overflow: hidden !important;
 }
 
 .react-flow__controls-button {
-  background: #1e2433 !important;
-  border-color: #3a4556 !important;
+  background: transparent !important;
+  border-color: rgba(255, 255, 255, 0.08) !important;
   color: #e8ecf4 !important;
+  width: 32px !important;
+  height: 32px !important;
+  transition: background 0.15s ease !important;
 }
 
 .react-flow__controls-button:hover {
-  background: #252d3f !important;
+  background: rgba(255, 255, 255, 0.1) !important;
+}
+
+.react-flow__controls-button svg {
+  fill: #e8ecf4 !important;
 }
 
 /* ReactFlow MiniMap - Dark Theme Override */

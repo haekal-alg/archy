@@ -209,14 +209,15 @@ const EnhancedDeviceNode: React.FC<NodeProps> = React.memo(({ id, data, selected
 
   return (
     <div
+      className="enhanced-device-node device-node"
       style={{
         padding: theme.spacing.md,
         background: 'transparent',
         minWidth: `${effectiveIconSize + 20}px`,
         cursor: 'pointer',
         position: 'relative',
+        ...(selected ? { '--node-color': borderColor } as React.CSSProperties : {}),
       }}
-      className="enhanced-device-node device-node"
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
     >

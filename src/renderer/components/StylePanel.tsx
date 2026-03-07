@@ -1399,25 +1399,41 @@ const StylePanel: React.FC<StylePanelProps> = ({
       <button
         onClick={onToggle}
         className="panel-glass"
+        title={isOpen ? 'Hide inspector panel' : 'Show inspector panel'}
+        aria-label={isOpen ? 'Hide inspector panel' : 'Show inspector panel'}
         style={{
           position: 'absolute',
-          left: '-30px',
+          left: '-40px',
           top: '50%',
           transform: 'translateY(-50%)',
-          width: '30px',
-          height: '60px',
+          width: '40px',
+          height: '72px',
           borderRight: 'none',
           borderTopLeftRadius: theme.radius.md,
           borderBottomLeftRadius: theme.radius.md,
           fontSize: theme.fontSize.lg,
           boxShadow: '-4px 0 16px rgba(0, 0, 0, 0.3)',
           display: 'flex',
+          flexDirection: 'column',
           alignItems: 'center',
           justifyContent: 'center',
+          gap: '4px',
+          cursor: 'pointer',
           pointerEvents: 'auto',
         }}
       >
         {isOpen ? <ChevronRightIcon size={14} /> : <ChevronLeftIcon size={14} />}
+        <span style={{
+          fontSize: '9px',
+          fontWeight: 600,
+          color: theme.text.secondary,
+          writingMode: 'vertical-lr',
+          textOrientation: 'mixed',
+          letterSpacing: '0.5px',
+          lineHeight: 1,
+        }}>
+          {isOpen ? '' : 'Inspector'}
+        </span>
       </button>
     </div>
   );

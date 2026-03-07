@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { ToolType, TOOLS } from '../types/tools';
 import { darkTheme } from '../../theme';
 
@@ -6,15 +6,35 @@ import { darkTheme } from '../../theme';
 // Default: 1.0, Smaller: 0.8, 0.6, Larger: 1.2, 1.5
 const PALETTE_SCALE = 0.8;
 
+// Keyboard shortcut overlay
+const SHORTCUTS = [
+  { key: 'V', desc: 'Selection tool' },
+  { key: 'H', desc: 'Hand (pan) tool' },
+  { key: 'Del', desc: 'Delete selected' },
+  { key: 'Ctrl+Z', desc: 'Undo' },
+  { key: 'Ctrl+Y', desc: 'Redo' },
+  { key: 'Ctrl+S', desc: 'Save diagram' },
+  { key: 'Ctrl+O', desc: 'Load diagram' },
+  { key: 'Ctrl+E', desc: 'Export as PNG' },
+  { key: 'Middle click', desc: 'Pan canvas' },
+  { key: 'Scroll', desc: 'Zoom in/out' },
+  { key: 'Dbl-click node', desc: 'Configure' },
+];
+
 interface ToolPaletteProps {
   activeTool: ToolType;
   onToolChange: (tool: ToolType) => void;
+  isShapeLibraryOpen?: boolean;
 }
 
-export const ToolPalette: React.FC<ToolPaletteProps> = ({ activeTool, onToolChange }) => {
+export const ToolPalette: React.FC<ToolPaletteProps> = ({ activeTool, onToolChange, isShapeLibraryOpen = true }) => {
+  const [showShortcuts, setShowShortcuts] = useState(false);
+
+  // Offset center when ShapeLibrary is open (240px wide)
+  const offsetLeft = isShapeLibraryOpen ? 'calc(50% + 120px)' : '50%';
 
   return (
-    <div style={styles.container}>
+    <div style={{ ...styles.container, left: offsetLeft }}>
       <div style={styles.toolGroup}>
         {(Object.keys(TOOLS) as ToolType[]).map((toolType) => {
           const tool = TOOLS[toolType];
@@ -77,7 +97,82 @@ export const ToolPalette: React.FC<ToolPaletteProps> = ({ activeTool, onToolChan
             </button>
           );
         })}
+
+        {/* Divider */}
+        <div style={styles.divider} />
+
+        {/* Keyboard shortcuts button */}
+        <button
+          onClick={() => setShowShortcuts(!showShortcuts)}
+          onMouseEnter={(e) => {
+            if (!showShortcuts) {
+              e.currentTarget.style.background = 'rgba(255, 255, 255, 0.1)';
+            }
+          }}
+          onMouseLeave={(e) => {
+            if (!showShortcuts) {
+              e.currentTarget.style.background = 'transparent';
+            }
+          }}
+          style={{
+            ...styles.toolButton,
+            ...(showShortcuts ? styles.activeToolButton : {}),
+          }}
+          title="Keyboard shortcuts"
+          aria-label="Keyboard shortcuts"
+        >
+          <span style={{
+            fontSize: `${14 * PALETTE_SCALE}px`,
+            fontWeight: 700,
+            color: showShortcuts ? darkTheme.accent.blue : darkTheme.text.primary,
+          }}>?</span>
+        </button>
       </div>
+
+      {/* Shortcut Overlay */}
+      {showShortcuts && (
+        <>
+          <div
+            style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 9998 }}
+            onClick={() => setShowShortcuts(false)}
+          />
+          <div
+            style={{
+              position: 'absolute',
+              top: `${(44 + 16) * PALETTE_SCALE + 8}px`,
+              left: '50%',
+              transform: 'translateX(-50%)',
+              background: 'rgba(0, 0, 0, 0.92)',
+              backdropFilter: 'blur(16px)',
+              border: `1px solid ${darkTheme.border.default}`,
+              borderRadius: '12px',
+              boxShadow: darkTheme.shadow.lg,
+              padding: '12px 16px',
+              zIndex: 9999,
+              minWidth: '220px',
+            }}
+          >
+            <div style={{ fontSize: darkTheme.fontSize.sm, fontWeight: darkTheme.fontWeight.semibold, color: darkTheme.text.primary, marginBottom: '8px' }}>
+              Keyboard Shortcuts
+            </div>
+            {SHORTCUTS.map(({ key, desc }) => (
+              <div key={key} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '3px 0', gap: '16px' }}>
+                <span style={{ fontSize: darkTheme.fontSize.sm, color: darkTheme.text.secondary }}>{desc}</span>
+                <kbd style={{
+                  fontSize: '11px',
+                  fontFamily: 'inherit',
+                  background: 'rgba(255,255,255,0.08)',
+                  border: '1px solid rgba(255,255,255,0.15)',
+                  borderRadius: '4px',
+                  padding: '1px 6px',
+                  color: darkTheme.text.primary,
+                  whiteSpace: 'nowrap',
+                }}>{key}</kbd>
+              </div>
+            ))}
+          </div>
+        </>
+      )}
     </div>
   );
 };
@@ -87,8 +182,9 @@ const styles: Record<string, React.CSSProperties> = {
   container: {
     position: 'absolute',
     top: `${20 * PALETTE_SCALE}px`,
-    left: '50%',
+    left: '50%', // overridden inline
     transform: 'translateX(-50%)',
+    transition: 'left 0.3s ease',
     zIndex: 1000,
     display: 'flex',
     gap: `${12 * PALETTE_SCALE}px`,
@@ -102,6 +198,7 @@ const styles: Record<string, React.CSSProperties> = {
   toolGroup: {
     display: 'flex',
     gap: `${4 * PALETTE_SCALE}px`,
+    alignItems: 'center',
   },
   toolButton: {
     position: 'relative',
@@ -122,6 +219,12 @@ const styles: Record<string, React.CSSProperties> = {
     background: 'rgba(59, 130, 246, 0.15)',
     border: `1px solid ${darkTheme.accent.blue}`,
     boxShadow: `0 0 ${12 * PALETTE_SCALE}px rgba(59, 130, 246, 0.3)`,
+  },
+  divider: {
+    width: '1px',
+    height: `${24 * PALETTE_SCALE}px`,
+    background: darkTheme.border.default,
+    margin: `0 ${2 * PALETTE_SCALE}px`,
   },
   shortcutLabel: {
     position: 'absolute',
