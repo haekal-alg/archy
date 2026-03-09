@@ -19,6 +19,7 @@ import {
   AttackIcon,
   MobileIcon
 } from './NetworkIcons';
+import { LightningIcon, WarningIcon } from './StatusIcons';
 
 export interface SSHPortForward {
   localPort: number;
@@ -204,6 +205,21 @@ const EnhancedDeviceNode: React.FC<NodeProps> = React.memo(({ id, data, selected
     if (e.key === 'Escape') { setIsEditingLabel(false); }
   }, [commitLabel]);
 
+  // Connection ring style on the icon area
+  const connectionRingStyle = useMemo((): React.CSSProperties => {
+    if (!connectionStatus || connectionStatus === 'disconnected') return {};
+    const color = STATUS_COLORS[connectionStatus];
+    return {
+      boxShadow: connectionStatus === 'connected'
+        ? `0 0 0 2px ${color}, 0 0 10px ${color}60`
+        : connectionStatus === 'connecting'
+          ? `0 0 0 2px ${color}90`
+          : `0 0 0 2px ${color}`,
+      borderRadius: 8,
+      animation: connectionStatus === 'connecting' ? 'pulse-ring 1.8s ease-in-out infinite' : 'none',
+    };
+  }, [connectionStatus]);
+
   const showResizeHandle = selected && isHovered;
   const handleSize = CONFIG.deviceNodes.resizeHandleSize;
 
@@ -225,13 +241,15 @@ const EnhancedDeviceNode: React.FC<NodeProps> = React.memo(({ id, data, selected
         {/* Icon wrapper - selection outline and connection handles on this perimeter */}
         <div
           className="device-node-icon-area"
+          aria-label={connectionStatus && connectionStatus !== 'disconnected' ? `Connection status: ${connectionStatus}` : undefined}
           style={{
             display: 'inline-flex',
             justifyContent: 'center',
             alignItems: 'center',
             padding: 4,
-            transition: 'box-shadow 0.2s ease',
+            transition: 'box-shadow 0.25s ease, border-radius 0.25s ease',
             position: 'relative',
+            ...connectionRingStyle,
           }}
         >
           {/* Connection Handles - All 4 directions as both source and target */}
@@ -245,6 +263,45 @@ const EnhancedDeviceNode: React.FC<NodeProps> = React.memo(({ id, data, selected
           <Handle type="target" position={Position.Left} id="left-target" style={handleStyles.left} />
 
           {getIcon()}
+
+          {/* Connection badge - top right */}
+          {connectionStatus && connectionStatus !== 'disconnected' && (
+            <div
+              style={{
+                position: 'absolute',
+                top: -5,
+                right: -5,
+                width: 18,
+                height: 18,
+                borderRadius: '50%',
+                backgroundColor: theme.background.primary,
+                border: `1.5px solid ${STATUS_COLORS[connectionStatus]}`,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                zIndex: 5,
+                boxShadow: `0 0 4px ${STATUS_COLORS[connectionStatus]}60, 0 0 8px ${STATUS_COLORS[connectionStatus]}30`,
+                animation: connectionStatus === 'connected'
+                  ? 'badge-glow-green 2.5s ease-in-out infinite'
+                  : connectionStatus === 'connecting'
+                    ? 'badge-glow-orange 1.8s ease-in-out infinite'
+                    : 'badge-glow-red 2s ease-in-out infinite',
+              }}
+            >
+              {connectionStatus === 'connected' && (
+                <LightningIcon color={STATUS_COLORS[connectionStatus]} size={11} />
+              )}
+              {connectionStatus === 'connecting' && (
+                <svg width="10" height="10" viewBox="0 0 16 16" fill="none" style={{ animation: 'spin 0.8s linear infinite' }}>
+                  <circle cx="8" cy="8" r="6" stroke={STATUS_COLORS[connectionStatus]} strokeWidth="2" strokeOpacity="0.25" />
+                  <path d="M8 2A6 6 0 0 1 14 8" stroke={STATUS_COLORS[connectionStatus]} strokeWidth="2" strokeLinecap="round" />
+                </svg>
+              )}
+              {connectionStatus === 'error' && (
+                <WarningIcon color={STATUS_COLORS[connectionStatus]} size={11} />
+              )}
+            </div>
+          )}
 
           {/* Resize handle - triangle at bottom-right corner */}
           {showResizeHandle && (
@@ -270,26 +327,6 @@ const EnhancedDeviceNode: React.FC<NodeProps> = React.memo(({ id, data, selected
           )}
         </div>
 
-        {/* Connection status indicator */}
-        {connectionStatus && connectionStatus !== 'disconnected' && (
-          <div
-            aria-label={`Connection status: ${connectionStatus}`}
-            style={{
-              position: 'absolute',
-              top: 2,
-              right: 2,
-              width: 8,
-              height: 8,
-              borderRadius: '50%',
-              backgroundColor: STATUS_COLORS[connectionStatus],
-              border: `1px solid ${theme.background.primary}`,
-              boxShadow: connectionStatus === 'connected'
-                ? `0 0 6px ${STATUS_COLORS[connectionStatus]}80`
-                : 'none',
-              animation: connectionStatus === 'connecting' ? 'pulse-status 1.5s ease-in-out infinite' : 'none',
-            }}
-          />
-        )}
 
         {/* Label - double-click to edit inline */}
         {isEditingLabel ? (

@@ -303,11 +303,28 @@ a:hover {
   100% { transform: rotate(360deg); }
 }
 
-/* ===== Node Connection Status Pulse ===== */
+/* ===== Node Connection Status Ring ===== */
 
-@keyframes pulse-status {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.4; }
+@keyframes pulse-ring {
+  0%, 100% { box-shadow: 0 0 0 2px rgba(255, 171, 64, 0.56); }
+  50% { box-shadow: 0 0 0 2px rgba(255, 171, 64, 0.15); }
+}
+
+/* ===== Badge Glow Pulses ===== */
+
+@keyframes badge-glow-green {
+  0%, 100% { box-shadow: 0 0 4px #3dd68c60, 0 0 8px #3dd68c30; }
+  50% { box-shadow: 0 0 8px #3dd68c90, 0 0 14px #3dd68c50; }
+}
+
+@keyframes badge-glow-orange {
+  0%, 100% { box-shadow: 0 0 4px #ffab4060, 0 0 8px #ffab4030; }
+  50% { box-shadow: 0 0 8px #ffab4090, 0 0 14px #ffab4050; }
+}
+
+@keyframes badge-glow-red {
+  0%, 100% { box-shadow: 0 0 4px #ff5c5c60, 0 0 8px #ff5c5c30; }
+  50% { box-shadow: 0 0 8px #ff5c5c90, 0 0 14px #ff5c5c50; }
 }
 
 /* ===== Reduced Motion: Accessibility ===== */
