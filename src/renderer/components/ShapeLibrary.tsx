@@ -317,24 +317,40 @@ const ShapeLibrary: React.FC<ShapeLibraryProps> = ({ onAddNode, onAddGroup, onAd
       <button
         onClick={onToggle}
         className="panel-glass"
+        title={isOpen ? 'Hide shapes panel' : 'Show shapes panel'}
+        aria-label={isOpen ? 'Hide shapes panel' : 'Show shapes panel'}
         style={{
           position: 'absolute',
-          right: '-30px',
+          right: '-40px',
           top: '50%',
           transform: 'translateY(-50%)',
-          width: '30px',
-          height: '60px',
+          width: '40px',
+          height: '72px',
           borderLeft: 'none',
           borderTopRightRadius: theme.radius.md,
           borderBottomRightRadius: theme.radius.md,
           fontSize: theme.fontSize.lg,
           boxShadow: theme.shadow.md,
           display: 'flex',
+          flexDirection: 'column',
           alignItems: 'center',
           justifyContent: 'center',
+          gap: '4px',
+          cursor: 'pointer',
         }}
       >
         {isOpen ? <ChevronLeftIcon size={14} /> : <ChevronRightIcon size={14} />}
+        <span style={{
+          fontSize: '9px',
+          fontWeight: 600,
+          color: theme.text.secondary,
+          writingMode: 'vertical-lr',
+          textOrientation: 'mixed',
+          letterSpacing: '0.5px',
+          lineHeight: 1,
+        }}>
+          {isOpen ? '' : 'Shapes'}
+        </span>
       </button>
     </div>
   );

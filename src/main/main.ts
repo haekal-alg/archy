@@ -129,14 +129,23 @@ function createWindow(): void {
     mainWindow.loadFile(path.join(__dirname, '../dist/index.html'));
   }
 
-  // Show main window when ready and close splash
+  // Show main window when ready and close splash with fade-out
   mainWindow.once('ready-to-show', () => {
     setTimeout(() => {
       if (splashWindow && !splashWindow.isDestroyed()) {
-        splashWindow.close();
-        splashWindow = null;
+        // Trigger fade-out animation
+        splashWindow.webContents.executeJavaScript("document.body.classList.add('fade-out')").catch(() => {});
+        // Wait for fade-out (400ms) before closing
+        setTimeout(() => {
+          if (splashWindow && !splashWindow.isDestroyed()) {
+            splashWindow.close();
+            splashWindow = null;
+          }
+          mainWindow?.show();
+        }, 400);
+      } else {
+        mainWindow?.show();
       }
-      mainWindow?.show();
     }, 500);
   });
 

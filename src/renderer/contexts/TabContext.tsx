@@ -42,6 +42,9 @@ export const TabProvider: React.FC<TabProviderProps> = ({ children }) => {
   const activeConnectionIdRef = useRef(activeConnectionId);
   activeConnectionIdRef.current = activeConnectionId;
 
+  // Fullscreen terminal mode
+  const [isTerminalFullscreen, setTerminalFullscreen] = useState(false);
+
   // Topology cross-reference
   const [topologyNodes, setTopologyNodes] = useState<TopologyNodeInfo[]>([]);
   const onFocusNodeRef = useRef<((nodeId: string) => void) | undefined>(undefined);
@@ -709,6 +712,8 @@ export const TabProvider: React.FC<TabProviderProps> = ({ children }) => {
     setTopologyNodes,
     focusNode,
     setOnFocusNode,
+    isTerminalFullscreen,
+    setTerminalFullscreen,
   };
 
   return <TabContext.Provider value={value}>{children}</TabContext.Provider>;

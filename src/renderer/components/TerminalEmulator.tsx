@@ -386,21 +386,28 @@ const TerminalEmulator: React.FC<TerminalEmulatorProps> = ({ connectionId, isVis
       }
     }
 
-    // Handle window resize with debouncing (prevents 50-100 calls/sec during window drag)
+    // Use ResizeObserver to handle ALL layout changes (sidebar toggle, fullscreen, window resize)
     let resizeTimeout: ReturnType<typeof setTimeout> | null = null;
-    const handleResize = () => {
-      if (resizeTimeout) {
-        clearTimeout(resizeTimeout);
-      }
-      resizeTimeout = setTimeout(() => {
-        if (instance && isVisible) {
-          instance.fitAddon.fit();
-          window.electron.resizeSSHTerminal(connectionId, instance.terminal.cols, instance.terminal.rows);
-        }
-      }, 100); // Wait 100ms after resize stops
-    };
+    let resizeObserver: ResizeObserver | null = null;
 
-    window.addEventListener('resize', handleResize);
+    if (terminalRef.current) {
+      resizeObserver = new ResizeObserver(() => {
+        if (resizeTimeout) {
+          clearTimeout(resizeTimeout);
+        }
+        resizeTimeout = setTimeout(() => {
+          if (instance && isVisible) {
+            try {
+              instance.fitAddon.fit();
+              window.electron.resizeSSHTerminal(connectionId, instance.terminal.cols, instance.terminal.rows);
+            } catch (e) {
+              // fit can throw if container has zero dimensions
+            }
+          }
+        }, 100);
+      });
+      resizeObserver.observe(terminalRef.current);
+    }
 
     // Fit terminal when it becomes visible
     if (isVisible && instance) {
@@ -413,7 +420,9 @@ const TerminalEmulator: React.FC<TerminalEmulatorProps> = ({ connectionId, isVis
 
     // Cleanup on unmount (but keep terminal instance alive)
     return () => {
-      window.removeEventListener('resize', handleResize);
+      if (resizeObserver) {
+        resizeObserver.disconnect();
+      }
       if (resizeTimeout) {
         clearTimeout(resizeTimeout);
       }

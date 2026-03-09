@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useTabContext } from '../contexts/TabContext';
-import TerminalEmulator from './TerminalEmulator';
+import TerminalEmulator, { refreshTerminal } from './TerminalEmulator';
 import ConnectionContextMenu from './ConnectionContextMenu';
 const SFTPModal = React.lazy(() => import('./SFTPModal'));
 import { ClimbingBoxLoader } from 'react-spinners';
@@ -50,7 +50,7 @@ const ReconnectCountdown: React.FC<{ connectionId: string }> = ({ connectionId }
 };
 
 const ConnectionsTab: React.FC = () => {
-  const { connections, activeConnectionId, setActiveConnectionId, setActiveTab, disconnectConnection, removeConnection, reorderConnection, retryConnection, createLocalTerminal, renameConnection, cancelAutoReconnect, topologyNodes, focusNode } = useTabContext();
+  const { connections, activeConnectionId, setActiveConnectionId, setActiveTab, disconnectConnection, removeConnection, reorderConnection, retryConnection, createLocalTerminal, renameConnection, cancelAutoReconnect, topologyNodes, focusNode, isTerminalFullscreen, setTerminalFullscreen } = useTabContext();
   const { confirm, ConfirmContainer } = useConfirm();
   const { prompt, PromptContainer } = usePrompt();
   const [sidePanelCollapsed, setSidePanelCollapsed] = useState(false);
@@ -290,13 +290,35 @@ const ConnectionsTab: React.FC = () => {
     return () => window.removeEventListener('terminal-zoom-change', handleZoomUpdate);
   }, []);
 
+  // F11 toggles fullscreen terminal mode
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'F11') {
+        e.preventDefault();
+        setTerminalFullscreen(!isTerminalFullscreen);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isTerminalFullscreen, setTerminalFullscreen]);
+
+  // Safety net: refresh terminal after sidebar collapse/expand transition (300ms CSS + 50ms buffer)
+  useEffect(() => {
+    if (activeConnectionId) {
+      const timer = setTimeout(() => {
+        refreshTerminal(activeConnectionId);
+      }, 350);
+      return () => clearTimeout(timer);
+    }
+  }, [sidePanelCollapsed, activeConnectionId]);
+
   return (
     <div style={{ display: 'flex', height: '100%', overflow: 'hidden', position: 'relative' }}>
       {/* Side Panel - Always rendered for animation */}
       <aside aria-label="Active connections" style={{
-        width: sidePanelCollapsed ? '0px' : '320px',
+        width: isTerminalFullscreen ? '0px' : (sidePanelCollapsed ? '0px' : '320px'),
         background: theme.background.primary,
-        borderRight: sidePanelCollapsed ? 'none' : `1px solid ${theme.border.default}`,
+        borderRight: (isTerminalFullscreen || sidePanelCollapsed) ? 'none' : `1px solid ${theme.border.default}`,
         display: 'flex',
         flexDirection: 'column',
         overflow: 'hidden',
@@ -729,6 +751,7 @@ const ConnectionsTab: React.FC = () => {
       </aside>
 
       {/* Unified Toggle Button */}
+      {!isTerminalFullscreen && (
       <button
         onClick={() => setSidePanelCollapsed(!sidePanelCollapsed)}
         className="panel-glass"
@@ -756,6 +779,7 @@ const ConnectionsTab: React.FC = () => {
       >
         {sidePanelCollapsed ? '\u203A' : '\u2039'}
       </button>
+      )}
 
       {/* Main Terminal Canvas */}
       <main style={{
@@ -925,9 +949,9 @@ const ConnectionsTab: React.FC = () => {
                       +
                     </button>
 
-                    {/* Reconnect / refresh terminal session */}
+                    {/* Refresh terminal display */}
                     <button
-                      onClick={() => retryConnection(activeConnection.id)}
+                      onClick={() => refreshTerminal(activeConnection.id)}
                       style={{
                         padding: `${theme.spacing.xs} ${theme.spacing.md}`,
                         backgroundColor: theme.background.hover,
@@ -942,8 +966,8 @@ const ConnectionsTab: React.FC = () => {
                         transition: 'background-color 0.2s ease',
                         marginLeft: theme.spacing.sm,
                       }}
-                      title="Reconnect terminal"
-                      aria-label="Reconnect terminal session"
+                      title="Refresh terminal display"
+                      aria-label="Refresh terminal display"
                       onMouseEnter={(e) => e.currentTarget.style.backgroundColor = theme.background.active}
                       onMouseLeave={(e) => e.currentTarget.style.backgroundColor = theme.background.hover}
                     >
@@ -951,6 +975,45 @@ const ConnectionsTab: React.FC = () => {
                         <polyline points="23 4 23 10 17 10" />
                         <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10" />
                       </svg>
+                    </button>
+
+                    {/* Fullscreen toggle */}
+                    <button
+                      onClick={() => setTerminalFullscreen(!isTerminalFullscreen)}
+                      style={{
+                        padding: `${theme.spacing.xs} ${theme.spacing.md}`,
+                        backgroundColor: isTerminalFullscreen ? theme.accent.blue + '33' : theme.background.hover,
+                        color: isTerminalFullscreen ? theme.accent.blue : theme.text.secondary,
+                        border: isTerminalFullscreen ? `1px solid ${theme.accent.blue}44` : 'none',
+                        borderRadius: '3px',
+                        cursor: 'pointer',
+                        lineHeight: '1',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        transition: 'background-color 0.2s ease',
+                        marginLeft: theme.spacing.sm,
+                      }}
+                      title={isTerminalFullscreen ? 'Exit fullscreen (F11)' : 'Fullscreen terminal (F11)'}
+                      aria-label={isTerminalFullscreen ? 'Exit fullscreen terminal' : 'Fullscreen terminal'}
+                      onMouseEnter={(e) => e.currentTarget.style.backgroundColor = isTerminalFullscreen ? theme.accent.blue + '44' : theme.background.active}
+                      onMouseLeave={(e) => e.currentTarget.style.backgroundColor = isTerminalFullscreen ? theme.accent.blue + '33' : theme.background.hover}
+                    >
+                      {isTerminalFullscreen ? (
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <polyline points="4 14 4 20 10 20" />
+                          <polyline points="20 10 20 4 14 4" />
+                          <line x1="14" y1="10" x2="21" y2="3" />
+                          <line x1="3" y1="21" x2="10" y2="14" />
+                        </svg>
+                      ) : (
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <polyline points="15 3 21 3 21 9" />
+                          <polyline points="9 21 3 21 3 15" />
+                          <line x1="21" y1="3" x2="14" y2="10" />
+                          <line x1="3" y1="21" x2="10" y2="14" />
+                        </svg>
+                      )}
                     </button>
                   </div>
                 </div>

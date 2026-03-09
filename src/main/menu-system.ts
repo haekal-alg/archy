@@ -71,6 +71,14 @@ export function createMenu(mainWindow: BrowserWindow | null): void {
         { label: 'Reload', accelerator: 'CmdOrCtrl+R', role: 'reload' },
         { label: 'Toggle DevTools', accelerator: 'F12', role: 'toggleDevTools' },
         { type: 'separator' },
+        {
+          label: 'Fullscreen Terminal',
+          accelerator: 'F11',
+          click: () => {
+            mainWindow?.webContents.send('toggle-terminal-fullscreen');
+          }
+        },
+        { type: 'separator' },
         { label: 'Zoom In', accelerator: 'CmdOrCtrl+Plus', role: 'zoomIn' },
         { label: 'Zoom Out', accelerator: 'CmdOrCtrl+-', role: 'zoomOut' },
         { label: 'Reset Zoom', accelerator: 'CmdOrCtrl+0', role: 'resetZoom' }

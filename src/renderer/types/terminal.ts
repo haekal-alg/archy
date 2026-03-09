@@ -92,4 +92,7 @@ export interface TabContextType {
   setTopologyNodes: (nodes: TopologyNodeInfo[]) => void;
   focusNode: (nodeId: string) => void;
   setOnFocusNode: (handler: (nodeId: string) => void) => void;
+  // Fullscreen terminal mode
+  isTerminalFullscreen: boolean;
+  setTerminalFullscreen: (v: boolean) => void;
 }

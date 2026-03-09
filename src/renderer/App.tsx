@@ -68,7 +68,7 @@ interface HistoryState {
 }
 
 const AppContent: React.FC = () => {
-  const { activeTab, setActiveTab, createConnection, setTopologyNodes, setOnFocusNode } = useTabContext();
+  const { activeTab, setActiveTab, createConnection, setTopologyNodes, setOnFocusNode, isTerminalFullscreen } = useTabContext();
   const [nodes, setNodes, onNodesChange] = useNodesState<Node>([] as Node[]);
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([] as Edge[]);
   const [selectedNode, setSelectedNode] = useState<Node | null>(null);
@@ -1294,7 +1294,7 @@ const AppContent: React.FC = () => {
         canRedo={canRedo}
         onSettings={() => setSettingsModal({ open: true, tab: 'terminal' })}
       />
-      <nav aria-label="Main navigation">
+      <nav aria-label="Main navigation" style={{ display: isTerminalFullscreen ? 'none' : undefined }}>
         <TabBar />
       </nav>
 
@@ -1307,7 +1307,7 @@ const AppContent: React.FC = () => {
           flex: 1,
           position: 'relative',
           overflow: 'hidden',
-          display: activeTab === 'design' ? 'flex' : 'none',
+          display: isTerminalFullscreen ? 'none' : (activeTab === 'design' ? 'flex' : 'none'),
           flexDirection: 'column'
         }}
       >
@@ -1336,6 +1336,7 @@ const AppContent: React.FC = () => {
             onEdgesDelete={onEdgesDelete}
             onInit={setReactFlowInstance}
             activeTool={activeTool}
+            isShapeLibraryOpen={isShapeLibraryOpen}
             onTemporaryHandToolStart={handleTemporaryHandToolStart}
             onTemporaryHandToolEnd={handleTemporaryHandToolEnd}
             onDrop={(event) => {
@@ -1471,6 +1472,7 @@ const AppContent: React.FC = () => {
             <ToolPalette
               activeTool={activeTool}
               onToolChange={handleToolChange}
+              isShapeLibraryOpen={isShapeLibraryOpen}
             />
           </DesignTab>
         </ErrorBoundary>
@@ -1713,7 +1715,7 @@ const AppContent: React.FC = () => {
         aria-labelledby="tab-connections"
         style={{
           flex: 1,
-          display: activeTab === 'connections' ? 'flex' : 'none',
+          display: (isTerminalFullscreen || activeTab === 'connections') ? 'flex' : 'none',
           flexDirection: 'column',
           overflow: 'hidden'
         }}
