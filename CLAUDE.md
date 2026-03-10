@@ -110,16 +110,17 @@ The application implements a sophisticated SSH session management system with pe
 
 ### Custom Icon System
 
-The application uses a file-based SVG icon system for device nodes:
+The application uses a file-based PNG icon system for device nodes:
 
 **Icon Storage** (`icons/` directory):
 - `categories.json` - Defines icon categories (Devices, Network, Infra, Security) and metadata
-- 13+ SVG icon files: attacker, cloud, cloud2, database, desktop, firewall, generic, laptop, linux, mobile, router, server, switch
+- 11 PNG icon files: attacker, cloud, cloud2, database, desktop, firewall, laptop, linux, mobile, router, server
+- 2 icons (generic, switch) have no PNG and use built-in React SVG fallbacks
 
 **Icon Loading Pipeline**:
-- `src/main/icon-manager.ts` - Loads SVG files from disk, registers `load-icons` IPC handler
+- `src/main/icon-manager.ts` - Reads PNG files as base64 data URLs, registers `load-icons` IPC handler
 - `src/renderer/iconStore.ts` - Client-side icon caching, category mapping, and `onIconsLoaded` callbacks
-- `NetworkIcons.tsx` - `DynamicIcon` component renders SVGs with auto-resize and drop-shadow; falls back to built-in detailed icons (RouterIcon, ServerIcon, etc.)
+- `NetworkIcons.tsx` - `DynamicIcon` component renders PNGs via `<img>` tags with drop-shadow; falls back to built-in detailed icons (RouterIcon, ServerIcon, etc.)
 
 ### Settings System
 
@@ -166,7 +167,7 @@ The application uses a file-based SVG icon system for device nodes:
 
 **Node Types**:
 - `device`: Basic device nodes (legacy)
-- `enhanced`: Feature-rich device nodes with connection credentials and custom SVG icons (EnhancedDeviceNode)
+- `enhanced`: Feature-rich device nodes with connection credentials and custom PNG icons (EnhancedDeviceNode)
 - `group`: Zone/container nodes for network segmentation (GroupNode)
 - `text`: Annotation nodes (TextNode)
 
@@ -206,7 +207,7 @@ Centralized theme configuration in `src/theme.ts`:
 - `src/main/diagram-manager.ts` - Diagram save/load/list file operations
 - `src/main/sftp-manager.ts` - SFTP file transfer operations
 - `src/main/rdp-handler.ts` - RDP connection via cmdkey/mstsc
-- `src/main/icon-manager.ts` - SVG icon loading from disk
+- `src/main/icon-manager.ts` - PNG icon loading from disk (base64 data URLs)
 - `src/main/shell-utils.ts` - Shell utilities (directory navigation, env vars, command parsing)
 - `src/main/cwd-tracker.ts` - Output-based CWD tracking for local terminals
 
@@ -222,7 +223,7 @@ Centralized theme configuration in `src/theme.ts`:
 - `src/renderer/components/` - All React components
   - `TitleBar.tsx` - Custom frameless title bar (menus, window controls)
   - `TerminalEmulator.tsx` - xterm.js integration with WebGL rendering
-  - `EnhancedDeviceNode.tsx` - Primary node type with credentials and custom SVG icons
+  - `EnhancedDeviceNode.tsx` - Primary node type with credentials and custom PNG icons
   - `ConnectionsTab.tsx` - SSH session UI with tabs, SFTP modal, context menus
   - `DesignTab.tsx` - Main diagram canvas
   - `StylePanel.tsx` - Node/edge property editor
@@ -254,7 +255,7 @@ Centralized theme configuration in `src/theme.ts`:
 
 ### Icons
 - `icons/categories.json` - Icon category definitions and metadata
-- `icons/*.svg` - Device icon SVG files (13+ icons)
+- `icons/*.png` - Device icon PNG files (11 icons, loaded as base64 data URLs)
 
 ## Data Flow Patterns
 
@@ -304,11 +305,11 @@ Key constants in `src/main/buffer-manager.ts`:
   - WebGL rendering: Can be disabled by not loading WebglAddon
 
 ### Adding Device Icons
-1. Add SVG file to `icons/` directory
+1. Add PNG file to `icons/` directory (named to match the key in `categories.json`)
 2. Register icon in `icons/categories.json` under the appropriate category
 3. Add color to `theme.device` in `src/theme.ts` if needed
-4. Icon automatically loads via `icon-manager.ts` → `iconStore.ts` → `DynamicIcon` in `NetworkIcons.tsx`
-5. For built-in fallback icons, add to `NetworkIcons.tsx` directly
+4. Icon automatically loads via `icon-manager.ts` (as base64 data URL) → `iconStore.ts` → `DynamicIcon` in `NetworkIcons.tsx`
+5. For built-in fallback icons (when no PNG exists), add to `NetworkIcons.tsx` directly
 
 ## Testing Connections
 
