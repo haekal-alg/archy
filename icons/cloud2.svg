@@ -1,20 +1,25 @@
-<svg width="128" height="128" viewBox="0 0 56 56" fill="none" xmlns="http://www.w3.org/2000/svg" style="filter: drop-shadow(0 2px 4px rgba(0,0,0,0.45))">
-  <!-- Ground shadow -->
-  <ellipse cx="28" cy="44" rx="16" ry="2.5" fill="black" opacity="0.12" />
-  <!-- Cloud outline (back depth) -->
-  <path d="M40 32 C44 32 47 29 47 25.5 C47 22 44.5 19 41 19 C40.5 19 40 19 39.5 19.1 C38 14 34 10 28.5 10 C22 10 17 14 16 19.5 C12.5 20.5 10 23.5 10 27 C10 31 13 34 17 34 L40 34" fill="#5c9ded" opacity="0.3" />
-  <!-- Main cloud body -->
-  <path d="M38 30 C42 30 45 27 45 23.5 C45 20 42.5 17 39 17 C38.5 17 38 17 37.5 17.1 C36 12 32 8 26.5 8 C20 8 15 12 14 17.5 C10.5 18.5 8 21.5 8 25 C8 29 11 32 15 32 L38 32" fill="#5c9ded" />
+<svg width="128" height="128" viewBox="0 0 128 128" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="c2-body" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#EDF0F4"/>
+      <stop offset="100%" stop-color="#CBD1DA"/>
+    </linearGradient>
+  </defs>
+  <!-- Cloud shadow -->
+  <path d="M96,86 C110,86 120,74 120,62 C120,50 112,40 104,40 C103,40 102,40 101,40.3 C96,28 86,18 72,18 C56,18 44,28 42,40 C34,42 28,50 28,60 C28,72 36,86 48,86 Z" fill="#B5BCC8" opacity="0.25" transform="translate(3,4)"/>
+  <!-- Main cloud -->
+  <path d="M94,82 C108,82 118,72 118,60 C118,48 110,38 102,38 C101,38 100,38 99,38.3 C94,26 84,16 70,16 C54,16 42,26 40,38 C32,40 26,48 26,58 C26,70 34,82 46,82 Z" fill="url(#c2-body)"/>
   <!-- Top highlight -->
-  <path d="M26.5 8 C22 8 18 10 16 14 Q20 9 26.5 10 Q32 9 35 13 L37.5 17.1 C38 17 38.5 17 39 17 C40 17 41 17.3 42 18 Q40 16 38 17" fill="white" opacity="0.15" />
+  <path d="M70,16 C58,16 48,20 44,28 Q54,18 70,20 Q82,18 88,26 L99,38.3 C100,38 101,38 102,38 C106,38 108,40 110,42 Q106,36 100,38" fill="white" opacity="0.1"/>
   <!-- Bottom shadow -->
-  <path d="M15 28 L38 28 C40 28 42 29 43 30 L45 30 C44 31 42.5 32 38 32 L15 32 C12 32 9 30 9 27 L10 28 C10 28 12 28 15 28Z" fill="black" opacity="0.1" />
-  <!-- Inner highlights -->
-  <circle cx="22" cy="20" r="3.5" fill="white" opacity="0.12" />
-  <circle cx="34" cy="18" r="2.5" fill="white" opacity="0.08" />
-  <!-- Upload/download arrows -->
-  <path d="M23 23 L23 28" stroke="white" stroke-width="1.8" stroke-linecap="round" opacity="0.5" />
-  <path d="M21 25.5 L23 23 L25 25.5" stroke="white" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" fill="none" opacity="0.5" />
-  <path d="M32 28 L32 23" stroke="white" stroke-width="1.8" stroke-linecap="round" opacity="0.5" />
-  <path d="M30 25.5 L32 28 L34 25.5" stroke="white" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" fill="none" opacity="0.5" />
+  <path d="M46,76 L94,76 C100,76 106,78 110,82 L94,82 L46,82 C38,82 30,78 28,70 L30,74 C32,76 38,76 46,76Z" fill="#AEB6C4" opacity="0.2"/>
+  <!-- Upload arrow -->
+  <path d="M54,56 L54,72" stroke="currentColor" stroke-width="3.5" stroke-linecap="round"/>
+  <path d="M46,64 L54,56 L62,64" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+  <!-- Download arrow -->
+  <path d="M90,72 L90,56" stroke="currentColor" stroke-width="3.5" stroke-linecap="round"/>
+  <path d="M82,64 L90,72 L98,64" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+  <!-- Accent circles at arrow tips -->
+  <circle cx="54" cy="52" r="4" fill="currentColor" opacity="0.2"/>
+  <circle cx="90" cy="76" r="4" fill="currentColor" opacity="0.2"/>
 </svg>

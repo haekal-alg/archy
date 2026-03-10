@@ -59,6 +59,19 @@ const ConnectionsTab: React.FC = () => {
   const connectionListRef = useRef<HTMLDivElement>(null);
   const [focusedConnectionIndex, setFocusedConnectionIndex] = useState<number>(-1);
 
+  // Sync focusedConnectionIndex when activeConnectionId changes externally
+  useEffect(() => {
+    const idx = connections.findIndex(c => c.id === activeConnectionId);
+    setFocusedConnectionIndex(idx);
+  }, [activeConnectionId, connections]);
+
+  // Listen for open-sftp-modal event from global keyboard shortcut
+  useEffect(() => {
+    const handler = () => setSftpModalOpen(true);
+    document.addEventListener('open-sftp-modal', handler);
+    return () => document.removeEventListener('open-sftp-modal', handler);
+  }, []);
+
   // Cache zoom values in state to avoid localStorage reads during render
   const [zoomCache, setZoomCache] = useState<Record<string, number>>({});
 

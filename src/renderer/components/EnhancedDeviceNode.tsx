@@ -113,7 +113,7 @@ const EnhancedDeviceNode: React.FC<NodeProps> = React.memo(({ id, data, selected
         default: return <GenericIcon color={color} size={size} />;
       }
     })();
-    return <DynamicIcon deviceType={deviceData.type} fallback={builtIn} size={size} />;
+    return <DynamicIcon deviceType={deviceData.type} fallback={builtIn} size={size} color={borderColor} />;
   };
 
   const getDefaultColor = () => {

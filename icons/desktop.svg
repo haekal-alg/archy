@@ -1,38 +1,36 @@
-<svg width="128" height="128" viewBox="0 0 56 56" fill="none" xmlns="http://www.w3.org/2000/svg" style="filter: drop-shadow(0 2px 4px rgba(0,0,0,0.45))">
-  <!-- Monitor cast shadow -->
-  <rect x="10" y="10" width="38" height="26" rx="3" fill="black" opacity="0.15" />
-  <!-- Monitor body -->
-  <rect x="8" y="8" width="38" height="26" rx="3" fill="#00d4ff" />
-  <!-- Top highlight -->
-  <path d="M11 8 H43 Q46 8 46 11 V14 H8 V11 Q8 8 11 8Z" fill="white" opacity="0.2" />
-  <!-- Right edge depth -->
-  <path d="M42 8 H43 Q46 8 46 11 V31 Q46 34 43 34 H42 V8Z" fill="black" opacity="0.12" />
-  <!-- Screen bezel -->
-  <rect x="11" y="11" width="32" height="20" rx="1.5" fill="black" opacity="0.4" />
-  <!-- Screen -->
-  <rect x="11.5" y="11.5" width="31" height="19" rx="1" fill="#0a1628" />
-  <!-- Screen content - window bars -->
-  <rect x="13" y="13" width="27" height="3" rx="0.5" fill="#00d4ff" opacity="0.3" />
-  <circle cx="15" cy="14.5" r="0.8" fill="#ff5f56" opacity="0.6" />
-  <circle cx="17.5" cy="14.5" r="0.8" fill="#ffbd2e" opacity="0.6" />
-  <circle cx="20" cy="14.5" r="0.8" fill="#27c93f" opacity="0.6" />
-  <!-- Screen text lines -->
-  <rect x="13" y="18" width="18" height="1.2" rx="0.5" fill="#00d4ff" opacity="0.25" />
-  <rect x="13" y="20.5" width="24" height="1.2" rx="0.5" fill="#00d4ff" opacity="0.18" />
-  <rect x="13" y="23" width="14" height="1.2" rx="0.5" fill="#00d4ff" opacity="0.15" />
-  <rect x="13" y="25.5" width="20" height="1.2" rx="0.5" fill="#00d4ff" opacity="0.12" />
+<svg width="128" height="128" viewBox="0 0 128 128" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="dt-top" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#F0F2F5"/>
+      <stop offset="100%" stop-color="#E2E6EC"/>
+    </linearGradient>
+  </defs>
+  <!-- Monitor left face -->
+  <path d="M56,42 L38,33 L38,69 L56,78 Z" fill="#C5CBD4"/>
+  <!-- Monitor right face -->
+  <path d="M56,42 L96,22 L96,58 L56,78 Z" fill="#AEB6C4"/>
+  <!-- Monitor top face -->
+  <path d="M56,42 L96,22 L78,13 L38,33 Z" fill="url(#dt-top)"/>
+  <!-- Screen on right face -->
+  <path d="M60,47 L92,31 L92,54 L60,70 Z" fill="#1A2332"/>
+  <!-- Screen content -->
+  <line x1="63" y1="46" x2="80" y2="37.5" stroke="currentColor" stroke-width="1.5" opacity="0.5" stroke-linecap="round"/>
+  <line x1="63" y1="50" x2="88" y2="37.5" stroke="currentColor" stroke-width="1.2" opacity="0.3" stroke-linecap="round"/>
+  <line x1="63" y1="54" x2="78" y2="46.5" stroke="currentColor" stroke-width="1.2" opacity="0.25" stroke-linecap="round"/>
+  <line x1="63" y1="58" x2="84" y2="47.5" stroke="currentColor" stroke-width="1" opacity="0.2" stroke-linecap="round"/>
+  <line x1="63" y1="62" x2="74" y2="56.5" stroke="currentColor" stroke-width="1.2" opacity="0.35" stroke-linecap="round"/>
   <!-- Screen reflection -->
-  <path d="M11.5 11.5 L20 11.5 L11.5 20 Z" fill="white" opacity="0.06" />
-  <!-- Chin with logo -->
-  <circle cx="27" cy="32" r="1.2" fill="white" opacity="0.3" />
+  <path d="M60,47 L68,43 L60,51 Z" fill="white" opacity="0.04"/>
+  <!-- Power circle left face -->
+  <circle cx="42" cy="63" r="3.5" fill="currentColor" opacity="0.85"/>
+  <circle cx="42" cy="63" r="1.8" fill="currentColor"/>
   <!-- Stand neck -->
-  <rect x="24" y="34" width="6" height="4" fill="#00d4ff" />
-  <rect x="24" y="34" width="2" height="4" fill="white" opacity="0.1" />
-  <rect x="28" y="34" width="2" height="4" fill="black" opacity="0.1" />
-  <!-- Base -->
-  <rect x="16" y="38" width="22" height="4" rx="1.5" fill="#00d4ff" />
-  <rect x="16" y="38" width="22" height="1.5" rx="1.5" fill="white" opacity="0.15" />
-  <rect x="16" y="40.5" width="22" height="1.5" rx="0 0 1.5 1.5" fill="black" opacity="0.1" />
-  <!-- Base highlight dot -->
-  <circle cx="27" cy="40" r="0.8" fill="white" opacity="0.2" />
+  <path d="M54,78 L60,75 L60,88 L54,91 Z" fill="#C5CBD4"/>
+  <path d="M60,75 L66,72 L66,85 L60,88 Z" fill="#AEB6C4"/>
+  <!-- Base left face -->
+  <path d="M54,98 L28,85 L28,91 L54,104 Z" fill="#C5CBD4"/>
+  <!-- Base right face -->
+  <path d="M54,98 L92,79 L92,85 L54,104 Z" fill="#AEB6C4"/>
+  <!-- Base top face -->
+  <path d="M54,98 L92,79 L68,68 L28,85 Z" fill="url(#dt-top)"/>
 </svg>

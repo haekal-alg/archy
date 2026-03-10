@@ -12,7 +12,7 @@ const ICON_FILTER = 'drop-shadow(0 2px 4px rgba(0,0,0,0.45))';
  * DynamicIcon renders an SVG loaded from disk.
  * Falls back to the built-in icon if no custom SVG is loaded.
  */
-export const DynamicIcon: React.FC<{ deviceType: string; fallback: React.ReactElement; size?: number }> = ({ deviceType, fallback, size = 52 }) => {
+export const DynamicIcon: React.FC<{ deviceType: string; fallback: React.ReactElement; size?: number; color?: string }> = ({ deviceType, fallback, size = 52, color }) => {
   const loaded = getIconByDeviceType(deviceType);
   if (!loaded) return fallback;
 
@@ -25,6 +25,7 @@ export const DynamicIcon: React.FC<{ deviceType: string; fallback: React.ReactEl
         alignItems: 'center',
         justifyContent: 'center',
         filter: ICON_FILTER,
+        color: color || 'currentColor',
       }}
       dangerouslySetInnerHTML={{ __html: loaded.svg.replace(/width="[^"]*"/, `width="${size}"`).replace(/height="[^"]*"/, `height="${size}"`) }}
     />

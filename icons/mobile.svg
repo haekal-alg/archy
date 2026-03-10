@@ -1,45 +1,41 @@
-<svg width="128" height="128" viewBox="0 0 56 56" fill="none" xmlns="http://www.w3.org/2000/svg" style="filter: drop-shadow(0 2px 4px rgba(0,0,0,0.45))">
-  <!-- Cast shadow -->
-  <rect x="17" y="5" width="24" height="48" rx="5" fill="black" opacity="0.18" />
-  <!-- Phone body -->
-  <rect x="15" y="3" width="24" height="48" rx="5" fill="#3ddc84" />
-  <!-- Top highlight -->
-  <path d="M20 3 H34 Q39 3 39 8 V10 H15 V8 Q15 3 20 3Z" fill="white" opacity="0.2" />
-  <!-- Right edge depth -->
-  <path d="M35 3 H34 Q39 3 39 8 V46 Q39 51 34 51 H35 V3Z" fill="black" opacity="0.12" />
-  <!-- Bottom edge -->
-  <rect x="15" y="47" width="24" height="4" rx="0 0 5 5" fill="black" opacity="0.08" />
-  <!-- Screen bezel -->
-  <rect x="17" y="9" width="20" height="36" rx="2" fill="black" opacity="0.4" />
-  <!-- Screen -->
-  <rect x="17.5" y="9.5" width="19" height="35" rx="1.5" fill="#0a1628" />
+<svg width="128" height="128" viewBox="0 0 128 128" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="mb-top" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#F0F2F5"/>
+      <stop offset="100%" stop-color="#E2E6EC"/>
+    </linearGradient>
+  </defs>
+  <!-- Phone left face -->
+  <path d="M62,14 L40,3 L40,108 L62,119 Z" fill="#C5CBD4"/>
+  <!-- Phone right face -->
+  <path d="M62,14 L88,1 L88,106 L62,119 Z" fill="#AEB6C4"/>
+  <!-- Phone top face -->
+  <path d="M62,14 L88,1 L66,-10 L40,3 Z" fill="url(#mb-top)"/>
+  <!-- Screen right face -->
+  <path d="M65,24 L85,14 L85,96 L65,106 Z" fill="#1A2332"/>
+  <!-- Screen left face -->
+  <path d="M62,25 L44,16 L44,102 L62,111 Z" fill="#1E2836"/>
   <!-- Notch -->
-  <rect x="23" y="9.5" width="8" height="3" rx="1.5" fill="#3ddc84" opacity="0.8" />
-  <circle cx="27" cy="11" r="1" fill="black" opacity="0.4" />
-  <circle cx="27" cy="11" r="0.4" fill="white" opacity="0.15" />
-  <!-- Status bar -->
-  <rect x="19" y="10.5" width="3" height="1" rx="0.5" fill="white" opacity="0.25" />
-  <rect x="32" y="10.5" width="3" height="1" rx="0.5" fill="white" opacity="0.25" />
-  <!-- App grid - row 1 -->
-  <rect x="19.5" y="16" width="4" height="4" rx="1" fill="#4d7cfe" opacity="0.6" />
-  <rect x="25" y="16" width="4" height="4" rx="1" fill="#3dd68c" opacity="0.6" />
-  <rect x="30.5" y="16" width="4" height="4" rx="1" fill="#ff5c5c" opacity="0.6" />
-  <!-- App grid - row 2 -->
-  <rect x="19.5" y="22" width="4" height="4" rx="1" fill="#ffab40" opacity="0.6" />
-  <rect x="25" y="22" width="4" height="4" rx="1" fill="#9d5cff" opacity="0.6" />
-  <rect x="30.5" y="22" width="4" height="4" rx="1" fill="#3dd6d6" opacity="0.6" />
-  <!-- App grid - row 3 -->
-  <rect x="19.5" y="28" width="4" height="4" rx="1" fill="#ff5c9d" opacity="0.5" />
-  <rect x="25" y="28" width="4" height="4" rx="1" fill="#6b96ff" opacity="0.5" />
-  <rect x="30.5" y="28" width="4" height="4" rx="1" fill="#ffd93d" opacity="0.5" />
-  <!-- Widget area -->
-  <rect x="19.5" y="34" width="15" height="5" rx="1.5" fill="white" opacity="0.08" />
-  <rect x="21" y="35.5" width="8" height="1" rx="0.5" fill="white" opacity="0.2" />
-  <rect x="21" y="37.5" width="5" height="1" rx="0.5" fill="white" opacity="0.12" />
+  <path d="M56,20 L62,17 L72,12 L66,15 Z" fill="#C5CBD4" opacity="0.5"/>
+  <!-- Camera -->
+  <circle cx="63" cy="17" r="2" fill="currentColor" opacity="0.5"/>
+  <!-- Screen content right -->
+  <line x1="68" y1="30" x2="82" y2="23" stroke="currentColor" stroke-width="1.5" opacity="0.4" stroke-linecap="round"/>
+  <line x1="68" y1="36" x2="78" y2="31" stroke="currentColor" stroke-width="1.2" opacity="0.3" stroke-linecap="round"/>
+  <!-- App grid right face -->
+  <circle cx="70" cy="48" r="3" fill="currentColor" opacity="0.4"/>
+  <circle cx="78" cy="44" r="3" fill="currentColor" opacity="0.3"/>
+  <circle cx="70" cy="58" r="3" fill="currentColor" opacity="0.3"/>
+  <circle cx="78" cy="54" r="3" fill="currentColor" opacity="0.25"/>
+  <circle cx="70" cy="68" r="3" fill="#AEB6C4" opacity="0.3"/>
+  <circle cx="78" cy="64" r="3" fill="#AEB6C4" opacity="0.25"/>
+  <!-- App grid left face -->
+  <circle cx="50" cy="36" r="3" fill="currentColor" opacity="0.3"/>
+  <circle cx="50" cy="46" r="3" fill="currentColor" opacity="0.25"/>
+  <circle cx="50" cy="56" r="3" fill="#AEB6C4" opacity="0.2"/>
   <!-- Home indicator -->
-  <rect x="23" y="42" width="8" height="2" rx="1" fill="white" opacity="0.25" />
+  <line x1="68" y1="100" x2="80" y2="94" stroke="white" stroke-width="2" stroke-linecap="round" opacity="0.25"/>
   <!-- Side buttons -->
-  <rect x="15" y="16" width="0.8" height="5" rx="0.4" fill="white" opacity="0.12" />
-  <rect x="15" y="23" width="0.8" height="3" rx="0.4" fill="white" opacity="0.12" />
-  <rect x="15" y="27" width="0.8" height="3" rx="0.4" fill="white" opacity="0.12" />
+  <rect x="88" y="30" width="2" height="10" rx="1" fill="#9AA2B0" opacity="0.4"/>
+  <rect x="88" y="46" width="2" height="6" rx="1" fill="#9AA2B0" opacity="0.35"/>
 </svg>

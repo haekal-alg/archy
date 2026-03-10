@@ -1,53 +1,45 @@
-<svg width="128" height="128" viewBox="0 0 56 56" fill="none" xmlns="http://www.w3.org/2000/svg" style="filter: drop-shadow(0 2px 4px rgba(0,0,0,0.45))">
-  <!-- Cast shadow -->
-  <rect x="6" y="22" width="46" height="18" rx="3" fill="black" opacity="0.18" />
-  <!-- Main body -->
-  <rect x="4" y="20" width="46" height="18" rx="3" fill="#4d7cfe" />
-  <!-- Top face highlight -->
-  <path d="M7 20 H47 Q50 20 50 23 V26 H4 V23 Q4 20 7 20Z" fill="white" opacity="0.18" />
-  <!-- Right edge depth -->
-  <path d="M46 20 H47 Q50 20 50 23 V35 Q50 38 47 38 H46 V20Z" fill="black" opacity="0.12" />
-  <!-- Bottom edge -->
-  <rect x="4" y="34" width="46" height="4" rx="0 0 3 3" fill="black" opacity="0.08" />
+<svg width="128" height="128" viewBox="0 0 128 128" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="rt-top" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#F0F2F5"/>
+      <stop offset="100%" stop-color="#E2E6EC"/>
+    </linearGradient>
+  </defs>
   <!-- Left antenna -->
-  <rect x="14" y="8" width="2" height="13" rx="1" fill="#4d7cfe" />
-  <rect x="14" y="8" width="1" height="13" rx="0.5" fill="white" opacity="0.15" />
-  <circle cx="15" cy="7" r="2.5" fill="#4d7cfe" />
-  <circle cx="14.3" cy="6.3" r="1" fill="white" opacity="0.2" />
+  <line x1="38" y1="78" x2="38" y2="18" stroke="#C5CBD4" stroke-width="3" stroke-linecap="round"/>
+  <circle cx="38" cy="14" r="6" fill="currentColor" opacity="0.85"/>
+  <circle cx="38" cy="14" r="3" fill="currentColor"/>
   <!-- Right antenna -->
-  <rect x="38" y="10" width="2" height="11" rx="1" fill="#4d7cfe" />
-  <rect x="38" y="10" width="1" height="11" rx="0.5" fill="white" opacity="0.15" />
-  <circle cx="39" cy="9" r="2.5" fill="#4d7cfe" />
-  <circle cx="38.3" cy="8.3" r="1" fill="white" opacity="0.2" />
-  <!-- Signal arcs - left -->
-  <path d="M11 6 Q8 4 9 1" stroke="white" stroke-width="1" fill="none" opacity="0.2" stroke-linecap="round" />
-  <path d="M12.5 5 Q10 3.5 10.5 1.5" stroke="white" stroke-width="0.8" fill="none" opacity="0.12" stroke-linecap="round" />
-  <!-- Signal arcs - right -->
-  <path d="M43 8 Q46 6 45 3" stroke="white" stroke-width="1" fill="none" opacity="0.2" stroke-linecap="round" />
-  <path d="M41.5 7 Q44 5.5 43.5 3.5" stroke="white" stroke-width="0.8" fill="none" opacity="0.12" stroke-linecap="round" />
-  <!-- Power LED -->
-  <circle cx="9" cy="29" r="2.2" fill="#4caf50" />
-  <circle cx="8.5" cy="28.5" r="0.8" fill="white" opacity="0.45" />
-  <!-- Brand line -->
-  <rect x="13" y="23" width="10" height="2" rx="1" fill="white" opacity="0.15" />
-  <!-- Port row - 6 ethernet ports -->
-  <rect x="8" y="31" width="5" height="5" rx="0.8" fill="black" opacity="0.3" />
-  <rect x="8.4" y="31.4" width="4.2" height="4.2" rx="0.5" fill="white" opacity="0.12" />
-  <rect x="14.5" y="31" width="5" height="5" rx="0.8" fill="black" opacity="0.3" />
-  <rect x="14.9" y="31.4" width="4.2" height="4.2" rx="0.5" fill="white" opacity="0.12" />
-  <rect x="21" y="31" width="5" height="5" rx="0.8" fill="black" opacity="0.3" />
-  <rect x="21.4" y="31.4" width="4.2" height="4.2" rx="0.5" fill="white" opacity="0.12" />
-  <rect x="27.5" y="31" width="5" height="5" rx="0.8" fill="black" opacity="0.3" />
-  <rect x="27.9" y="31.4" width="4.2" height="4.2" rx="0.5" fill="white" opacity="0.12" />
-  <rect x="34" y="31" width="5" height="5" rx="0.8" fill="black" opacity="0.3" />
-  <rect x="34.4" y="31.4" width="4.2" height="4.2" rx="0.5" fill="white" opacity="0.12" />
-  <rect x="40.5" y="31" width="5" height="5" rx="0.8" fill="black" opacity="0.3" />
-  <rect x="40.9" y="31.4" width="4.2" height="4.2" rx="0.5" fill="white" opacity="0.12" />
-  <!-- Port status LEDs -->
-  <circle cx="10.5" cy="24.5" r="1" fill="#4caf50" opacity="0.8" />
-  <circle cx="17" cy="24.5" r="1" fill="#4caf50" opacity="0.6" />
-  <circle cx="23.5" cy="24.5" r="1" fill="#ffab40" opacity="0.6" />
-  <circle cx="30" cy="24.5" r="1" fill="#4caf50" opacity="0.5" />
-  <circle cx="36.5" cy="24.5" r="1" fill="white" opacity="0.15" />
-  <circle cx="43" cy="24.5" r="1" fill="white" opacity="0.15" />
+  <line x1="84" y1="56" x2="84" y2="12" stroke="#AEB6C4" stroke-width="3" stroke-linecap="round"/>
+  <circle cx="84" cy="8" r="6" fill="currentColor" opacity="0.85"/>
+  <circle cx="84" cy="8" r="3" fill="currentColor"/>
+  <!-- Signal arcs left -->
+  <path d="M30,10 Q25,4 28,0" stroke="currentColor" stroke-width="1.5" fill="none" opacity="0.35" stroke-linecap="round"/>
+  <path d="M32,14 Q27,8 30,2" stroke="currentColor" stroke-width="1.2" fill="none" opacity="0.2" stroke-linecap="round"/>
+  <!-- Signal arcs right -->
+  <path d="M92,4 Q97,0 94,-4" stroke="currentColor" stroke-width="1.5" fill="none" opacity="0.35" stroke-linecap="round"/>
+  <path d="M90,8 Q95,2 93,-2" stroke="currentColor" stroke-width="1.2" fill="none" opacity="0.2" stroke-linecap="round"/>
+  <!-- Left face -->
+  <path d="M52,88 L22,73 L22,89 L52,104 Z" fill="#C5CBD4"/>
+  <!-- Right face -->
+  <path d="M52,88 L102,63 L102,79 L52,104 Z" fill="#AEB6C4"/>
+  <!-- Top face -->
+  <path d="M52,88 L102,63 L72,48 L22,73 Z" fill="url(#rt-top)"/>
+  <!-- Port row on right face -->
+  <line x1="60" y1="96" x2="65" y2="93.5" stroke="#2A3444" stroke-width="4.5" stroke-linecap="round" opacity="0.35"/>
+  <line x1="69" y1="91.5" x2="74" y2="89" stroke="#2A3444" stroke-width="4.5" stroke-linecap="round" opacity="0.35"/>
+  <line x1="78" y1="87" x2="83" y2="84.5" stroke="#2A3444" stroke-width="4.5" stroke-linecap="round" opacity="0.35"/>
+  <line x1="87" y1="82.5" x2="92" y2="80" stroke="#2A3444" stroke-width="4.5" stroke-linecap="round" opacity="0.35"/>
+  <line x1="94" y1="78.5" x2="99" y2="76" stroke="#2A3444" stroke-width="4.5" stroke-linecap="round" opacity="0.35"/>
+  <!-- Port LEDs on top face -->
+  <circle cx="62" cy="84" r="2" fill="currentColor" opacity="0.8"/>
+  <circle cx="71" cy="79.5" r="2" fill="currentColor" opacity="0.8"/>
+  <circle cx="80" cy="75" r="2" fill="currentColor" opacity="0.6"/>
+  <circle cx="89" cy="70.5" r="2" fill="currentColor" opacity="0.4"/>
+  <circle cx="97" cy="66.5" r="2" fill="#9AA2B0" opacity="0.3"/>
+  <!-- Power LED left face -->
+  <circle cx="28" cy="78" r="3" fill="currentColor" opacity="0.85"/>
+  <circle cx="28" cy="78" r="1.5" fill="currentColor"/>
+  <!-- Brand line top face -->
+  <line x1="30" y1="78" x2="44" y2="71" stroke="#CBD1DA" stroke-width="2.5" stroke-linecap="round"/>
 </svg>

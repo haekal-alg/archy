@@ -1,42 +1,33 @@
-<svg width="128" height="128" viewBox="0 0 56 56" fill="none" xmlns="http://www.w3.org/2000/svg" style="filter: drop-shadow(0 2px 4px rgba(0,0,0,0.45))">
-  <!-- Cast shadow -->
-  <rect x="6" y="20" width="46" height="18" rx="3" fill="black" opacity="0.18" />
-  <!-- Main body -->
-  <rect x="4" y="18" width="46" height="18" rx="3" fill="#7b8fa3" />
-  <!-- Top face highlight -->
-  <path d="M7 18 H47 Q50 18 50 21 V24 H4 V21 Q4 18 7 18Z" fill="white" opacity="0.18" />
-  <!-- Right edge depth -->
-  <path d="M46 18 H47 Q50 18 50 21 V33 Q50 36 47 36 H46 V18Z" fill="black" opacity="0.12" />
-  <!-- Bottom edge -->
-  <rect x="4" y="32" width="46" height="4" rx="0 0 3 3" fill="black" opacity="0.08" />
-  <!-- Power LED -->
-  <circle cx="9" cy="27" r="2.2" fill="#4caf50" />
-  <circle cx="8.5" cy="26.5" r="0.8" fill="white" opacity="0.45" />
-  <!-- Brand line -->
-  <rect x="13" y="21" width="10" height="2" rx="1" fill="white" opacity="0.15" />
-  <!-- Port row - 8 ethernet ports -->
-  <rect x="8" y="29" width="4.2" height="5" rx="0.8" fill="black" opacity="0.3" />
-  <rect x="8.3" y="29.3" width="3.6" height="4.4" rx="0.5" fill="white" opacity="0.12" />
-  <rect x="13.5" y="29" width="4.2" height="5" rx="0.8" fill="black" opacity="0.3" />
-  <rect x="13.8" y="29.3" width="3.6" height="4.4" rx="0.5" fill="white" opacity="0.12" />
-  <rect x="19" y="29" width="4.2" height="5" rx="0.8" fill="black" opacity="0.3" />
-  <rect x="19.3" y="29.3" width="3.6" height="4.4" rx="0.5" fill="white" opacity="0.12" />
-  <rect x="24.5" y="29" width="4.2" height="5" rx="0.8" fill="black" opacity="0.3" />
-  <rect x="24.8" y="29.3" width="3.6" height="4.4" rx="0.5" fill="white" opacity="0.12" />
-  <rect x="30" y="29" width="4.2" height="5" rx="0.8" fill="black" opacity="0.3" />
-  <rect x="30.3" y="29.3" width="3.6" height="4.4" rx="0.5" fill="white" opacity="0.12" />
-  <rect x="35.5" y="29" width="4.2" height="5" rx="0.8" fill="black" opacity="0.3" />
-  <rect x="35.8" y="29.3" width="3.6" height="4.4" rx="0.5" fill="white" opacity="0.12" />
-  <rect x="41" y="29" width="4.2" height="5" rx="0.8" fill="black" opacity="0.3" />
-  <rect x="41.3" y="29.3" width="3.6" height="4.4" rx="0.5" fill="white" opacity="0.12" />
-  <!-- Port status LEDs -->
-  <circle cx="10.1" cy="22.5" r="1" fill="#4caf50" opacity="0.8" />
-  <circle cx="15.6" cy="22.5" r="1" fill="#4caf50" opacity="0.6" />
-  <circle cx="21.1" cy="22.5" r="1" fill="#ffab40" opacity="0.6" />
-  <circle cx="26.6" cy="22.5" r="1" fill="#4caf50" opacity="0.5" />
-  <circle cx="32.1" cy="22.5" r="1" fill="white" opacity="0.15" />
-  <circle cx="37.6" cy="22.5" r="1" fill="white" opacity="0.15" />
-  <circle cx="43.1" cy="22.5" r="1" fill="white" opacity="0.15" />
-  <!-- Console port -->
-  <rect x="46" y="25" width="2.5" height="3" rx="0.5" fill="white" opacity="0.15" />
+<svg width="128" height="128" viewBox="0 0 128 128" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="sw-top" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#F0F2F5"/>
+      <stop offset="100%" stop-color="#E2E6EC"/>
+    </linearGradient>
+  </defs>
+  <!-- Left face -->
+  <path d="M50,76 L18,60 L18,84 L50,100 Z" fill="#C5CBD4"/>
+  <!-- Right face -->
+  <path d="M50,76 L106,48 L106,72 L50,100 Z" fill="#AEB6C4"/>
+  <!-- Top face -->
+  <path d="M50,76 L106,48 L74,32 L18,60 Z" fill="url(#sw-top)"/>
+  <!-- Port row on right face - 6 ports -->
+  <line x1="58" y1="92" x2="63" y2="89.5" stroke="#2A3444" stroke-width="4" stroke-linecap="round" opacity="0.4"/>
+  <line x1="67" y1="87.5" x2="72" y2="85" stroke="#2A3444" stroke-width="4" stroke-linecap="round" opacity="0.4"/>
+  <line x1="76" y1="83" x2="81" y2="80.5" stroke="#2A3444" stroke-width="4" stroke-linecap="round" opacity="0.4"/>
+  <line x1="85" y1="78.5" x2="90" y2="76" stroke="#2A3444" stroke-width="4" stroke-linecap="round" opacity="0.4"/>
+  <line x1="94" y1="74" x2="99" y2="71.5" stroke="#2A3444" stroke-width="4" stroke-linecap="round" opacity="0.4"/>
+  <!-- Port status LEDs on top face -->
+  <circle cx="62" cy="72" r="2" fill="currentColor" opacity="0.9"/>
+  <circle cx="71" cy="67.5" r="2" fill="currentColor" opacity="0.8"/>
+  <circle cx="80" cy="63" r="2" fill="currentColor" opacity="0.7"/>
+  <circle cx="89" cy="58.5" r="2" fill="currentColor" opacity="0.5"/>
+  <circle cx="98" cy="54" r="2" fill="#9AA2B0" opacity="0.3"/>
+  <!-- Power LED left face -->
+  <circle cx="26" cy="66" r="3.5" fill="currentColor" opacity="0.85"/>
+  <circle cx="26" cy="66" r="1.8" fill="currentColor"/>
+  <!-- Brand line top face -->
+  <line x1="26" y1="66" x2="42" y2="58" stroke="#CBD1DA" stroke-width="2.5" stroke-linecap="round"/>
+  <!-- Console port left face -->
+  <line x1="26" y1="76" x2="38" y2="70" stroke="#9AA2B0" stroke-width="2" stroke-linecap="round" opacity="0.4"/>
 </svg>

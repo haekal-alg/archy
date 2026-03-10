@@ -1,52 +1,40 @@
-<svg width="128" height="128" viewBox="0 0 56 56" fill="none" xmlns="http://www.w3.org/2000/svg" style="filter: drop-shadow(0 2px 4px rgba(0,0,0,0.45))">
-  <!-- Cast shadow -->
-  <rect x="13" y="7" width="32" height="44" rx="3" fill="black" opacity="0.18" />
-  <!-- Main tower body -->
-  <rect x="11" y="5" width="32" height="44" rx="3" fill="#3dd68c" />
-  <!-- Top face highlight -->
-  <path d="M14 5 H40 Q43 5 43 8 V12 H11 V8 Q11 5 14 5Z" fill="white" opacity="0.18" />
-  <!-- Right edge depth -->
-  <path d="M39 5 H40 Q43 5 43 8 V46 Q43 49 40 49 H39 V5Z" fill="black" opacity="0.12" />
-  <!-- Bottom edge -->
-  <rect x="11" y="45" width="32" height="4" rx="0 0 3 3" fill="black" opacity="0.08" />
-  <!-- Drive bay 1 -->
-  <rect x="14" y="9" width="24" height="10" rx="1.5" fill="black" opacity="0.25" />
-  <rect x="14.5" y="9.5" width="23" height="9" rx="1" fill="white" opacity="0.08" />
-  <!-- Drive bay 1 detail -->
-  <circle cx="18" cy="14" r="1.5" fill="#4caf50" opacity="0.8" />
-  <circle cx="17.5" cy="13.5" r="0.5" fill="white" opacity="0.4" />
-  <rect x="22" y="12" width="6" height="1.2" rx="0.5" fill="white" opacity="0.15" />
-  <rect x="22" y="14.5" width="10" height="1.2" rx="0.5" fill="white" opacity="0.1" />
-  <!-- Drive bay 1 handle -->
-  <rect x="34" y="11" width="2.5" height="6" rx="0.8" fill="white" opacity="0.12" />
-  <!-- Divider -->
-  <rect x="14" y="20.5" width="24" height="0.8" rx="0.4" fill="white" opacity="0.06" />
-  <!-- Drive bay 2 -->
-  <rect x="14" y="22" width="24" height="10" rx="1.5" fill="black" opacity="0.22" />
-  <rect x="14.5" y="22.5" width="23" height="9" rx="1" fill="white" opacity="0.06" />
-  <!-- Drive bay 2 detail -->
-  <circle cx="18" cy="27" r="1.5" fill="#ffab40" opacity="0.7" />
-  <circle cx="17.5" cy="26.5" r="0.5" fill="white" opacity="0.35" />
-  <rect x="22" y="25" width="8" height="1.2" rx="0.5" fill="white" opacity="0.12" />
-  <rect x="22" y="27.5" width="12" height="1.2" rx="0.5" fill="white" opacity="0.08" />
-  <!-- Drive bay 2 handle -->
-  <rect x="34" y="24" width="2.5" height="6" rx="0.8" fill="white" opacity="0.1" />
-  <!-- Divider -->
-  <rect x="14" y="33.5" width="24" height="0.8" rx="0.4" fill="white" opacity="0.06" />
-  <!-- Drive bay 3 -->
-  <rect x="14" y="35" width="24" height="10" rx="1.5" fill="black" opacity="0.2" />
-  <rect x="14.5" y="35.5" width="23" height="9" rx="1" fill="white" opacity="0.05" />
-  <!-- Drive bay 3 detail -->
-  <circle cx="18" cy="40" r="1.5" fill="white" opacity="0.15" />
-  <rect x="22" y="38" width="6" height="1.2" rx="0.5" fill="white" opacity="0.1" />
-  <rect x="22" y="40.5" width="10" height="1.2" rx="0.5" fill="white" opacity="0.07" />
-  <!-- Drive bay 3 handle -->
-  <rect x="34" y="37" width="2.5" height="6" rx="0.8" fill="white" opacity="0.08" />
-  <!-- Ventilation slots on right side -->
-  <rect x="40" y="14" width="1.5" height="0.8" rx="0.4" fill="white" opacity="0.08" />
-  <rect x="40" y="16.5" width="1.5" height="0.8" rx="0.4" fill="white" opacity="0.08" />
-  <rect x="40" y="27" width="1.5" height="0.8" rx="0.4" fill="white" opacity="0.06" />
-  <rect x="40" y="29.5" width="1.5" height="0.8" rx="0.4" fill="white" opacity="0.06" />
-  <rect x="40" y="40" width="1.5" height="0.8" rx="0.4" fill="white" opacity="0.05" />
-  <rect x="40" y="42.5" width="1.5" height="0.8" rx="0.4" fill="white" opacity="0.05" />
+<svg width="128" height="128" viewBox="0 0 128 128" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="sv-top" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#F0F2F5"/>
+      <stop offset="100%" stop-color="#E2E6EC"/>
+    </linearGradient>
+  </defs>
+  <!-- Left face -->
+  <path d="M58,44 L30,30 L30,104 L58,118 Z" fill="#C5CBD4"/>
+  <!-- Right face -->
+  <path d="M58,44 L98,24 L98,98 L58,118 Z" fill="#AEB6C4"/>
+  <!-- Top face -->
+  <path d="M58,44 L98,24 L70,10 L30,30 Z" fill="url(#sv-top)"/>
+  <!-- Bay divider 1 -->
+  <line x1="58" y1="69" x2="98" y2="49" stroke="#9AA2B0" stroke-width="1"/>
+  <line x1="58" y1="69" x2="30" y2="55" stroke="#B0B8C4" stroke-width="1"/>
+  <!-- Bay divider 2 -->
+  <line x1="58" y1="94" x2="98" y2="74" stroke="#9AA2B0" stroke-width="1"/>
+  <line x1="58" y1="94" x2="30" y2="80" stroke="#B0B8C4" stroke-width="1"/>
+  <!-- Blue LED circles - right face -->
+  <circle cx="66" cy="54" r="4" fill="currentColor" opacity="0.85"/>
+  <circle cx="66" cy="54" r="2" fill="currentColor"/>
+  <circle cx="66" cy="79" r="4" fill="currentColor" opacity="0.85"/>
+  <circle cx="66" cy="79" r="2" fill="currentColor"/>
+  <circle cx="66" cy="104" r="4" fill="currentColor" opacity="0.6"/>
+  <circle cx="66" cy="104" r="2" fill="currentColor" opacity="0.8"/>
+  <!-- Drive slots - right face bay 1 -->
+  <line x1="74" y1="49" x2="92" y2="40" stroke="#9AA2B0" stroke-width="1.5" stroke-linecap="round"/>
+  <line x1="74" y1="53" x2="88" y2="46" stroke="#9AA2B0" stroke-width="1.2" stroke-linecap="round" opacity="0.5"/>
+  <!-- Drive slots - bay 2 -->
+  <line x1="74" y1="74" x2="92" y2="65" stroke="#9AA2B0" stroke-width="1.5" stroke-linecap="round"/>
+  <line x1="74" y1="78" x2="88" y2="71" stroke="#9AA2B0" stroke-width="1.2" stroke-linecap="round" opacity="0.5"/>
+  <!-- Drive slots - bay 3 -->
+  <line x1="74" y1="99" x2="92" y2="90" stroke="#9AA2B0" stroke-width="1.5" stroke-linecap="round"/>
+  <line x1="74" y1="103" x2="88" y2="96" stroke="#9AA2B0" stroke-width="1.2" stroke-linecap="round" opacity="0.5"/>
+  <!-- Ventilation left face -->
+  <line x1="34" y1="36" x2="46" y2="30" stroke="#B8C0CC" stroke-width="0.8" opacity="0.5"/>
+  <line x1="34" y1="40" x2="46" y2="34" stroke="#B8C0CC" stroke-width="0.8" opacity="0.5"/>
+  <line x1="34" y1="44" x2="46" y2="38" stroke="#B8C0CC" stroke-width="0.8" opacity="0.5"/>
 </svg>

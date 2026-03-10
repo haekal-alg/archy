@@ -39,7 +39,6 @@ import SettingsModal, { SettingsTab } from './components/SettingsModal';
 import { ToolPalette } from './components/ToolPalette';
 import { ToolType } from './types/tools';
 import { useToast } from './hooks/useToast';
-import { ExportIcon } from './components/StatusIcons';
 import './App.css';
 import './styles/theme-vars.css';
 import './styles/common.css';
@@ -68,7 +67,7 @@ interface HistoryState {
 }
 
 const AppContent: React.FC = () => {
-  const { activeTab, setActiveTab, createConnection, setTopologyNodes, setOnFocusNode, isTerminalFullscreen } = useTabContext();
+  const { activeTab, setActiveTab, createConnection, createLocalTerminal, setTopologyNodes, setOnFocusNode, isTerminalFullscreen } = useTabContext();
   const [nodes, setNodes, onNodesChange] = useNodesState<Node>([] as Node[]);
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([] as Edge[]);
   const [selectedNode, setSelectedNode] = useState<Node | null>(null);
@@ -101,7 +100,6 @@ const AppContent: React.FC = () => {
 
   // Export state
   const [isExporting, setIsExporting] = useState(false);
-  const [showExportMenu, setShowExportMenu] = useState(false);
   const [showClearConfirm, setShowClearConfirm] = useState(false);
 
   // Setup menu event listeners with refs to avoid stale closures
@@ -418,14 +416,24 @@ const AppContent: React.FC = () => {
           setSelectedEdge(null);
           setContextMenu(null);
         }
-      } else if ((event.ctrlKey || event.metaKey) && event.key === '1') {
+      } else if (event.altKey && event.key === '1') {
         // Switch to Design tab
         event.preventDefault();
         setActiveTab('design');
-      } else if ((event.ctrlKey || event.metaKey) && event.key === '2') {
+      } else if (event.altKey && event.key === '2') {
         // Switch to Connections tab
         event.preventDefault();
         setActiveTab('connections');
+      } else if ((event.ctrlKey || event.metaKey) && event.key === 't') {
+        // Open local terminal
+        event.preventDefault();
+        createLocalTerminal();
+        setActiveTab('connections');
+      } else if ((event.ctrlKey || event.metaKey) && event.shiftKey && event.key === 'F') {
+        // Open SFTP modal
+        event.preventDefault();
+        setActiveTab('connections');
+        document.dispatchEvent(new Event('open-sftp-modal'));
       } else if ((event.ctrlKey || event.metaKey) && event.key === 's') {
         // Save diagram
         event.preventDefault();
@@ -456,7 +464,7 @@ const AppContent: React.FC = () => {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [handleUndo, handleRedo, handleToolChange, settingsModal.open, setActiveTab]);
+  }, [handleUndo, handleRedo, handleToolChange, settingsModal.open, setActiveTab, createLocalTerminal]);
 
   // Track node position changes and save to history when dragging ends
   const nodesMoveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -685,7 +693,6 @@ const AppContent: React.FC = () => {
     setSelectedNode(null);
     setSelectedEdge(null);
     setContextMenu(null);
-    setShowExportMenu(false);
   }, []);
 
   const onNodeDoubleClick = useCallback((event: React.MouseEvent, node: Node) => {
@@ -1114,7 +1121,6 @@ const AppContent: React.FC = () => {
     }
 
     setIsExporting(true);
-    setShowExportMenu(false);
 
     try {
       // Get viewport element (the actual flow canvas)
@@ -1175,7 +1181,6 @@ const AppContent: React.FC = () => {
     }
 
     setIsExporting(true);
-    setShowExportMenu(false);
 
     try {
       const viewportElement = document.querySelector('.react-flow__viewport') as HTMLElement;
@@ -1234,7 +1239,6 @@ const AppContent: React.FC = () => {
     }
 
     setIsExporting(true);
-    setShowExportMenu(false);
 
     try {
       const viewportElement = document.querySelector('.react-flow__viewport') as HTMLElement;
@@ -1473,6 +1477,16 @@ const AppContent: React.FC = () => {
               activeTool={activeTool}
               onToolChange={handleToolChange}
               isShapeLibraryOpen={isShapeLibraryOpen}
+              onUndo={handleUndo}
+              onRedo={handleRedo}
+              canUndo={canUndo}
+              canRedo={canRedo}
+              onExportPNG={handleExportPNG}
+              onExportJPG={handleExportJPG}
+              onExportSVG={handleExportSVG}
+              isExporting={isExporting}
+              hasNodes={nodes.length > 0}
+              hasUnsavedChanges={hasUnsavedChanges}
             />
           </DesignTab>
         </ErrorBoundary>
@@ -1489,196 +1503,6 @@ const AppContent: React.FC = () => {
           isOpen={isStylePanelOpen}
           onToggle={() => setIsStylePanelOpen(!isStylePanelOpen)}
         />
-
-        {/* Top control panel */}
-        <div style={{
-          position: 'absolute',
-          top: '10px',
-          right: '10px',
-          zIndex: 10,
-          display: 'flex',
-          gap: theme.spacing.md,
-          alignItems: 'center',
-          background: theme.background.elevated,
-          padding: `${theme.spacing.md} ${theme.spacing.lg}`,
-          borderRadius: theme.radius.lg,
-          boxShadow: theme.shadow.lg,
-          border: `1px solid ${theme.border.default}`
-        }}>
-          {/* Undo/Redo buttons */}
-          <button
-            onClick={handleUndo}
-            disabled={!canUndo || isExporting}
-            title="Undo (Ctrl+Z)"
-            style={{
-              padding: `${theme.spacing.sm} ${theme.spacing.lg}`,
-              background: canUndo && !isExporting ? theme.gradient.button : theme.background.hover,
-              color: theme.text.primary,
-              border: `1px solid ${canUndo && !isExporting ? theme.accent.blue : theme.border.default}`,
-              borderRadius: theme.radius.sm,
-              cursor: canUndo && !isExporting ? 'pointer' : 'not-allowed',
-              fontSize: theme.fontSize.md,
-              fontWeight: theme.fontWeight.medium,
-              transition: theme.transition.normal,
-              opacity: canUndo && !isExporting ? 1 : 0.5
-            }}
-          >
-            ↶ Undo
-          </button>
-
-          <button
-            onClick={handleRedo}
-            disabled={!canRedo || isExporting}
-            title="Redo (Ctrl+Y / Ctrl+Shift+Z)"
-            style={{
-              padding: `${theme.spacing.sm} ${theme.spacing.lg}`,
-              background: canRedo && !isExporting ? theme.gradient.button : theme.background.hover,
-              color: theme.text.primary,
-              border: `1px solid ${canRedo && !isExporting ? theme.accent.blue : theme.border.default}`,
-              borderRadius: theme.radius.sm,
-              cursor: canRedo && !isExporting ? 'pointer' : 'not-allowed',
-              fontSize: theme.fontSize.md,
-              fontWeight: theme.fontWeight.medium,
-              transition: theme.transition.normal,
-              opacity: canRedo && !isExporting ? 1 : 0.5
-            }}
-          >
-            ↷ Redo
-          </button>
-
-          <div style={{ width: '1px', height: '24px', background: theme.border.default, margin: `0 ${theme.spacing.xs}` }} />
-
-          {/* Export dropdown */}
-          <div style={{ position: 'relative' }}>
-            <button
-              onClick={() => setShowExportMenu(!showExportMenu)}
-              disabled={isExporting || nodes.length === 0}
-              title="Export diagram"
-              style={{
-                padding: `${theme.spacing.sm} ${theme.spacing.lg}`,
-                background: !isExporting && nodes.length > 0 ? theme.accent.green : theme.background.hover,
-                color: theme.text.primary,
-                border: `1px solid ${!isExporting && nodes.length > 0 ? theme.accent.green : theme.border.default}`,
-                borderRadius: theme.radius.sm,
-                cursor: !isExporting && nodes.length > 0 ? 'pointer' : 'not-allowed',
-                fontSize: theme.fontSize.md,
-                fontWeight: theme.fontWeight.medium,
-                transition: theme.transition.normal,
-                display: 'flex',
-                alignItems: 'center',
-                gap: theme.spacing.sm,
-                opacity: !isExporting && nodes.length > 0 ? 1 : 0.5
-              }}
-            >
-              {isExporting ? 'Exporting...' : <><ExportIcon size={14} /> Export</>} {'\u25BE'}
-            </button>
-
-            {showExportMenu && !isExporting && (
-              <div style={{
-                position: 'absolute',
-                top: '100%',
-                right: '0',
-                marginTop: theme.spacing.xs,
-                background: theme.background.elevated,
-                border: `1px solid ${theme.border.default}`,
-                borderRadius: theme.radius.md,
-                boxShadow: theme.shadow.lg,
-                minWidth: '140px',
-                zIndex: theme.zIndex.dropdown
-              }}>
-                <button
-                  onClick={handleExportPNG}
-                  style={{
-                    width: '100%',
-                    padding: '10px 16px',
-                    background: theme.background.elevated,
-                    border: 'none',
-                    borderBottom: `1px solid ${theme.border.subtle}`,
-                    textAlign: 'left',
-                    cursor: 'pointer',
-                    fontSize: theme.fontSize.md,
-                    color: theme.text.primary,
-                    transition: theme.transition.fast,
-                    borderTopLeftRadius: theme.radius.md,
-                    borderTopRightRadius: theme.radius.md
-                  }}
-                  onMouseEnter={(e) => e.currentTarget.style.background = theme.background.hover}
-                  onMouseLeave={(e) => e.currentTarget.style.background = theme.background.elevated}
-                >
-                  Export as PNG
-                </button>
-                <button
-                  onClick={handleExportJPG}
-                  style={{
-                    width: '100%',
-                    padding: '10px 16px',
-                    background: theme.background.elevated,
-                    border: 'none',
-                    borderBottom: `1px solid ${theme.border.subtle}`,
-                    textAlign: 'left',
-                    cursor: 'pointer',
-                    fontSize: theme.fontSize.md,
-                    color: theme.text.primary,
-                    transition: theme.transition.fast
-                  }}
-                  onMouseEnter={(e) => e.currentTarget.style.background = theme.background.hover}
-                  onMouseLeave={(e) => e.currentTarget.style.background = theme.background.elevated}
-                >
-                  Export as JPG
-                </button>
-                <button
-                  onClick={handleExportSVG}
-                  style={{
-                    width: '100%',
-                    padding: '10px 16px',
-                    background: theme.background.elevated,
-                    border: 'none',
-                    textAlign: 'left',
-                    cursor: 'pointer',
-                    fontSize: theme.fontSize.md,
-                    color: theme.text.primary,
-                    transition: theme.transition.fast,
-                    borderBottomLeftRadius: theme.radius.md,
-                    borderBottomRightRadius: theme.radius.md
-                  }}
-                  onMouseEnter={(e) => e.currentTarget.style.background = theme.background.hover}
-                  onMouseLeave={(e) => e.currentTarget.style.background = theme.background.elevated}
-                >
-                  Export as SVG
-                </button>
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Bottom tip panel */}
-        <div style={{
-          position: 'absolute',
-          bottom: '20px',
-          left: '50%',
-          transform: 'translateX(-50%)',
-          zIndex: 10,
-          background: theme.background.elevated,
-          color: theme.text.secondary,
-          padding: `${theme.spacing.sm} ${theme.spacing.lg}`,
-          borderRadius: theme.radius.md,
-          fontSize: theme.fontSize.sm,
-          boxShadow: theme.shadow.md,
-          border: `1px solid ${theme.border.default}`
-        }}>
-          <strong style={{ color: theme.accent.blue }}>Tip:</strong> Double-click nodes to edit | Right-click to delete/connect | {currentFilePath ? currentFilePath : diagramName}
-          <span style={{
-            marginLeft: theme.spacing.md,
-            padding: `1px ${theme.spacing.sm}`,
-            borderRadius: theme.radius.xs,
-            fontSize: theme.fontSize.xs,
-            fontWeight: theme.fontWeight.medium,
-            color: hasUnsavedChanges ? theme.status.warning : theme.status.success,
-            background: hasUnsavedChanges ? theme.status.warningBg : theme.status.successBg,
-          }}>
-            {hasUnsavedChanges ? 'Unsaved' : 'Saved'}
-          </span>
-        </div>
 
         {contextMenu && (
           <ContextMenu
