@@ -91,17 +91,17 @@ const ShapeLibrary: React.FC<ShapeLibraryProps> = ({ onAddNode, onAddGroup, onAd
   const renderShapeIcon = (shape: ShapeEntry) => {
     const loaded = loadedIcons[shape.iconName];
     if (loaded) {
-      // Render the loaded SVG at preview size
+      // Render the loaded PNG at preview size
       const previewSize = 36;
       return (
-        <div
+        <img
           aria-hidden="true"
-          style={{ width: previewSize, height: previewSize, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-          dangerouslySetInnerHTML={{
-            __html: loaded.svg
-              .replace(/width="[^"]*"/, `width="${previewSize}"`)
-              .replace(/height="[^"]*"/, `height="${previewSize}"`)
-          }}
+          src={loaded.image}
+          width={previewSize}
+          height={previewSize}
+          style={{ objectFit: 'contain' }}
+          alt={loaded.label}
+          draggable={false}
         />
       );
     }

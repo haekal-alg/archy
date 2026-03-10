@@ -1,6 +1,6 @@
 /**
- * Icon manager - loads SVG icons from the icons/ directory
- * Users can customize icons by editing the SVG files directly
+ * Icon manager - loads PNG icons from the icons/ directory
+ * Users can customize icons by replacing the PNG files directly
  */
 
 import { ipcMain, app } from 'electron';
@@ -26,7 +26,7 @@ interface CategoriesFile {
 
 interface LoadedIcon {
   name: string;
-  svg: string;
+  image: string;
   label: string;
   deviceType: string;
 }
@@ -56,21 +56,22 @@ async function loadAllIcons(): Promise<LoadIconsResult> {
     const catContent = await fsPromises.readFile(catPath, 'utf-8');
     const catData: CategoriesFile = JSON.parse(catContent);
 
-    // Load each SVG file referenced in the icon definitions
+    // Load each PNG file referenced in the icon definitions
     const icons: Record<string, LoadedIcon> = {};
 
     for (const [name, meta] of Object.entries(catData.icons)) {
-      const svgPath = path.join(iconsDir, `${name}.svg`);
+      const pngPath = path.join(iconsDir, `${name}.png`);
       try {
-        const svg = await fsPromises.readFile(svgPath, 'utf-8');
+        const buffer = await fsPromises.readFile(pngPath);
+        const image = `data:image/png;base64,${buffer.toString('base64')}`;
         icons[name] = {
           name,
-          svg,
+          image,
           label: meta.label,
           deviceType: meta.deviceType,
         };
       } catch {
-        console.warn(`Icon file not found: ${svgPath}`);
+        console.warn(`Icon file not found: ${pngPath}`);
       }
     }
 

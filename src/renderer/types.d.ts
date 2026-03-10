@@ -13,7 +13,7 @@ export interface ElectronAPI {
   loadIcons: () => Promise<{
     success: boolean;
     categories: Array<{ id: string; label: string; icons: string[] }>;
-    icons: Record<string, { name: string; svg: string; label: string; deviceType: string }>;
+    icons: Record<string, { name: string; image: string; label: string; deviceType: string }>;
     error?: string;
   }>;
 

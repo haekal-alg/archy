@@ -25,10 +25,17 @@ export const DynamicIcon: React.FC<{ deviceType: string; fallback: React.ReactEl
         alignItems: 'center',
         justifyContent: 'center',
         filter: ICON_FILTER,
-        color: color || 'currentColor',
       }}
-      dangerouslySetInnerHTML={{ __html: loaded.svg.replace(/width="[^"]*"/, `width="${size}"`).replace(/height="[^"]*"/, `height="${size}"`) }}
-    />
+    >
+      <img
+        src={loaded.image}
+        width={size}
+        height={size}
+        style={{ objectFit: 'contain' }}
+        alt={loaded.label}
+        draggable={false}
+      />
+    </div>
   );
 };
 

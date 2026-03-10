@@ -1,11 +1,11 @@
 /**
- * Icon store - loads custom SVG icons from disk via IPC
+ * Icon store - loads custom PNG icons from disk via IPC
  * Icons are loaded once at startup and cached in memory
  */
 
 export interface LoadedIcon {
   name: string;
-  svg: string;
+  image: string;
   label: string;
   deviceType: string;
 }
