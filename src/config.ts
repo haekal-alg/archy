@@ -4,8 +4,8 @@
 export const CONFIG = {
   // Node Connection Handle Settings
   handles: {
-    size: 10, // Size in pixels for connection handles (width and height)
-    borderWidth: 2, // Border width for handles in pixels
+    size: 5, // Size in pixels for connection handles (width and height)
+    borderWidth: 1.5, // Border width for handles in pixels
     borderColor: 'white', // Border color for handles
   },
 
@@ -43,6 +43,17 @@ export const CONFIG = {
     minHeight: 150, // Minimum height for network zones
     defaultBorderWidth: 3, // Default border width
     borderRadius: 16, // Border radius in pixels
+  },
+
+  // Device Node Settings
+  deviceNodes: {
+    defaultIconSize: 52,
+    minIconSize: 24,
+    maxIconSize: 128,
+    defaultLabelSize: 11,
+    minLabelSize: 8,
+    maxLabelSize: 24,
+    resizeHandleSize: 8,
   },
 
   // Text Node Settings

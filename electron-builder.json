@@ -32,6 +32,10 @@
     {
       "from": "build/icon.png",
       "to": "icon.png"
+    },
+    {
+      "from": "icons",
+      "to": "icons"
     }
   ],
   "asarUnpack": [
@@ -46,7 +50,7 @@
       "target": "portable",
       "arch": ["x64"]
     }],
-    "icon": "build/icon.ico",
+    "icon": "build/icon.png",
     "forceCodeSigning": false,
     "signAndEditExecutable": false
   },

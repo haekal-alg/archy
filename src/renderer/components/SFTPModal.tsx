@@ -462,6 +462,16 @@ const SFTPModal: React.FC<SFTPModalProps> = ({ isOpen, onClose }) => {
               {'\u2192'} {state.selectedHost.label}
             </span>
           )}
+          {!transferActive && (
+            <span style={{
+              fontSize: '11px',
+              color: theme.text.disabled,
+              marginLeft: '12px',
+              fontWeight: 400,
+            }}>
+              Esc to close
+            </span>
+          )}
         </div>
         <button
           onClick={handleClose}
@@ -627,7 +637,7 @@ const SFTPModal: React.FC<SFTPModalProps> = ({ isOpen, onClose }) => {
                         </div>
                         {!host.hasSSH && (
                           <div style={{ fontSize: '10px', color: theme.text.tertiary, fontStyle: 'italic' }}>
-                            SSH not available
+                            Non-SSH connections don't support file transfer
                           </div>
                         )}
                       </button>

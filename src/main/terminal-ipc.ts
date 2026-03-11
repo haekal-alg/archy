@@ -18,9 +18,9 @@ import {
   closeLocalTerminal,
   handleLocalDataConsumed,
   getLocalSession,
-  getLocalTerminalCwd,
+  getLocalTerminalCwdAsync,
 } from './local-terminal';
-import { cleanupBuffer } from './buffer-manager';
+
 
 /**
  * Register all terminal-related IPC handlers
@@ -50,9 +50,6 @@ export function registerTerminalIPCHandlers(): void {
 
   // Close SSH or local terminal session (fire-and-forget)
   ipcMain.on('close-ssh-session', (event, { connectionId }) => {
-    // Clean up buffer state first
-    cleanupBuffer(connectionId);
-
     // Check if it's an SSH session
     const sshSession = getSSHSession(connectionId);
     if (sshSession) {
@@ -85,7 +82,7 @@ export function registerTerminalIPCHandlers(): void {
 
   // Open local terminal's directory in system file explorer
   ipcMain.handle('open-terminal-in-explorer', async (event, { connectionId }) => {
-    const cwd = getLocalTerminalCwd(connectionId);
+    const cwd = await getLocalTerminalCwdAsync(connectionId);
     if (cwd) {
       try {
         await shell.openPath(cwd);
@@ -99,7 +96,7 @@ export function registerTerminalIPCHandlers(): void {
 
   // Get local terminal's current working directory
   ipcMain.handle('get-local-terminal-cwd', async (event, { connectionId }) => {
-    const cwd = getLocalTerminalCwd(connectionId);
+    const cwd = await getLocalTerminalCwdAsync(connectionId);
     if (cwd) {
       return { success: true, cwd };
     }

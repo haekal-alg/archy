@@ -1,9 +1,10 @@
-import React, { useState, useMemo } from 'react';
-import { Handle, Position, NodeProps } from '@xyflow/react';
+import React, { useState, useMemo, useCallback, useRef } from 'react';
+import { Handle, Position, NodeProps, useReactFlow, useStoreApi } from '@xyflow/react';
 import CONFIG from '../../config';
 import theme from '../../theme';
-import { CheckIcon, WarningIcon } from './StatusIcons';
+import { useNodeConnectionStatus, NodeConnectionStatus } from '../contexts/NodeConnectionStatusContext';
 import {
+  DynamicIcon,
   RouterIcon,
   ServerIcon,
   FirewallIcon,
@@ -18,6 +19,7 @@ import {
   AttackIcon,
   MobileIcon
 } from './NetworkIcons';
+import { LightningIcon, WarningIcon } from './StatusIcons';
 
 export interface SSHPortForward {
   localPort: number;
@@ -54,6 +56,8 @@ export interface EnhancedDeviceData {
   operatingSystem?: string;
   customCommand?: string;
   connections?: ConnectionConfig[];
+  iconSize?: number;
+  labelSize?: number;
 }
 
 // Static style constants extracted to module scope (never re-created)
@@ -64,83 +68,52 @@ const HANDLE_BASE_STYLE: React.CSSProperties = {
   transition: 'opacity 0.2s ease-in-out',
 };
 
-const ICON_CONTAINER_STYLE: React.CSSProperties = {
-  marginBottom: theme.spacing.md,
-  display: 'flex',
-  justifyContent: 'center',
-  alignItems: 'center',
-};
-
-const LABEL_STYLE: React.CSSProperties = {
-  fontWeight: theme.fontWeight.bold,
-  marginBottom: theme.spacing.xs,
-  fontSize: theme.fontSize.md,
-  color: theme.text.primary,
-  wordWrap: 'break-word',
-};
-
-const OS_STYLE: React.CSSProperties = {
-  fontSize: theme.fontSize.sm,
-  color: theme.text.secondary,
-  marginTop: theme.spacing.xs,
-};
-
-const STATUS_CONNECTED_STYLE: React.CSSProperties = {
-  marginTop: theme.spacing.sm,
-  fontSize: theme.fontSize.xs,
-  color: theme.accent.green,
-  display: 'flex',
-  alignItems: 'center',
-  justifyContent: 'center',
-  gap: theme.spacing.xs,
-};
-
-const STATUS_DISCONNECTED_STYLE: React.CSSProperties = {
-  marginTop: theme.spacing.sm,
-  fontSize: theme.fontSize.xs,
-  color: theme.text.tertiary,
-  display: 'flex',
-  alignItems: 'center',
-  justifyContent: 'center',
-  gap: theme.spacing.xs,
-};
-
 const CENTER_STYLE: React.CSSProperties = { textAlign: 'center' };
 
-const EnhancedDeviceNode: React.FC<NodeProps> = React.memo(({ data, selected }) => {
+const STATUS_COLORS: Record<NodeConnectionStatus, string> = {
+  connected: theme.accent.green,
+  connecting: theme.accent.orange,
+  error: theme.accent.red,
+  disconnected: theme.text.disabled,
+};
+
+const EnhancedDeviceNode: React.FC<NodeProps> = React.memo(({ id, data, selected }) => {
   const deviceData = data as unknown as EnhancedDeviceData;
   const [isHovered, setIsHovered] = useState(false);
+  const [dragIconSize, setDragIconSize] = useState<number | null>(null);
+  const [isEditingLabel, setIsEditingLabel] = useState(false);
+  const [editValue, setEditValue] = useState('');
+  const labelInputRef = useRef<HTMLInputElement>(null);
+  const dragRef = useRef<{ startX: number; startY: number; startSize: number } | null>(null);
+  const { updateNodeData } = useReactFlow();
+  const storeApi = useStoreApi();
+  const connectionStatus = useNodeConnectionStatus(id);
+
+  const iconSize = deviceData.iconSize ?? CONFIG.deviceNodes.defaultIconSize;
+  const labelSize = deviceData.labelSize ?? CONFIG.deviceNodes.defaultLabelSize;
+  const effectiveIconSize = dragIconSize ?? iconSize;
 
   const getIcon = () => {
     const color = deviceData.color;
-    switch (deviceData.type) {
-      case 'router':
-        return <RouterIcon color={color} />;
-      case 'server':
-        return <ServerIcon color={color} />;
-      case 'firewall':
-        return <FirewallIcon color={color} />;
-      case 'windows':
-        return <DesktopIcon color={color} />;
-      case 'linux':
-        return <LinuxIcon color={color} />;
-      case 'switch':
-        return <SwitchIcon color={color} />;
-      case 'cloud':
-        return <CloudIcon color={color} />;
-      case 'cloud2':
-        return <CloudIcon2 color={color} />;
-      case 'database':
-        return <DatabaseIcon color={color} />;
-      case 'laptop':
-        return <LaptopIcon color={color} />;
-      case 'mobile':
-        return <MobileIcon color={color} />;
-      case 'attacker':
-        return <AttackIcon color={color} />;
-      default:
-        return <GenericIcon color={color} />;
-    }
+    const size = effectiveIconSize;
+    const builtIn = (() => {
+      switch (deviceData.type) {
+        case 'router': return <RouterIcon color={color} size={size} />;
+        case 'server': return <ServerIcon color={color} size={size} />;
+        case 'firewall': return <FirewallIcon color={color} size={size} />;
+        case 'windows': return <DesktopIcon color={color} size={size} />;
+        case 'linux': return <LinuxIcon color={color} size={size} />;
+        case 'switch': return <SwitchIcon color={color} size={size} />;
+        case 'cloud': return <CloudIcon color={color} size={size} />;
+        case 'cloud2': return <CloudIcon2 color={color} size={size} />;
+        case 'database': return <DatabaseIcon color={color} size={size} />;
+        case 'laptop': return <LaptopIcon color={color} size={size} />;
+        case 'mobile': return <MobileIcon color={color} size={size} />;
+        case 'attacker': return <AttackIcon color={color} size={size} />;
+        default: return <GenericIcon color={color} size={size} />;
+      }
+    })();
+    return <DynamicIcon deviceType={deviceData.type} fallback={builtIn} size={size} color={borderColor} />;
   };
 
   const getDefaultColor = () => {
@@ -164,71 +137,241 @@ const EnhancedDeviceNode: React.FC<NodeProps> = React.memo(({ data, selected }) 
   const borderColor = getDefaultColor();
   const handleOpacity = isHovered ? 1 : 0;
 
-  // Memoize handle styles that depend on borderColor and hover state
-  const handleStyles = useMemo(() => ({
-    top: { ...HANDLE_BASE_STYLE, background: borderColor, opacity: handleOpacity, top: 0 } as React.CSSProperties,
-    right: { ...HANDLE_BASE_STYLE, background: borderColor, opacity: handleOpacity, right: 0 } as React.CSSProperties,
-    bottom: { ...HANDLE_BASE_STYLE, background: borderColor, opacity: handleOpacity, bottom: 0 } as React.CSSProperties,
-    left: { ...HANDLE_BASE_STYLE, background: borderColor, opacity: handleOpacity, left: 0 } as React.CSSProperties,
-  }), [borderColor, handleOpacity]);
+  // Connection handle styles - sit exactly on the edge perimeter
+  const handleStyles = useMemo(() => {
+    const base: React.CSSProperties = {
+      ...HANDLE_BASE_STYLE,
+      background: borderColor,
+      opacity: handleOpacity,
+      borderRadius: '50%',
+    };
+    return {
+      top: { ...base, top: 0 } as React.CSSProperties,
+      right: { ...base, right: 0 } as React.CSSProperties,
+      bottom: { ...base, bottom: 0 } as React.CSSProperties,
+      left: { ...base, left: 0 } as React.CSSProperties,
+    };
+  }, [borderColor, handleOpacity]);
+
+  // Resize handle drag logic
+  const onResizePointerDown = useCallback((e: React.PointerEvent) => {
+    e.stopPropagation();
+    e.preventDefault();
+    (e.target as HTMLElement).setPointerCapture(e.pointerId);
+    dragRef.current = { startX: e.clientX, startY: e.clientY, startSize: effectiveIconSize };
+  }, [effectiveIconSize]);
+
+  const onResizePointerMove = useCallback((e: React.PointerEvent) => {
+    if (!dragRef.current) return;
+    const zoom = storeApi.getState().transform[2];
+    const dx = (e.clientX - dragRef.current.startX) / zoom;
+    const dy = (e.clientY - dragRef.current.startY) / zoom;
+    const delta = (dx + dy) / 2;
+    const newSize = Math.round(
+      Math.min(CONFIG.deviceNodes.maxIconSize,
+        Math.max(CONFIG.deviceNodes.minIconSize, dragRef.current.startSize + delta))
+    );
+    setDragIconSize(newSize);
+  }, [storeApi]);
+
+  const onResizePointerUp = useCallback((e: React.PointerEvent) => {
+    if (!dragRef.current) return;
+    (e.target as HTMLElement).releasePointerCapture(e.pointerId);
+    const finalSize = dragIconSize ?? effectiveIconSize;
+    dragRef.current = null;
+    setDragIconSize(null);
+    updateNodeData(id, { iconSize: finalSize });
+    window.dispatchEvent(new CustomEvent('node-resize-end'));
+  }, [dragIconSize, effectiveIconSize, id, updateNodeData]);
+
+  // Label inline editing
+  const onLabelDoubleClick = useCallback((e: React.MouseEvent) => {
+    e.stopPropagation();
+    setEditValue(deviceData.label);
+    setIsEditingLabel(true);
+    setTimeout(() => labelInputRef.current?.select(), 0);
+  }, [deviceData.label]);
+
+  const commitLabel = useCallback(() => {
+    const trimmed = editValue.trim();
+    if (trimmed && trimmed !== deviceData.label) {
+      updateNodeData(id, { label: trimmed });
+    }
+    setIsEditingLabel(false);
+  }, [editValue, deviceData.label, id, updateNodeData]);
+
+  const onLabelKeyDown = useCallback((e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') { e.preventDefault(); commitLabel(); }
+    if (e.key === 'Escape') { setIsEditingLabel(false); }
+  }, [commitLabel]);
+
+  // Connection ring style on the icon area
+  const connectionRingStyle = useMemo((): React.CSSProperties => {
+    if (!connectionStatus || connectionStatus === 'disconnected') return {};
+    const color = STATUS_COLORS[connectionStatus];
+    return {
+      boxShadow: connectionStatus === 'connected'
+        ? `0 0 0 2px ${color}, 0 0 10px ${color}60`
+        : connectionStatus === 'connecting'
+          ? `0 0 0 2px ${color}90`
+          : `0 0 0 2px ${color}`,
+      borderRadius: 8,
+      animation: connectionStatus === 'connecting' ? 'pulse-ring 1.8s ease-in-out infinite' : 'none',
+    };
+  }, [connectionStatus]);
+
+  const showResizeHandle = selected && isHovered;
+  const handleSize = CONFIG.deviceNodes.resizeHandleSize;
 
   return (
     <div
+      className="enhanced-device-node device-node"
       style={{
-        padding: theme.spacing.lg,
-        borderRadius: theme.radius.xl,
-        border: `2px solid ${borderColor}`,
-        background: isHovered ? theme.gradient.nodeHover : theme.gradient.nodeDefault,
-        minWidth: '140px',
-        maxWidth: '200px',
-        boxShadow: selected
-          ? `0 0 0 3px #9ca3af`
-          : 'none',
+        padding: theme.spacing.md,
+        background: 'transparent',
+        minWidth: `${effectiveIconSize + 20}px`,
         cursor: 'pointer',
         position: 'relative',
+        ...(selected ? { '--node-color': borderColor } as React.CSSProperties : {}),
       }}
-      className="enhanced-device-node device-node"
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
     >
-      {/* Connection Handles - All 4 directions as both source and target */}
-      <Handle type="source" position={Position.Top} id="top" style={handleStyles.top} />
-      <Handle type="target" position={Position.Top} id="top-target" style={handleStyles.top} />
-      <Handle type="source" position={Position.Right} id="right" style={handleStyles.right} />
-      <Handle type="target" position={Position.Right} id="right-target" style={handleStyles.right} />
-      <Handle type="source" position={Position.Bottom} id="bottom" style={handleStyles.bottom} />
-      <Handle type="target" position={Position.Bottom} id="bottom-target" style={handleStyles.bottom} />
-      <Handle type="source" position={Position.Left} id="left" style={handleStyles.left} />
-      <Handle type="target" position={Position.Left} id="left-target" style={handleStyles.left} />
-
       <div style={CENTER_STYLE}>
-        {/* Icon */}
-        <div style={ICON_CONTAINER_STYLE}>
+        {/* Icon wrapper - selection outline and connection handles on this perimeter */}
+        <div
+          className="device-node-icon-area"
+          aria-label={connectionStatus && connectionStatus !== 'disconnected' ? `Connection status: ${connectionStatus}` : undefined}
+          style={{
+            display: 'inline-flex',
+            justifyContent: 'center',
+            alignItems: 'center',
+            padding: 4,
+            transition: 'box-shadow 0.25s ease, border-radius 0.25s ease',
+            position: 'relative',
+            ...connectionRingStyle,
+          }}
+        >
+          {/* Connection Handles - All 4 directions as both source and target */}
+          <Handle type="source" position={Position.Top} id="top" style={handleStyles.top} />
+          <Handle type="target" position={Position.Top} id="top-target" style={handleStyles.top} />
+          <Handle type="source" position={Position.Right} id="right" style={handleStyles.right} />
+          <Handle type="target" position={Position.Right} id="right-target" style={handleStyles.right} />
+          <Handle type="source" position={Position.Bottom} id="bottom" style={handleStyles.bottom} />
+          <Handle type="target" position={Position.Bottom} id="bottom-target" style={handleStyles.bottom} />
+          <Handle type="source" position={Position.Left} id="left" style={handleStyles.left} />
+          <Handle type="target" position={Position.Left} id="left-target" style={handleStyles.left} />
+
           {getIcon()}
+
+          {/* Connection badge - top right */}
+          {connectionStatus && connectionStatus !== 'disconnected' && (
+            <div
+              style={{
+                position: 'absolute',
+                top: -5,
+                right: -5,
+                width: 18,
+                height: 18,
+                borderRadius: '50%',
+                backgroundColor: theme.background.primary,
+                border: `1.5px solid ${STATUS_COLORS[connectionStatus]}`,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                zIndex: 5,
+                boxShadow: `0 0 4px ${STATUS_COLORS[connectionStatus]}60, 0 0 8px ${STATUS_COLORS[connectionStatus]}30`,
+                animation: connectionStatus === 'connected'
+                  ? 'badge-glow-green 2.5s ease-in-out infinite'
+                  : connectionStatus === 'connecting'
+                    ? 'badge-glow-orange 1.8s ease-in-out infinite'
+                    : 'badge-glow-red 2s ease-in-out infinite',
+              }}
+            >
+              {connectionStatus === 'connected' && (
+                <LightningIcon color={STATUS_COLORS[connectionStatus]} size={11} />
+              )}
+              {connectionStatus === 'connecting' && (
+                <svg width="10" height="10" viewBox="0 0 16 16" fill="none" style={{ animation: 'spin 0.8s linear infinite' }}>
+                  <circle cx="8" cy="8" r="6" stroke={STATUS_COLORS[connectionStatus]} strokeWidth="2" strokeOpacity="0.25" />
+                  <path d="M8 2A6 6 0 0 1 14 8" stroke={STATUS_COLORS[connectionStatus]} strokeWidth="2" strokeLinecap="round" />
+                </svg>
+              )}
+              {connectionStatus === 'error' && (
+                <WarningIcon color={STATUS_COLORS[connectionStatus]} size={11} />
+              )}
+            </div>
+          )}
+
+          {/* Resize handle - triangle at bottom-right corner */}
+          {showResizeHandle && (
+            <div
+              className="nodrag nopan"
+              onPointerDown={onResizePointerDown}
+              onPointerMove={onResizePointerMove}
+              onPointerUp={onResizePointerUp}
+              style={{
+                position: 'absolute',
+                right: -2,
+                bottom: -2,
+                width: 0,
+                height: 0,
+                borderStyle: 'solid',
+                borderWidth: `0 0 ${handleSize + 4}px ${handleSize + 4}px`,
+                borderColor: `transparent transparent ${borderColor} transparent`,
+                cursor: 'nwse-resize',
+                opacity: 0.85,
+                zIndex: 10,
+              }}
+            />
+          )}
         </div>
 
-        {/* Label */}
-        <div style={LABEL_STYLE}>
-          {deviceData.label}
-        </div>
 
-        {/* Operating System */}
-        {deviceData.operatingSystem && (
-          <div style={OS_STYLE}>
-            {deviceData.operatingSystem}
+        {/* Label - double-click to edit inline */}
+        {isEditingLabel ? (
+          <input
+            ref={labelInputRef}
+            className="device-node-label-input nodrag nopan"
+            value={editValue}
+            onChange={(e) => setEditValue(e.target.value)}
+            onBlur={commitLabel}
+            onKeyDown={onLabelKeyDown}
+            style={{
+              fontWeight: theme.fontWeight.semibold,
+              fontSize: `${labelSize}px`,
+              color: theme.text.primary,
+              lineHeight: '1.3',
+              marginTop: theme.spacing.xs,
+            }}
+            autoFocus
+          />
+        ) : (
+          <div
+            onDoubleClick={onLabelDoubleClick}
+            style={{
+              fontWeight: theme.fontWeight.semibold,
+              fontSize: `${labelSize}px`,
+              color: theme.text.primary,
+              wordWrap: 'break-word',
+              lineHeight: '1.3',
+              marginTop: theme.spacing.xs,
+              cursor: 'text',
+            }}
+          >
+            {deviceData.label}
           </div>
         )}
 
-        {/* Connection Status Indicator */}
-        {deviceData.connections && deviceData.connections.length > 0 ? (
-          <div style={STATUS_CONNECTED_STYLE}>
-            <CheckIcon size={13} color={theme.accent.green} />
-            <span>{deviceData.connections.length} connection{deviceData.connections.length > 1 ? 's' : ''}</span>
-          </div>
-        ) : (
-          <div style={STATUS_DISCONNECTED_STYLE}>
-            <WarningIcon size={13} color={theme.text.tertiary} />
-            <span>No connection</span>
+        {/* Discoverability hint on selection */}
+        {selected && !isEditingLabel && (
+          <div style={{
+            fontSize: '9px',
+            color: theme.text.disabled,
+            marginTop: '2px',
+            whiteSpace: 'nowrap',
+          }}>
+            Double-click to configure
           </div>
         )}
       </div>

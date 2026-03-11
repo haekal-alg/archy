@@ -101,3 +101,4 @@ build/icon_*
 
 # Keep build folder (contains app icons)
 !build/
+notes.txt

@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useCallback, useRef, ReactNode } from 'react';
 import { TabType, SSHConnection, TabContextType, SSHPortForward, DisconnectReason, TopologyNodeInfo } from '../types/terminal';
 import { cleanupTerminal } from '../components/TerminalEmulator';
+import { useSettingsContext } from './SettingsContext';
 
 const TabContext = createContext<TabContextType | undefined>(undefined);
 
@@ -28,6 +29,7 @@ interface TabProviderProps {
 }
 
 export const TabProvider: React.FC<TabProviderProps> = ({ children }) => {
+  const { settings } = useSettingsContext();
   const [activeTab, setActiveTab] = useState<TabType>('design');
   const [connections, setConnections] = useState<SSHConnection[]>([]);
   const [activeConnectionId, setActiveConnectionId] = useState<string | null>(null);
@@ -39,6 +41,9 @@ export const TabProvider: React.FC<TabProviderProps> = ({ children }) => {
   // Ref for activeConnectionId to avoid dependency in callbacks
   const activeConnectionIdRef = useRef(activeConnectionId);
   activeConnectionIdRef.current = activeConnectionId;
+
+  // Fullscreen terminal mode
+  const [isTerminalFullscreen, setTerminalFullscreen] = useState(false);
 
   // Topology cross-reference
   const [topologyNodes, setTopologyNodes] = useState<TopologyNodeInfo[]>([]);
@@ -196,9 +201,17 @@ export const TabProvider: React.FC<TabProviderProps> = ({ children }) => {
     const connectionId = `local-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
     const terminalNumber = connectionsRef.current.filter(c => c.connectionType === 'local').length + 1;
 
+    // Use configured shell settings; fall back to defaults
+    const shellType = settings.terminal.defaultShell || 'cmd';
+    const shellLabels: Record<string, string> = { cmd: 'CMD', wsl: 'WSL', powershell: 'PS' };
+    const shellLabel = shellLabels[shellType] || shellType.toUpperCase();
+
+    // If no explicit CWD provided (not a duplicate), use the per-shell configured default
+    const resolvedCwd = cwd || settings.terminal.shellCwd[shellType] || undefined;
+
     const newConnection: SSHConnection = {
       id: connectionId,
-      nodeName: `Local Terminal ${terminalNumber}`,
+      nodeName: `${shellLabel} Terminal ${terminalNumber}`,
       nodeType: 'local',
       host: 'localhost',
       port: 0,
@@ -213,7 +226,7 @@ export const TabProvider: React.FC<TabProviderProps> = ({ children }) => {
     setActiveTab('connections');
 
     try {
-      await window.electron.createLocalTerminal({ connectionId, cwd });
+      await window.electron.createLocalTerminal({ connectionId, cwd: resolvedCwd, shellType });
 
       setConnections(prev =>
         prev.map(conn =>
@@ -231,7 +244,7 @@ export const TabProvider: React.FC<TabProviderProps> = ({ children }) => {
         )
       );
     }
-  }, []);
+  }, [settings.terminal]);
 
   const renameConnection = useCallback((id: string, newLabel: string) => {
     setConnections(prev =>
@@ -258,6 +271,7 @@ export const TabProvider: React.FC<TabProviderProps> = ({ children }) => {
       clearInterval(reconnectInterval);
       reconnectIntervals.current.delete(id);
     }
+    reconnectCountdowns.current.delete(id);
 
     // Close SSH session
     window.electron.closeSSHSession(id);
@@ -285,6 +299,19 @@ export const TabProvider: React.FC<TabProviderProps> = ({ children }) => {
     // Clear any pending timeout
     clearConnectionTimeout(id);
 
+    // Cancel any active auto-reconnect timers and intervals
+    const reconnectTimer = reconnectTimers.current.get(id);
+    if (reconnectTimer) {
+      clearTimeout(reconnectTimer);
+      reconnectTimers.current.delete(id);
+    }
+    const reconnectInterval = reconnectIntervals.current.get(id);
+    if (reconnectInterval) {
+      clearInterval(reconnectInterval);
+      reconnectIntervals.current.delete(id);
+    }
+    reconnectCountdowns.current.delete(id);
+
     // Close SSH session
     window.electron.closeSSHSession(id);
 
@@ -303,14 +330,32 @@ export const TabProvider: React.FC<TabProviderProps> = ({ children }) => {
     const connection = connectionsRef.current.find(c => c.id === id);
     if (!connection) return;
 
-    // Cleanup old terminal if exists
+    // Cancel any active auto-reconnect for this connection
+    const reconnectTimer = reconnectTimers.current.get(id);
+    if (reconnectTimer) {
+      clearTimeout(reconnectTimer);
+      reconnectTimers.current.delete(id);
+    }
+    const reconnectInterval = reconnectIntervals.current.get(id);
+    if (reconnectInterval) {
+      clearInterval(reconnectInterval);
+      reconnectIntervals.current.delete(id);
+    }
+    reconnectCountdowns.current.delete(id);
+
+    // Close the backend session first (pty process) before renderer cleanup.
+    // This ensures the old process is killed and marked as user-initiated so
+    // the onSSHClosed handler won't trigger auto-reconnect for the old session.
+    window.electron.closeSSHSession(id);
+
+    // Cleanup renderer-side terminal instance (xterm, WebGL, listeners, buffers)
     cleanupTerminal(id);
 
     // Reset to connecting state
     setConnections(prev =>
       prev.map(conn =>
         conn.id === id
-          ? { ...conn, status: 'connecting', error: undefined, lastActivity: new Date() }
+          ? { ...conn, status: 'connecting', error: undefined, reconnectState: undefined, lastActivity: new Date() }
           : conn
       )
     );
@@ -320,15 +365,23 @@ export const TabProvider: React.FC<TabProviderProps> = ({ children }) => {
     setActiveTab('connections');
 
     try {
-      await window.electron.createSSHSession({
-        connectionId: id,
-        host: connection.host,
-        port: connection.port,
-        username: connection.username,
-        password: connection.password || '',
-        privateKeyPath: connection.privateKeyPath,
-        portForwards: connection.portForwards,
-      });
+      if (connection.connectionType === 'local') {
+        // Reconnect local terminal
+        const shellType = settings.terminal.defaultShell || 'cmd';
+        const resolvedCwd = settings.terminal.shellCwd[shellType] || undefined;
+        await window.electron.createLocalTerminal({ connectionId: id, cwd: resolvedCwd, shellType });
+      } else {
+        // Reconnect SSH session
+        await window.electron.createSSHSession({
+          connectionId: id,
+          host: connection.host,
+          port: connection.port,
+          username: connection.username,
+          password: connection.password || '',
+          privateKeyPath: connection.privateKeyPath,
+          portForwards: connection.portForwards,
+        });
+      }
 
       setConnections(prev =>
         prev.map(conn =>
@@ -346,7 +399,7 @@ export const TabProvider: React.FC<TabProviderProps> = ({ children }) => {
         )
       );
     }
-  }, []);
+  }, [settings.terminal]);
 
   // Calculate exponential backoff delay for reconnect attempts
   const getReconnectDelay = useCallback((attempt: number): number => {
@@ -561,20 +614,6 @@ export const TabProvider: React.FC<TabProviderProps> = ({ children }) => {
     reconnectTimers.current.set(connectionId, timer);
   }, [executeReconnectAttempt, notifyReconnectListeners]);
 
-  // Listen for latency updates - use useEffect for proper cleanup
-  React.useEffect(() => {
-    const unsubscribe = window.electron.onSSHLatency((data: { connectionId: string; latency: number }) => {
-      setConnections(prev =>
-        prev.map(conn =>
-          conn.id === data.connectionId
-            ? { ...conn, latency: data.latency, lastActivity: new Date() }
-            : conn
-        )
-      );
-    });
-    return unsubscribe; // Cleanup on unmount
-  }, []);
-
   // Listen for SSH close events to cleanup timeouts and trigger auto-reconnect
   React.useEffect(() => {
     const unsubscribe = window.electron.onSSHClosed((data: { connectionId: string; reason?: string; exitCode?: number; signal?: number }) => {
@@ -589,8 +628,12 @@ export const TabProvider: React.FC<TabProviderProps> = ({ children }) => {
       const connection = connectionsRef.current.find(c => c.id === data.connectionId);
       if (!connection) return;
 
-      // Skip if already disconnected or has active reconnect state
+      // Skip if already disconnected, has active reconnect state, or is mid-retry
+      // (status 'connecting' with no reconnectState means retryConnection is in progress)
       if (connection.status === 'disconnected' || connection.reconnectState?.isReconnecting) {
+        return;
+      }
+      if (connection.status === 'connecting' && !connection.reconnectState) {
         return;
       }
 
@@ -600,6 +643,10 @@ export const TabProvider: React.FC<TabProviderProps> = ({ children }) => {
       if (reason !== 'user' && reason !== 'auth' && connection.connectionType !== 'local') {
         startAutoReconnect(data.connectionId, reason);
       } else {
+        // Clean up terminal instance to prevent xterm/WebGL context leaks
+        // (safe no-op if already cleaned up by disconnectConnection)
+        cleanupTerminal(data.connectionId);
+
         // Just update status to disconnected
         setConnections(prev =>
           prev.map(conn =>
@@ -633,6 +680,18 @@ export const TabProvider: React.FC<TabProviderProps> = ({ children }) => {
     };
   }, []);
 
+  const reorderConnection = useCallback((id: string, direction: 'up' | 'down') => {
+    setConnections(prev => {
+      const index = prev.findIndex(c => c.id === id);
+      if (index < 0) return prev;
+      const targetIndex = direction === 'up' ? index - 1 : index + 1;
+      if (targetIndex < 0 || targetIndex >= prev.length) return prev;
+      const next = [...prev];
+      [next[index], next[targetIndex]] = [next[targetIndex], next[index]];
+      return next;
+    });
+  }, []);
+
   const value: TabContextType = {
     activeTab,
     setActiveTab,
@@ -644,6 +703,7 @@ export const TabProvider: React.FC<TabProviderProps> = ({ children }) => {
     renameConnection,
     disconnectConnection,
     removeConnection,
+    reorderConnection,
     retryConnection,
     cancelAutoReconnect,
     subscribeReconnectUpdates,
@@ -652,6 +712,8 @@ export const TabProvider: React.FC<TabProviderProps> = ({ children }) => {
     setTopologyNodes,
     focusNode,
     setOnFocusNode,
+    isTerminalFullscreen,
+    setTerminalFullscreen,
   };
 
   return <TabContext.Provider value={value}>{children}</TabContext.Provider>;

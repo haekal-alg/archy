@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import theme from '../../theme';
 
 interface ConnectionContextMenuProps {
@@ -11,6 +11,8 @@ interface ConnectionContextMenuProps {
   onRename?: () => void;
   onOpenInExplorer?: () => void;
   onDuplicate?: () => void;
+  onMoveUp?: () => void;
+  onMoveDown?: () => void;
   onClose: () => void;
 }
 
@@ -53,6 +55,18 @@ const DuplicateIcon = () => (
   </svg>
 );
 
+const MoveUpIcon = () => (
+  <svg width="14" height="14" viewBox="0 0 14 14" fill="none" style={{ marginRight: '8px' }}>
+    <path d="M7 11V3M7 3L4 6M7 3L10 6" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
+  </svg>
+);
+
+const MoveDownIcon = () => (
+  <svg width="14" height="14" viewBox="0 0 14 14" fill="none" style={{ marginRight: '8px' }}>
+    <path d="M7 3V11M7 11L4 8M7 11L10 8" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
+  </svg>
+);
+
 // Shared menu styles
 const getMenuContainerStyle = (isVisible: boolean) => ({
   background: 'rgba(50, 50, 55, 0.65)',
@@ -86,6 +100,14 @@ const getMenuItemStyle = (isHovered: boolean, isDanger: boolean = false) => ({
   alignItems: 'center',
 });
 
+interface MenuItem {
+  label: string;
+  icon: React.ReactNode;
+  action: () => void;
+  isDanger?: boolean;
+  isSeparatorBefore?: boolean;
+}
+
 const ConnectionContextMenu: React.FC<ConnectionContextMenuProps> = ({
   x,
   y,
@@ -96,16 +118,83 @@ const ConnectionContextMenu: React.FC<ConnectionContextMenuProps> = ({
   onRename,
   onOpenInExplorer,
   onDuplicate,
+  onMoveUp,
+  onMoveDown,
   onClose,
 }) => {
-  const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
+  const [hoveredIndex, setHoveredIndex] = useState<number>(0);
   const [isVisible, setIsVisible] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
+  const itemRefs = useRef<(HTMLButtonElement | null)[]>([]);
+
+  // Build menu items dynamically
+  const items: MenuItem[] = [];
+  if (onRetry) items.push({ label: 'Retry Connection', icon: <RetryIcon />, action: onRetry });
+  if (onDisconnect) items.push({ label: 'Disconnect', icon: <DisconnectIcon />, action: onDisconnect });
+  if (onRename) items.push({ label: 'Rename', icon: <RenameIcon />, action: onRename });
+  if (onOpenInExplorer) items.push({ label: 'Open in Explorer', icon: <ExplorerIcon />, action: onOpenInExplorer });
+  if (onDuplicate) items.push({ label: 'Duplicate in New Tab', icon: <DuplicateIcon />, action: onDuplicate });
+  if (onMoveUp || onMoveDown) {
+    const needsSeparator = items.length > 0;
+    if (onMoveUp) items.push({ label: 'Move Up', icon: <MoveUpIcon />, action: onMoveUp, isSeparatorBefore: needsSeparator });
+    if (onMoveDown) items.push({ label: 'Move Down', icon: <MoveDownIcon />, action: onMoveDown, isSeparatorBefore: !onMoveUp && needsSeparator });
+  }
+  if (onRemove) items.push({ label: 'Remove', icon: <RemoveIcon />, action: onRemove, isDanger: true, isSeparatorBefore: true });
 
   // Entrance animation on mount
   useEffect(() => {
     const timer = setTimeout(() => setIsVisible(true), 10);
     return () => clearTimeout(timer);
   }, []);
+
+  // Auto-focus first item
+  useEffect(() => {
+    if (isVisible && itemRefs.current[0]) {
+      itemRefs.current[0].focus();
+    }
+  }, [isVisible]);
+
+  const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
+    if (e.key === 'Escape') {
+      e.preventDefault();
+      onClose();
+      return;
+    }
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      const next = (hoveredIndex + 1) % items.length;
+      setHoveredIndex(next);
+      itemRefs.current[next]?.focus();
+      return;
+    }
+    if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      const next = (hoveredIndex - 1 + items.length) % items.length;
+      setHoveredIndex(next);
+      itemRefs.current[next]?.focus();
+      return;
+    }
+    if (e.key === 'Home') {
+      e.preventDefault();
+      setHoveredIndex(0);
+      itemRefs.current[0]?.focus();
+      return;
+    }
+    if (e.key === 'End') {
+      e.preventDefault();
+      const last = items.length - 1;
+      setHoveredIndex(last);
+      itemRefs.current[last]?.focus();
+      return;
+    }
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      if (hoveredIndex >= 0 && hoveredIndex < items.length) {
+        items[hoveredIndex].action();
+        onClose();
+      }
+    }
+  }, [hoveredIndex, items, onClose]);
 
   return (
     <>
@@ -129,6 +218,10 @@ const ConnectionContextMenu: React.FC<ConnectionContextMenuProps> = ({
 
       {/* Context Menu */}
       <div
+        ref={menuRef}
+        role="menu"
+        aria-label="Connection actions"
+        onKeyDown={handleKeyDown}
         style={{
           position: 'fixed',
           top: y,
@@ -141,143 +234,34 @@ const ConnectionContextMenu: React.FC<ConnectionContextMenuProps> = ({
           pointerEvents: 'auto'
         }}
       >
-        {/* Retry Connection */}
-        {onRetry && (() => {
-          const retryIndex = 0;
-          const isHovered = hoveredIndex === retryIndex;
-          return (
+        {items.map((item, index) => (
+          <React.Fragment key={item.label}>
+            {item.isSeparatorBefore && (
+              <div style={{
+                borderTop: '1px solid rgba(255, 255, 255, 0.15)',
+                margin: '6px 0'
+              }} />
+            )}
             <button
+              ref={el => { itemRefs.current[index] = el; }}
+              role="menuitem"
+              tabIndex={hoveredIndex === index ? 0 : -1}
               onClick={(e) => {
                 e.preventDefault();
                 e.stopPropagation();
-                onRetry();
+                item.action();
                 onClose();
               }}
-              onMouseEnter={() => setHoveredIndex(retryIndex)}
-              onMouseLeave={() => setHoveredIndex(null)}
-              style={getMenuItemStyle(isHovered)}
+              onMouseEnter={() => setHoveredIndex(index)}
+              onMouseLeave={() => {}}
+              onFocus={() => setHoveredIndex(index)}
+              style={getMenuItemStyle(hoveredIndex === index, item.isDanger)}
             >
-              <RetryIcon />
-              Retry Connection
+              {item.icon}
+              {item.label}
             </button>
-          );
-        })()}
-
-        {/* Disconnect */}
-        {onDisconnect && (() => {
-          const disconnectIndex = 1;
-          const isHovered = hoveredIndex === disconnectIndex;
-          return (
-            <button
-              onClick={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                onDisconnect();
-                onClose();
-              }}
-              onMouseEnter={() => setHoveredIndex(disconnectIndex)}
-              onMouseLeave={() => setHoveredIndex(null)}
-              style={getMenuItemStyle(isHovered)}
-            >
-              <DisconnectIcon />
-              Disconnect
-            </button>
-          );
-        })()}
-
-        {/* Rename */}
-        {onRename && (() => {
-          const renameIndex = 2;
-          const isHovered = hoveredIndex === renameIndex;
-          return (
-            <button
-              onClick={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                onRename();
-                onClose();
-              }}
-              onMouseEnter={() => setHoveredIndex(renameIndex)}
-              onMouseLeave={() => setHoveredIndex(null)}
-              style={getMenuItemStyle(isHovered)}
-            >
-              <RenameIcon />
-              Rename
-            </button>
-          );
-        })()}
-
-        {/* Open in Explorer - Local terminals only */}
-        {onOpenInExplorer && (() => {
-          const explorerIndex = 3;
-          const isHovered = hoveredIndex === explorerIndex;
-          return (
-            <button
-              onClick={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                onOpenInExplorer();
-                onClose();
-              }}
-              onMouseEnter={() => setHoveredIndex(explorerIndex)}
-              onMouseLeave={() => setHoveredIndex(null)}
-              style={getMenuItemStyle(isHovered)}
-            >
-              <ExplorerIcon />
-              Open in Explorer
-            </button>
-          );
-        })()}
-
-        {/* Duplicate in New Tab - Local terminals only */}
-        {onDuplicate && (() => {
-          const duplicateIndex = 4;
-          const isHovered = hoveredIndex === duplicateIndex;
-          return (
-            <button
-              onClick={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                onDuplicate();
-                onClose();
-              }}
-              onMouseEnter={() => setHoveredIndex(duplicateIndex)}
-              onMouseLeave={() => setHoveredIndex(null)}
-              style={getMenuItemStyle(isHovered)}
-            >
-              <DuplicateIcon />
-              Duplicate in New Tab
-            </button>
-          );
-        })()}
-
-        {/* Separator */}
-        <div style={{
-          borderTop: '1px solid rgba(255, 255, 255, 0.15)',
-          margin: '6px 0'
-        }} />
-
-        {/* Remove */}
-        {onRemove && (() => {
-          const removeIndex = 5;
-          const isHovered = hoveredIndex === removeIndex;
-          return (
-            <button
-              onClick={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                onRemove();
-                onClose();
-              }}
-              onMouseEnter={() => setHoveredIndex(removeIndex)}
-              onMouseLeave={() => setHoveredIndex(null)}
-              style={getMenuItemStyle(isHovered, true)}
-            >
-              <RemoveIcon />
-              Remove
-            </button>
-          );
-        })()}
+          </React.Fragment>
+        ))}
       </div>
     </>
   );

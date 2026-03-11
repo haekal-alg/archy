@@ -40,6 +40,7 @@ export interface SSHSession {
   username: string;
   privateKeyPath?: string;
   portForwards?: SSHPortForward[];
+  connectionTimeout?: NodeJS.Timeout;
 }
 
 /**
@@ -133,6 +134,9 @@ export function createSSHSession(config: SSHSessionConfig): Promise<{ success: b
     const existingSession = sshSessions.get(connectionId);
     if (existingSession) {
       console.log(`[${connectionId}] Cleaning up existing session for retry`);
+      if (existingSession.connectionTimeout) {
+        clearTimeout(existingSession.connectionTimeout);
+      }
       try {
         existingSession.ptyProcess.kill();
       } catch (e) {
@@ -257,6 +261,11 @@ export function createSSHSession(config: SSHSessionConfig): Promise<{ success: b
           if (successIndicators.some(pattern => pattern.test(outputBuffer))) {
             connectionEstablished = true;
             console.log(`[${connectionId}] SSH connection established`);
+            // Clear connection timeout
+            if (session.connectionTimeout) {
+              clearTimeout(session.connectionTimeout);
+              session.connectionTimeout = undefined;
+            }
             // Clear output buffer after connection established to prevent false positives
             outputBuffer = '';
             resolve({ success: true });
@@ -285,6 +294,33 @@ export function createSSHSession(config: SSHSessionConfig): Promise<{ success: b
       // Handle process exit
       ptyProcess.onExit(({ exitCode, signal }) => {
         console.log(`[${connectionId}] SSH process exited: code=${exitCode}, signal=${signal}`);
+
+        // Guard: skip if session was already cleaned up by closeSSHSession
+        if (!sshSessions.has(connectionId)) {
+          // Still reject if connection was never established
+          if (!connectionEstablished && !authFailed) {
+            reject(new Error(`SSH connection failed: exit code ${exitCode}`));
+          }
+          return;
+        }
+
+        // Guard: skip if a new session has replaced this one (retry scenario).
+        // The old pty's onExit fires asynchronously after kill() and can arrive
+        // after a new session with the same connectionId is already stored.
+        const currentSession = sshSessions.get(connectionId);
+        if (currentSession && currentSession.ptyProcess !== ptyProcess) {
+          console.log(`[${connectionId}] Ignoring stale onExit from previous session`);
+          if (!connectionEstablished && !authFailed) {
+            reject(new Error(`SSH connection failed: exit code ${exitCode}`));
+          }
+          return;
+        }
+
+        // Clear connection timeout if still pending
+        if (session.connectionTimeout) {
+          clearTimeout(session.connectionTimeout);
+          session.connectionTimeout = undefined;
+        }
 
         // Cleanup buffer state
         cleanupBuffer(connectionId);
@@ -321,9 +357,10 @@ export function createSSHSession(config: SSHSessionConfig): Promise<{ success: b
       });
 
       // Timeout if connection doesn't establish in 20 seconds
-      setTimeout(() => {
+      session.connectionTimeout = setTimeout(() => {
         if (!connectionEstablished && sshSessions.has(connectionId)) {
           console.error(`[${connectionId}] SSH connection timeout`);
+          session.connectionTimeout = undefined;
           ptyProcess.kill();
           sshSessions.delete(connectionId);
           reject(new Error('SSH connection timeout'));
@@ -376,6 +413,10 @@ export function closeSSHSession(connectionId: string, userInitiated: boolean = f
 
   const session = sshSessions.get(connectionId);
   if (session) {
+    if (session.connectionTimeout) {
+      clearTimeout(session.connectionTimeout);
+      session.connectionTimeout = undefined;
+    }
     try {
       session.ptyProcess.kill();
     } catch (e) {

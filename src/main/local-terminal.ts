@@ -15,6 +15,13 @@ import {
   bufferData,
   cleanupBuffer,
 } from './buffer-manager';
+import {
+  initCwdTracker,
+  feedOutput,
+  getTrackedCwd,
+  queryOsCwd,
+  cleanupCwdTracker,
+} from './cwd-tracker';
 
 /**
  * Local terminal session state
@@ -64,18 +71,62 @@ export function getAllLocalSessions(): Map<string, LocalSession> {
 }
 
 /**
+ * Resolve shell executable and arguments based on shell type
+ */
+function resolveShell(shellType?: string): { exe: string; args: string[]; trackerType: 'cmd' | 'bash' | 'powershell' } {
+  switch (shellType) {
+    case 'wsl':
+      return { exe: 'wsl.exe', args: [], trackerType: 'bash' };
+    case 'powershell':
+      return { exe: 'powershell.exe', args: ['-NoLogo'], trackerType: 'powershell' };
+    case 'cmd':
+    default:
+      return {
+        exe: process.platform === 'win32' ? 'cmd.exe' : '/bin/bash',
+        args: [],
+        trackerType: process.platform === 'win32' ? 'cmd' : 'bash',
+      };
+  }
+}
+
+/**
  * Create a local terminal session
  */
-export function createLocalTerminal(connectionId: string, cwd?: string): Promise<{ success: boolean; cwd: string }> {
+export function createLocalTerminal(connectionId: string, cwd?: string, shellType?: string): Promise<{ success: boolean; cwd: string }> {
   return new Promise((resolve, reject) => {
     try {
-      // Spawn PTY session for proper terminal emulation
-      const shell = process.platform === 'win32' ? 'cmd.exe' : '/bin/bash';
+      // Clean up any existing session with the same ID (for retry support)
+      const existingSession = localSessions.get(connectionId);
+      if (existingSession) {
+        console.log(`[${connectionId}] Cleaning up existing local session for retry`);
+        try {
+          existingSession.ptyProcess.kill();
+        } catch (e) {
+          // Ignore kill errors for already-dead processes
+        }
+        localSessions.delete(connectionId);
+        localInputBuffers.delete(connectionId);
+        localDirStacks.delete(connectionId);
+        cleanupBuffer(connectionId);
+        cleanupCwdTracker(connectionId);
+      }
+
+      const shell = resolveShell(shellType);
 
       const defaultCwd = getHomeDirectory();
-      const initialCwd = resolveLocalCwd(defaultCwd, cwd) || defaultCwd;
+      // For WSL with a Unix-style CWD, pass it via --cd arg instead of pty cwd
+      let initialCwd = defaultCwd;
+      let shellArgs = [...shell.args];
 
-      const ptyProcess = pty.spawn(shell, [], {
+      if (shellType === 'wsl' && cwd && cwd.startsWith('/')) {
+        // WSL Unix path: use --cd to set starting directory
+        shellArgs = ['--cd', cwd, ...shellArgs];
+        initialCwd = defaultCwd; // pty cwd must be a valid Windows path
+      } else {
+        initialCwd = resolveLocalCwd(defaultCwd, cwd) || defaultCwd;
+      }
+
+      const ptyProcess = pty.spawn(shell.exe, shellArgs, {
         name: 'xterm-256color',
         cols: 80,
         rows: 24,
@@ -83,26 +134,52 @@ export function createLocalTerminal(connectionId: string, cwd?: string): Promise
         env: process.env as { [key: string]: string },
       });
 
+      // For WSL, the effective CWD is the Unix path if provided
+      const effectiveCwd = (shellType === 'wsl' && cwd && cwd.startsWith('/')) ? cwd : initialCwd;
+
       // Store the session with flow control state initialized
       localSessions.set(connectionId, {
         ptyProcess: ptyProcess,
         connectionId,
         isPaused: false,
         queuedBytes: 0,
-        cwd: initialCwd,
+        cwd: effectiveCwd,
       });
       localInputBuffers.set(connectionId, '');
       localDirStacks.set(connectionId, []);
 
+      // Initialize output-based CWD tracking with correct shell type
+      initCwdTracker(connectionId, ptyProcess.pid, shell.trackerType, effectiveCwd);
+
       // Forward PTY data to renderer with buffering
       ptyProcess.onData((data: string) => {
+        // Guard: skip if session was already cleaned up (prevents orphaned buffers)
+        const session = localSessions.get(connectionId);
+        if (!session) return;
+
+        // Scan output for prompt patterns to track real CWD
+        const detectedCwd = feedOutput(connectionId, data);
+        if (detectedCwd) {
+          session.cwd = detectedCwd;
+        }
         bufferData(connectionId, data);
       });
 
       // Handle process exit
       ptyProcess.onExit((e) => {
+        // Guard: skip if session was already cleaned up by closeLocalTerminal
+        if (!localSessions.has(connectionId)) return;
+
+        // Guard: skip if a new session has replaced this one (retry scenario)
+        const currentSession = localSessions.get(connectionId);
+        if (currentSession && currentSession.ptyProcess !== ptyProcess) {
+          console.log(`[${connectionId}] Ignoring stale onExit from previous local session`);
+          return;
+        }
+
         // Cleanup buffer state
         cleanupBuffer(connectionId);
+        cleanupCwdTracker(connectionId);
 
         localInputBuffers.delete(connectionId);
         localDirStacks.delete(connectionId);
@@ -191,6 +268,7 @@ export function resizeLocalTerminal(connectionId: string, cols: number, rows: nu
 export function closeLocalTerminal(connectionId: string): void {
   // Clean up buffer state first
   cleanupBuffer(connectionId);
+  cleanupCwdTracker(connectionId);
 
   const session = localSessions.get(connectionId);
   if (session) {
@@ -206,11 +284,25 @@ export function closeLocalTerminal(connectionId: string): void {
 }
 
 /**
- * Get the current working directory of a local terminal
+ * Get the current working directory of a local terminal (synchronous).
+ * Prefers output-based tracking, falls back to session.cwd.
  */
 export function getLocalTerminalCwd(connectionId: string): string | null {
+  const tracked = getTrackedCwd(connectionId);
+  if (tracked) return tracked;
   const session = localSessions.get(connectionId);
   return session?.cwd || null;
+}
+
+/**
+ * Get the current working directory of a local terminal (async).
+ * Uses OS-level query on Linux/macOS for authoritative result,
+ * falls back to prompt-detected or session CWD.
+ */
+export async function getLocalTerminalCwdAsync(connectionId: string): Promise<string | null> {
+  const osCwd = await queryOsCwd(connectionId);
+  if (osCwd) return osCwd;
+  return getLocalTerminalCwd(connectionId);
 }
 
 /**

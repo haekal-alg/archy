@@ -38,6 +38,7 @@ interface DesignTabProps {
   nodeTypes: any;
   reactFlowWrapper: React.RefObject<HTMLDivElement | null>;
   activeTool: ToolType;
+  isShapeLibraryOpen?: boolean;
   onTemporaryHandToolStart: () => void;
   onTemporaryHandToolEnd: () => void;
   children?: React.ReactNode;
@@ -68,6 +69,7 @@ const DesignTab: React.FC<DesignTabProps> = ({
   nodeTypes,
   reactFlowWrapper,
   activeTool,
+  isShapeLibraryOpen = true,
   onTemporaryHandToolStart,
   onTemporaryHandToolEnd,
   children,
@@ -87,6 +89,7 @@ const DesignTab: React.FC<DesignTabProps> = ({
 
   // Drop zone highlight for drag-and-drop from ShapeLibrary
   const [isDragOver, setIsDragOver] = useState(false);
+  const isEmpty = nodes.length === 0;
 
   // Set cursor based on tool - using state-based cursor
   const [currentCursor, setCurrentCursor] = useState<string>('default');
@@ -158,7 +161,7 @@ const DesignTab: React.FC<DesignTabProps> = ({
       style={{
         width: '100%',
         height: '100%',
-        cursor: currentCursor,
+        cursor: isDragOver ? 'copy' : currentCursor,
         outline: isDragOver ? '2px dashed rgba(77, 124, 254, 0.6)' : 'none',
         outlineOffset: '-2px',
         transition: 'outline 0.15s ease',
@@ -225,22 +228,122 @@ const DesignTab: React.FC<DesignTabProps> = ({
             opacity: 0.4,
           }}
         />
-        <Controls />
-        <MiniMap
-          nodeStrokeWidth={3}
-          zoomable
-          pannable
+        <Controls
           style={{
-            backgroundColor: theme.background.primary,
-            borderRadius: '8px',
+            background: 'rgba(0, 0, 0, 0.85)',
+            backdropFilter: 'blur(10px)',
             border: `1px solid ${theme.border.default}`,
+            borderRadius: '12px',
+            boxShadow: theme.shadow.lg,
+            overflow: 'hidden',
           }}
         />
+        {!isEmpty && (
+          <MiniMap
+            nodeStrokeWidth={3}
+            zoomable
+            pannable
+            style={{
+              backgroundColor: theme.background.primary,
+              borderRadius: '8px',
+              border: `1px solid ${theme.border.default}`,
+              opacity: 1,
+              transition: 'opacity 0.3s ease',
+            }}
+          />
+        )}
       </ReactFlow>
+
+      {/* #1: Empty Canvas Onboarding */}
+      {isEmpty && (
+        <div
+          style={{
+            position: 'absolute',
+            top: '50%',
+            left: isShapeLibraryOpen ? 'calc(50% + 120px)' : '50%',
+            transform: 'translate(-50%, -50%)',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            gap: '16px',
+            pointerEvents: 'none',
+            zIndex: 1,
+            transition: 'left 0.3s ease',
+          }}
+        >
+          <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="rgba(77, 124, 254, 0.4)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+            <rect x="3" y="3" width="18" height="18" rx="2" />
+            <path d="M12 8v8M8 12h8" />
+          </svg>
+          <div style={{ textAlign: 'center' }}>
+            <div style={{ color: theme.text.secondary, fontSize: theme.fontSize.base, fontWeight: theme.fontWeight.medium, marginBottom: '6px' }}>
+              Drag a device from the sidebar to get started
+            </div>
+            <div style={{ color: theme.text.disabled, fontSize: theme.fontSize.sm }}>
+              or click a shape in the Shapes panel to place it on the canvas
+            </div>
+          </div>
+          {isShapeLibraryOpen && (
+            <svg
+              width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="rgba(77, 124, 254, 0.3)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"
+              style={{
+                position: 'absolute',
+                left: '-180px',
+                top: '-10px',
+                transform: 'rotate(180deg)',
+                animation: 'nudge-arrow 2s ease-in-out infinite',
+              }}
+            >
+              <path d="M5 12h14M12 5l7 7-7 7" />
+            </svg>
+          )}
+        </div>
+      )}
+
+      {/* Drag-over drop indicator */}
+      {isDragOver && (
+        <div
+          style={{
+            position: 'absolute',
+            top: '50%',
+            left: isShapeLibraryOpen ? 'calc(50% + 120px)' : '50%',
+            transform: 'translate(-50%, -50%)',
+            pointerEvents: 'none',
+            zIndex: 2,
+            transition: 'left 0.3s ease',
+          }}
+        >
+          <div style={{
+            width: '64px',
+            height: '64px',
+            borderRadius: '50%',
+            border: '2px dashed rgba(77, 124, 254, 0.5)',
+            background: 'rgba(77, 124, 254, 0.08)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            animation: 'pulse-drop 1.5s ease-in-out infinite',
+          }}>
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="rgba(77, 124, 254, 0.6)" strokeWidth="2" strokeLinecap="round">
+              <path d="M12 5v14M5 12h14" />
+            </svg>
+          </div>
+        </div>
+      )}
 
       {/* Selection Marquee Animation Styles */}
       <style>
         {`
+          @keyframes nudge-arrow {
+            0%, 100% { transform: rotate(180deg) translateX(0); }
+            50% { transform: rotate(180deg) translateX(10px); }
+          }
+
+          @keyframes pulse-drop {
+            0%, 100% { opacity: 0.6; transform: scale(1); }
+            50% { opacity: 1; transform: scale(1.1); }
+          }
+
           @keyframes selection-dash {
             to {
               stroke-dashoffset: -20;

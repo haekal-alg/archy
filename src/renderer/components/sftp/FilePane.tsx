@@ -3,7 +3,7 @@ import theme from '../../../theme';
 import { PaneState, TransferProgress, FileItem, SortColumn } from './sftpReducer';
 import { FolderIcon, FileIcon, ArchiveIcon, GearIcon, SFTPCheckIcon, NewFolderIcon } from './SFTPIcons';
 import { getMenuContainerStyle, getMenuItemStyle } from '../ContextMenu';
-import TransferFooter, { TRANSFER_FOOTER_HEIGHT } from './TransferFooter';
+import TransferFooter from './TransferFooter';
 import EditablePathBar from './EditablePathBar';
 import FileContextMenu from './FileContextMenu';
 import ConfirmDialog from './ConfirmDialog';
@@ -374,7 +374,7 @@ const FilePane: React.FC<FilePaneProps> = ({
           flex: 1,
           overflow: 'auto',
           padding: '8px',
-          paddingBottom: `${TRANSFER_FOOTER_HEIGHT + 16}px`,
+          paddingBottom: '16px',
           position: 'relative',
           background: dragOverPane === side ? 'rgba(22, 130, 93, 0.1)' : 'transparent',
           border: dragOverPane === side ? `2px dashed ${theme.accent.greenDark}` : '2px dashed transparent',
@@ -566,10 +566,10 @@ const FilePane: React.FC<FilePaneProps> = ({
           </div>
         )}
 
-        <div style={{ position: 'sticky', bottom: 0, paddingTop: '8px', zIndex: 15 }}>
-          <TransferFooter pane={side} transfer={transfer} formatSize={formatSize} formatDuration={formatDuration} />
-        </div>
       </div>
+
+      {/* Transfer progress bar — fixed to bottom of pane, only visible during transfer */}
+      <TransferFooter pane={side} transfer={transfer} formatSize={formatSize} formatDuration={formatDuration} />
 
       {/* Settings context menu */}
       {paneState.contextMenuOpen && paneState.menuPos && (

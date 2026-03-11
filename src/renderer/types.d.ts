@@ -9,6 +9,18 @@ export interface ElectronAPI {
   // App information
   isPackaged: () => Promise<boolean>;
 
+  // Icon loading
+  loadIcons: () => Promise<{
+    success: boolean;
+    categories: Array<{ id: string; label: string; icons: string[] }>;
+    icons: Record<string, { name: string; image: string; label: string; deviceType: string }>;
+    error?: string;
+  }>;
+
+  // Settings
+  getSettings: () => Promise<any>;
+  saveSettings: (settings: any) => Promise<{ success: boolean }>;
+
   connectRDP: (host: string, username: string, password: string) => Promise<any>;
   connectSSH: (host: string, port: number, username: string, password: string) => Promise<any>;
   openURL: (url: string) => Promise<any>;
@@ -34,7 +46,7 @@ export interface ElectronAPI {
   }) => Promise<{ success: boolean; error?: string }>;
 
   // Local Terminal Management
-  createLocalTerminal: (config: { connectionId: string; cwd?: string }) => Promise<{ success: boolean; cwd?: string; error?: string }>;
+  createLocalTerminal: (config: { connectionId: string; cwd?: string; shellType?: string }) => Promise<{ success: boolean; cwd?: string; error?: string }>;
   openTerminalInExplorer: (connectionId: string) => Promise<{ success: boolean; error?: string }>;
   getLocalTerminalCwd: (connectionId: string) => Promise<{ success: boolean; cwd?: string; error?: string }>;
 

@@ -1,12 +1,13 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useTabContext } from '../contexts/TabContext';
-import TerminalEmulator from './TerminalEmulator';
+import TerminalEmulator, { refreshTerminal } from './TerminalEmulator';
 import ConnectionContextMenu from './ConnectionContextMenu';
 const SFTPModal = React.lazy(() => import('./SFTPModal'));
 import { ClimbingBoxLoader } from 'react-spinners';
-import { PlugIcon, LatencyDot, LightningIcon } from './StatusIcons';
+import { PlugIcon, LightningIcon } from './StatusIcons';
 import { mapErrorMessage } from '../utils/errorMessages';
 import { useConfirm } from '../hooks/useConfirm';
+import { usePrompt } from '../hooks/usePrompt';
 import theme from '../../theme';
 
 // Icon for local terminal connections
@@ -49,12 +50,27 @@ const ReconnectCountdown: React.FC<{ connectionId: string }> = ({ connectionId }
 };
 
 const ConnectionsTab: React.FC = () => {
-  const { connections, activeConnectionId, setActiveConnectionId, disconnectConnection, removeConnection, retryConnection, createLocalTerminal, renameConnection, cancelAutoReconnect, topologyNodes, focusNode } = useTabContext();
+  const { connections, activeConnectionId, setActiveConnectionId, setActiveTab, disconnectConnection, removeConnection, reorderConnection, retryConnection, createLocalTerminal, renameConnection, cancelAutoReconnect, topologyNodes, focusNode, isTerminalFullscreen, setTerminalFullscreen } = useTabContext();
   const { confirm, ConfirmContainer } = useConfirm();
+  const { prompt, PromptContainer } = usePrompt();
   const [sidePanelCollapsed, setSidePanelCollapsed] = useState(false);
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; connectionId: string } | null>(null);
-  const [renameModal, setRenameModal] = useState<{ connectionId: string; currentName: string } | null>(null);
   const [sftpModalOpen, setSftpModalOpen] = useState(false);
+  const connectionListRef = useRef<HTMLDivElement>(null);
+  const [focusedConnectionIndex, setFocusedConnectionIndex] = useState<number>(-1);
+
+  // Sync focusedConnectionIndex when activeConnectionId changes externally
+  useEffect(() => {
+    const idx = connections.findIndex(c => c.id === activeConnectionId);
+    setFocusedConnectionIndex(idx);
+  }, [activeConnectionId, connections]);
+
+  // Listen for open-sftp-modal event from global keyboard shortcut
+  useEffect(() => {
+    const handler = () => setSftpModalOpen(true);
+    document.addEventListener('open-sftp-modal', handler);
+    return () => document.removeEventListener('open-sftp-modal', handler);
+  }, []);
 
   // Cache zoom values in state to avoid localStorage reads during render
   const [zoomCache, setZoomCache] = useState<Record<string, number>>({});
@@ -164,23 +180,22 @@ const ConnectionsTab: React.FC = () => {
     }
   };
 
-  const handleRename = () => {
+  const handleRename = async () => {
     if (contextMenu) {
       const conn = connections.find(c => c.id === contextMenu.connectionId);
       if (conn) {
-        setRenameModal({
-          connectionId: conn.id,
-          currentName: conn.customLabel || conn.nodeName,
-        });
+        const connId = conn.id;
+        const currentName = conn.customLabel || conn.nodeName;
         closeContextMenu();
+        const newLabel = await prompt({
+          title: 'Rename Connection',
+          defaultValue: currentName,
+          confirmLabel: 'Rename',
+        });
+        if (newLabel) {
+          renameConnection(connId, newLabel);
+        }
       }
-    }
-  };
-
-  const handleRenameSubmit = (newLabel: string) => {
-    if (renameModal) {
-      renameConnection(renameModal.connectionId, newLabel);
-      setRenameModal(null);
     }
   };
 
@@ -190,6 +205,20 @@ const ConnectionsTab: React.FC = () => {
       if (conn && conn.connectionType === 'local') {
         window.electron.openTerminalInExplorer(contextMenu.connectionId);
       }
+      closeContextMenu();
+    }
+  };
+
+  const handleMoveUp = () => {
+    if (contextMenu) {
+      reorderConnection(contextMenu.connectionId, 'up');
+      closeContextMenu();
+    }
+  };
+
+  const handleMoveDown = () => {
+    if (contextMenu) {
+      reorderConnection(contextMenu.connectionId, 'down');
       closeContextMenu();
     }
   };
@@ -206,6 +235,43 @@ const ConnectionsTab: React.FC = () => {
       await createLocalTerminal(cwd);
     }
   };
+
+  // Keyboard navigation for connection list (item #1)
+  const handleConnectionListKeyDown = useCallback((e: React.KeyboardEvent) => {
+    if (connections.length === 0) return;
+    let nextIndex = focusedConnectionIndex;
+
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      nextIndex = Math.min(connections.length - 1, focusedConnectionIndex + 1);
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      nextIndex = Math.max(0, focusedConnectionIndex - 1);
+    } else if (e.key === 'Home') {
+      e.preventDefault();
+      nextIndex = 0;
+    } else if (e.key === 'End') {
+      e.preventDefault();
+      nextIndex = connections.length - 1;
+    } else if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      if (focusedConnectionIndex >= 0 && focusedConnectionIndex < connections.length) {
+        setActiveConnectionId(connections[focusedConnectionIndex].id);
+      }
+      return;
+    } else {
+      return;
+    }
+
+    setFocusedConnectionIndex(nextIndex);
+    setActiveConnectionId(connections[nextIndex].id);
+    // Scroll focused item into view
+    const listEl = connectionListRef.current;
+    if (listEl) {
+      const items = listEl.querySelectorAll('[role="option"]');
+      items[nextIndex]?.scrollIntoView({ block: 'nearest' });
+    }
+  }, [connections, focusedConnectionIndex, setActiveConnectionId]);
 
   // Derived state
   const activeConnection = connections.find(c => c.id === activeConnectionId);
@@ -237,13 +303,35 @@ const ConnectionsTab: React.FC = () => {
     return () => window.removeEventListener('terminal-zoom-change', handleZoomUpdate);
   }, []);
 
+  // F11 toggles fullscreen terminal mode
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'F11') {
+        e.preventDefault();
+        setTerminalFullscreen(!isTerminalFullscreen);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isTerminalFullscreen, setTerminalFullscreen]);
+
+  // Safety net: refresh terminal after sidebar collapse/expand transition (300ms CSS + 50ms buffer)
+  useEffect(() => {
+    if (activeConnectionId) {
+      const timer = setTimeout(() => {
+        refreshTerminal(activeConnectionId);
+      }, 350);
+      return () => clearTimeout(timer);
+    }
+  }, [sidePanelCollapsed, activeConnectionId]);
+
   return (
     <div style={{ display: 'flex', height: '100%', overflow: 'hidden', position: 'relative' }}>
       {/* Side Panel - Always rendered for animation */}
       <aside aria-label="Active connections" style={{
-        width: sidePanelCollapsed ? '0px' : '320px',
+        width: isTerminalFullscreen ? '0px' : (sidePanelCollapsed ? '0px' : '320px'),
         background: theme.background.primary,
-        borderRight: sidePanelCollapsed ? 'none' : `1px solid ${theme.border.default}`,
+        borderRight: (isTerminalFullscreen || sidePanelCollapsed) ? 'none' : `1px solid ${theme.border.default}`,
         display: 'flex',
         flexDirection: 'column',
         overflow: 'hidden',
@@ -354,12 +442,20 @@ const ConnectionsTab: React.FC = () => {
         </div>
 
         {/* Connections List */}
-        <div style={{
-          flex: 1,
-          overflow: 'auto',
-          minWidth: '320px',
-          padding: theme.spacing.xl,
-        }}>
+        <div
+          ref={connectionListRef}
+          role="listbox"
+          aria-label="Connection list"
+          tabIndex={connections.length > 0 ? 0 : undefined}
+          onKeyDown={handleConnectionListKeyDown}
+          style={{
+            flex: 1,
+            overflow: 'auto',
+            minWidth: '320px',
+            padding: theme.spacing.xl,
+            outline: 'none',
+          }}
+        >
           {connections.length === 0 ? (
             <div style={{
               padding: `48px ${theme.spacing.xxl}`,
@@ -375,31 +471,59 @@ const ConnectionsTab: React.FC = () => {
               <div style={{ fontSize: theme.fontSize.sm, color: theme.text.tertiary, marginBottom: theme.spacing.xxl, lineHeight: '1.5' }}>
                 Add a device on the Design tab, then<br />right-click to connect via SSH or RDP.
               </div>
-              <button
-                onClick={() => createLocalTerminal()}
-                className="btn-ghost"
-                style={{
-                  padding: `${theme.spacing.md} ${theme.spacing.xl}`,
-                  borderRadius: theme.radius.sm,
-                  fontSize: theme.fontSize.sm,
-                  fontWeight: theme.fontWeight.medium,
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: theme.spacing.sm,
-                }}
-              >
-                <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-                  <rect x="1" y="2" width="12" height="10" rx="1" stroke="currentColor" strokeWidth="1.2" fill="none" />
-                  <path d="M3 5L5 7L3 9M6 9H8" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
-                </svg>
-                Open Local Terminal
-              </button>
+              <div style={{ display: 'flex', gap: theme.spacing.md, justifyContent: 'center', flexWrap: 'wrap' }}>
+                <button
+                  onClick={() => createLocalTerminal()}
+                  className="btn-ghost"
+                  style={{
+                    padding: `${theme.spacing.md} ${theme.spacing.xl}`,
+                    borderRadius: theme.radius.sm,
+                    fontSize: theme.fontSize.sm,
+                    fontWeight: theme.fontWeight.medium,
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: theme.spacing.sm,
+                  }}
+                >
+                  <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                    <rect x="1" y="2" width="12" height="10" rx="1" stroke="currentColor" strokeWidth="1.2" fill="none" />
+                    <path d="M3 5L5 7L3 9M6 9H8" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                  Open Local Terminal
+                </button>
+                <button
+                  onClick={() => setActiveTab('design')}
+                  className="btn-ghost"
+                  style={{
+                    padding: `${theme.spacing.md} ${theme.spacing.xl}`,
+                    borderRadius: theme.radius.sm,
+                    fontSize: theme.fontSize.sm,
+                    fontWeight: theme.fontWeight.medium,
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: theme.spacing.sm,
+                  }}
+                >
+                  <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                    <rect x="2" y="2" width="10" height="10" rx="1" stroke="currentColor" strokeWidth="1.2" fill="none" />
+                    <circle cx="5" cy="5" r="1" fill="currentColor" />
+                    <circle cx="9" cy="9" r="1" fill="currentColor" />
+                    <path d="M5 5L9 9" stroke="currentColor" strokeWidth="1" />
+                  </svg>
+                  Go to Design Tab
+                </button>
+              </div>
             </div>
           ) : (
-            connections.map(conn => (
+            connections.map((conn, connIndex) => (
               <div
                 key={conn.id}
-                onClick={() => setActiveConnectionId(conn.id)}
+                role="option"
+                aria-selected={activeConnectionId === conn.id}
+                onClick={() => {
+                  setActiveConnectionId(conn.id);
+                  setFocusedConnectionIndex(connIndex);
+                }}
                 onContextMenu={(e) => handleContextMenu(e, conn.id)}
                 style={{
                   position: 'relative',
@@ -410,6 +534,8 @@ const ConnectionsTab: React.FC = () => {
                   background: activeConnectionId === conn.id ? theme.background.secondary : theme.background.tertiary,
                   border: activeConnectionId === conn.id ? `1px solid ${theme.accent.blue}` : `1px solid ${theme.border.default}`,
                   transition: theme.transition.normal,
+                  outline: focusedConnectionIndex === connIndex ? `2px solid ${theme.accent.blue}` : 'none',
+                  outlineOffset: '-1px',
                 }}
                 onMouseEnter={(e) => {
                   if (activeConnectionId !== conn.id) {
@@ -457,19 +583,21 @@ const ConnectionsTab: React.FC = () => {
                   </span>
                 </div>
 
-                {/* Connection Details */}
-                <div style={{
-                  fontSize: theme.fontSize.xs,
-                  color: theme.text.tertiary,
-                  marginBottom: theme.spacing.md,
-                  fontFamily: 'Consolas, "Courier New", monospace',
-                  background: theme.background.elevated,
-                  padding: `${theme.spacing.sm} ${theme.spacing.md}`,
-                  borderRadius: theme.radius.sm,
-                  border: `1px solid ${theme.border.default}`,
-                }}>
-                  {conn.username}@{conn.host}:{conn.port}
-                </div>
+                {/* Connection Details (hidden for local terminals) */}
+                {conn.connectionType !== 'local' && (
+                  <div style={{
+                    fontSize: theme.fontSize.xs,
+                    color: theme.text.tertiary,
+                    marginBottom: theme.spacing.md,
+                    fontFamily: 'Consolas, "Courier New", monospace',
+                    background: theme.background.elevated,
+                    padding: `${theme.spacing.sm} ${theme.spacing.md}`,
+                    borderRadius: theme.radius.sm,
+                    border: `1px solid ${theme.border.default}`,
+                  }}>
+                    {conn.username}@{conn.host}:{conn.port}
+                  </div>
+                )}
 
                 {/* Status & Last Activity */}
                 <div style={{
@@ -636,13 +764,14 @@ const ConnectionsTab: React.FC = () => {
       </aside>
 
       {/* Unified Toggle Button */}
+      {!isTerminalFullscreen && (
       <button
         onClick={() => setSidePanelCollapsed(!sidePanelCollapsed)}
         className="panel-glass"
         aria-label={sidePanelCollapsed ? 'Show connections panel' : 'Hide connections panel'}
         style={{
           position: 'absolute',
-          left: sidePanelCollapsed ? '0' : '290px',
+          left: sidePanelCollapsed ? '0' : 'calc(320px - 30px)',
           top: '10px',
           width: '30px',
           height: '40px',
@@ -663,6 +792,7 @@ const ConnectionsTab: React.FC = () => {
       >
         {sidePanelCollapsed ? '\u203A' : '\u2039'}
       </button>
+      )}
 
       {/* Main Terminal Canvas */}
       <main style={{
@@ -695,7 +825,7 @@ const ConnectionsTab: React.FC = () => {
                     ? topologyNodes.find(n => n.id === activeConnection.nodeId)
                     : null;
                   if (activeConnection.connectionType === 'local') {
-                    return <LocalTerminalIcon />;
+                    return <span style={{ color: theme.accent.green }}><LocalTerminalIcon /></span>;
                   }
                   if (topoNode) {
                     return (
@@ -753,104 +883,154 @@ const ConnectionsTab: React.FC = () => {
                   </button>
                 )}
               </div>
-              <div style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: theme.spacing.lg,
-              }}>
-                {/* Latency Indicator */}
+              {activeConnection.status === 'connected' && (
                 <div style={{
                   display: 'flex',
                   alignItems: 'center',
-                  gap: theme.spacing.sm,
-                  padding: `${theme.spacing.xs} 10px`,
-                  backgroundColor: theme.background.tertiary,
-                  borderRadius: theme.radius.sm,
-                  border: `1px solid ${theme.border.default}`,
+                  gap: theme.spacing.lg,
                 }}>
-                  {activeConnection.latency !== undefined ? (
-                    <>
-                      <LatencyDot
-                        size={10}
-                        color={activeConnection.latency < 100 ? theme.accent.green : activeConnection.latency < 300 ? theme.accent.orange : theme.accent.red}
-                      />
-                      <span style={{
-                        fontSize: '12px',
-                        color: activeConnection.latency < 100 ? theme.accent.green : activeConnection.latency < 300 ? theme.accent.orange : theme.accent.red,
-                        fontWeight: theme.fontWeight.medium,
-                        fontFamily: 'Consolas, monospace',
-                        minWidth: '45px',
-                      }}>
-                        {activeConnection.latency}ms
-                      </span>
-                    </>
-                  ) : (
-                    <span style={{
-                      fontSize: '12px',
-                      color: theme.text.disabled,
-                      fontFamily: 'Consolas, monospace',
-                      minWidth: '45px',
-                    }}>
-                      ---
-                    </span>
-                  )}
-                </div>
-                {/* Zoom Controls */}
-                <div style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: theme.spacing.md,
-                }}>
-                  <button
-                    onClick={() => handleZoomChange(activeConnection.id, -0.1)}
-                    style={{
-                      padding: `${theme.spacing.xs} ${theme.spacing.md}`,
-                      backgroundColor: theme.background.hover,
-                      color: theme.text.primary,
-                      border: 'none',
-                      borderRadius: '3px',
-                      fontSize: theme.fontSize.lg,
-                      cursor: 'pointer',
-                      lineHeight: '1',
-                      transition: 'background-color 0.2s ease',
-                    }}
-                    title="Zoom out"
-                    aria-label="Zoom out terminal text"
-                    onMouseEnter={(e) => e.currentTarget.style.backgroundColor = theme.background.active}
-                    onMouseLeave={(e) => e.currentTarget.style.backgroundColor = theme.background.hover}
-                  >
-                    −
-                  </button>
-                  <span style={{
-                    fontSize: '12px',
-                    color: theme.text.secondary,
-                    minWidth: '45px',
-                    textAlign: 'center',
+                  {/* Zoom Controls */}
+                  <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: theme.spacing.md,
                   }}>
-                    {Math.round(activeZoom * 100)}%
-                  </span>
-                  <button
-                    onClick={() => handleZoomChange(activeConnection.id, 0.1)}
-                    style={{
-                      padding: `${theme.spacing.xs} ${theme.spacing.md}`,
-                      backgroundColor: theme.background.hover,
-                      color: theme.text.primary,
-                      border: 'none',
-                      borderRadius: '3px',
-                      fontSize: theme.fontSize.lg,
-                      cursor: 'pointer',
-                      lineHeight: '1',
-                      transition: 'background-color 0.2s ease',
-                    }}
-                    title="Zoom in"
-                    aria-label="Zoom in terminal text"
-                    onMouseEnter={(e) => e.currentTarget.style.backgroundColor = theme.background.active}
-                    onMouseLeave={(e) => e.currentTarget.style.backgroundColor = theme.background.hover}
-                  >
-                    +
-                  </button>
+                    <button
+                      onClick={() => handleZoomChange(activeConnection.id, -0.1)}
+                      style={{
+                        padding: `${theme.spacing.xs} ${theme.spacing.md}`,
+                        backgroundColor: theme.background.hover,
+                        color: theme.text.primary,
+                        border: 'none',
+                        borderRadius: '3px',
+                        fontSize: theme.fontSize.lg,
+                        cursor: 'pointer',
+                        lineHeight: '1',
+                        transition: 'background-color 0.2s ease',
+                      }}
+                      title="Zoom out"
+                      aria-label="Zoom out terminal text"
+                      onMouseEnter={(e) => e.currentTarget.style.backgroundColor = theme.background.active}
+                      onMouseLeave={(e) => e.currentTarget.style.backgroundColor = theme.background.hover}
+                    >
+                      −
+                    </button>
+                    <span
+                      onClick={() => {
+                        handleZoomChange(activeConnection.id, 1.0 - activeZoom);
+                      }}
+                      title="Click to reset to 100%"
+                      style={{
+                        fontSize: '12px',
+                        color: theme.text.secondary,
+                        minWidth: '45px',
+                        textAlign: 'center',
+                        cursor: 'pointer',
+                        borderRadius: '3px',
+                        padding: `${theme.spacing.xs} 0`,
+                        transition: 'background-color 0.2s ease',
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.backgroundColor = theme.background.hover;
+                        e.currentTarget.style.color = theme.text.primary;
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.backgroundColor = 'transparent';
+                        e.currentTarget.style.color = theme.text.secondary;
+                      }}
+                    >
+                      {Math.round(activeZoom * 100)}%
+                    </span>
+                    <button
+                      onClick={() => handleZoomChange(activeConnection.id, 0.1)}
+                      style={{
+                        padding: `${theme.spacing.xs} ${theme.spacing.md}`,
+                        backgroundColor: theme.background.hover,
+                        color: theme.text.primary,
+                        border: 'none',
+                        borderRadius: '3px',
+                        fontSize: theme.fontSize.lg,
+                        cursor: 'pointer',
+                        lineHeight: '1',
+                        transition: 'background-color 0.2s ease',
+                      }}
+                      title="Zoom in"
+                      aria-label="Zoom in terminal text"
+                      onMouseEnter={(e) => e.currentTarget.style.backgroundColor = theme.background.active}
+                      onMouseLeave={(e) => e.currentTarget.style.backgroundColor = theme.background.hover}
+                    >
+                      +
+                    </button>
+
+                    {/* Refresh terminal display */}
+                    <button
+                      onClick={() => refreshTerminal(activeConnection.id)}
+                      style={{
+                        padding: `${theme.spacing.xs} ${theme.spacing.md}`,
+                        backgroundColor: theme.background.hover,
+                        color: theme.text.secondary,
+                        border: 'none',
+                        borderRadius: '3px',
+                        cursor: 'pointer',
+                        lineHeight: '1',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        transition: 'background-color 0.2s ease',
+                        marginLeft: theme.spacing.sm,
+                      }}
+                      title="Refresh terminal display"
+                      aria-label="Refresh terminal display"
+                      onMouseEnter={(e) => e.currentTarget.style.backgroundColor = theme.background.active}
+                      onMouseLeave={(e) => e.currentTarget.style.backgroundColor = theme.background.hover}
+                    >
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <polyline points="23 4 23 10 17 10" />
+                        <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10" />
+                      </svg>
+                    </button>
+
+                    {/* Fullscreen toggle */}
+                    <button
+                      onClick={() => setTerminalFullscreen(!isTerminalFullscreen)}
+                      style={{
+                        padding: `${theme.spacing.xs} ${theme.spacing.md}`,
+                        backgroundColor: isTerminalFullscreen ? theme.accent.blue + '33' : theme.background.hover,
+                        color: isTerminalFullscreen ? theme.accent.blue : theme.text.secondary,
+                        border: isTerminalFullscreen ? `1px solid ${theme.accent.blue}44` : 'none',
+                        borderRadius: '3px',
+                        cursor: 'pointer',
+                        lineHeight: '1',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        transition: 'background-color 0.2s ease',
+                        marginLeft: theme.spacing.sm,
+                      }}
+                      title={isTerminalFullscreen ? 'Exit fullscreen (F11)' : 'Fullscreen terminal (F11)'}
+                      aria-label={isTerminalFullscreen ? 'Exit fullscreen terminal' : 'Fullscreen terminal'}
+                      onMouseEnter={(e) => e.currentTarget.style.backgroundColor = isTerminalFullscreen ? theme.accent.blue + '44' : theme.background.active}
+                      onMouseLeave={(e) => e.currentTarget.style.backgroundColor = isTerminalFullscreen ? theme.accent.blue + '33' : theme.background.hover}
+                    >
+                      {isTerminalFullscreen ? (
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <polyline points="4 14 4 20 10 20" />
+                          <polyline points="20 10 20 4 14 4" />
+                          <line x1="14" y1="10" x2="21" y2="3" />
+                          <line x1="3" y1="21" x2="10" y2="14" />
+                        </svg>
+                      ) : (
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <polyline points="15 3 21 3 21 9" />
+                          <polyline points="9 21 3 21 3 15" />
+                          <line x1="21" y1="3" x2="14" y2="10" />
+                          <line x1="3" y1="21" x2="10" y2="14" />
+                        </svg>
+                      )}
+                    </button>
+                  </div>
                 </div>
-              </div>
+              )}
             </div>
 
             {/* Terminal Area - render all terminals but hide inactive ones */}
@@ -1043,116 +1223,15 @@ const ConnectionsTab: React.FC = () => {
             onRename={handleRename}
             onOpenInExplorer={conn.connectionType === 'local' ? handleOpenInExplorer : undefined}
             onDuplicate={conn.connectionType === 'local' ? handleDuplicateLocal : undefined}
+            onMoveUp={connections.indexOf(conn) > 0 ? handleMoveUp : undefined}
+            onMoveDown={connections.indexOf(conn) < connections.length - 1 ? handleMoveDown : undefined}
             onClose={closeContextMenu}
           />
         );
       })()}
 
-      {/* Rename Modal */}
-      {renameModal && (
-        <div
-          role="dialog"
-          aria-modal="true"
-          aria-label="Rename connection"
-          style={{
-            position: 'fixed',
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            background: 'rgba(0, 0, 0, 0.7)',
-            backdropFilter: 'blur(4px)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            zIndex: 10000,
-          }}
-          onClick={() => setRenameModal(null)}
-          onKeyDown={(e) => {
-            if (e.key === 'Escape') setRenameModal(null);
-          }}
-        >
-          <div
-            style={{
-              background: theme.background.secondary,
-              border: `1px solid ${theme.border.default}`,
-              borderRadius: theme.radius.lg,
-              padding: theme.spacing.xxxl,
-              minWidth: '400px',
-              boxShadow: theme.shadow.xl,
-            }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <h3 style={{
-              margin: `0 0 ${theme.spacing.xl} 0`,
-              fontSize: theme.fontSize.lg,
-              fontWeight: theme.fontWeight.semibold,
-              color: theme.text.primary,
-            }}>
-              Rename Connection
-            </h3>
-            <form onSubmit={(e) => {
-              e.preventDefault();
-              const input = e.currentTarget.elements.namedItem('newLabel') as HTMLInputElement;
-              if (input && input.value.trim()) {
-                handleRenameSubmit(input.value.trim());
-              }
-            }}>
-              <input
-                type="text"
-                name="newLabel"
-                defaultValue={renameModal.currentName}
-                autoFocus
-                style={{
-                  width: '100%',
-                  padding: `10px ${theme.spacing.lg}`,
-                  background: theme.background.tertiary,
-                  border: `1px solid ${theme.border.default}`,
-                  borderRadius: theme.radius.sm,
-                  color: theme.text.primary,
-                  fontSize: theme.fontSize.base,
-                  marginBottom: theme.spacing.xl,
-                  outline: 'none',
-                }}
-                onFocus={(e) => e.target.select()}
-              />
-              <div style={{ display: 'flex', gap: theme.spacing.md, justifyContent: 'flex-end' }}>
-                <button
-                  type="button"
-                  onClick={() => setRenameModal(null)}
-                  style={{
-                    padding: `${theme.spacing.md} ${theme.spacing.xl}`,
-                    background: theme.background.hover,
-                    color: theme.text.primary,
-                    border: `1px solid ${theme.border.default}`,
-                    borderRadius: theme.radius.sm,
-                    fontSize: theme.fontSize.md,
-                    cursor: 'pointer',
-                    fontWeight: theme.fontWeight.medium,
-                  }}
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  style={{
-                    padding: `${theme.spacing.md} ${theme.spacing.xl}`,
-                    background: theme.accent.blue,
-                    color: theme.text.primary,
-                    border: `1px solid ${theme.accent.blueDark}`,
-                    borderRadius: theme.radius.sm,
-                    fontSize: theme.fontSize.md,
-                    cursor: 'pointer',
-                    fontWeight: theme.fontWeight.medium,
-                  }}
-                >
-                  Rename
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+      {/* Prompt Dialog (Rename) */}
+      <PromptContainer />
 
       {/* SFTP Modal */}
       <React.Suspense fallback={null}>

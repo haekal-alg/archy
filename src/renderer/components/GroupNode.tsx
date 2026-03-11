@@ -93,26 +93,6 @@ const GroupNode: React.FC<NodeProps> = ({ data, selected }) => {
           </div>
         )}
 
-        {/* Description */}
-        {groupData.description && (
-          <div
-            style={{
-              position: 'absolute',
-              bottom: '12px',
-              left: '20px',
-              right: '20px',
-              fontSize: theme.fontSize.sm,
-              color: theme.text.primary,
-              fontStyle: 'italic',
-              background: 'transparent',
-              padding: `${theme.spacing.sm} ${theme.spacing.lg}`,
-              borderRadius: theme.radius.md,
-              border: 'none'
-            }}
-          >
-            {groupData.description}
-          </div>
-        )}
       </div>
     </>
   );

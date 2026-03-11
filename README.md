@@ -1,6 +1,5 @@
 <div align="center">
-  <img src="./images/icon.png" alt="Archy Logo" width="120"/>
-  <h1>Archy</h1>
+  <img src="./build/main.png" alt="Archy Logo" width="120"/>
 </div>
 
 ## Overview

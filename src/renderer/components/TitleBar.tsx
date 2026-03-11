@@ -9,6 +9,7 @@ interface TitleBarProps {
   onRedo: () => void;
   canUndo: boolean;
   canRedo: boolean;
+  onSettings?: () => void;
 }
 
 interface MenuItem {
@@ -24,6 +25,7 @@ type MenuId = 'file' | 'edit' | 'view';
 const TitleBar: React.FC<TitleBarProps> = ({
   onSave, onLoad, onExport, onClear,
   onUndo, onRedo, canUndo, canRedo,
+  onSettings,
 }) => {
   const [openMenu, setOpenMenu] = useState<MenuId | null>(null);
   const [isMaximized, setIsMaximized] = useState(false);
@@ -117,7 +119,7 @@ const TitleBar: React.FC<TitleBarProps> = ({
   return (
     <div
       style={{
-        height: 32,
+        height: 38,
         display: 'flex',
         alignItems: 'center',
         backgroundColor: '#151923',
@@ -127,28 +129,12 @@ const TitleBar: React.FC<TitleBarProps> = ({
         flexShrink: 0,
       }}
     >
-      {/* App icon + title */}
-      <div
-        className="titlebar-drag"
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: 6,
-          padding: '0 12px',
-          height: '100%',
-        }}
-      >
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#4d7cfe" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-          <polyline points="16 18 22 12 16 6" />
-          <polyline points="8 6 2 12 8 18" />
-        </svg>
-        <span style={{ color: '#8892a6', fontSize: 12, fontWeight: 500 }}>Archy</span>
-      </div>
-
       {/* Menu bar */}
       <div
         ref={menuBarRef}
         className="titlebar-no-drag"
+        role="menubar"
+        aria-label="Application menu"
         style={{ display: 'flex', height: '100%', alignItems: 'stretch' }}
       >
         {menuOrder.map(id => (
@@ -157,19 +143,25 @@ const TitleBar: React.FC<TitleBarProps> = ({
               className={`titlebar-menu-btn${openMenu === id ? ' active' : ''}`}
               onClick={() => handleMenuClick(id)}
               onMouseEnter={() => handleMenuHover(id)}
+              role="menuitem"
+              aria-haspopup="true"
+              aria-expanded={openMenu === id}
+              aria-label={`${menus[id].label} menu`}
             >
               {menus[id].label}
             </button>
             {openMenu === id && (
-              <div className="titlebar-menu-dropdown">
+              <div className="titlebar-menu-dropdown" role="menu" aria-label={`${menus[id].label} menu`}>
                 {menus[id].items.map((item, i) =>
                   item.separator ? (
-                    <div key={`sep-${i}`} className="titlebar-menu-separator" />
+                    <div key={`sep-${i}`} className="titlebar-menu-separator" role="separator" />
                   ) : (
                     <button
                       key={item.label}
                       className={`titlebar-menu-item${item.disabled ? ' disabled' : ''}`}
                       onClick={() => handleItemClick(item.action, item.disabled)}
+                      role="menuitem"
+                      aria-disabled={item.disabled || false}
                     >
                       <span>{item.label}</span>
                       {item.shortcut && (
@@ -191,16 +183,31 @@ const TitleBar: React.FC<TitleBarProps> = ({
         onDoubleClick={() => window.electron.windowMaximize()}
       />
 
-      {/* Window controls */}
+      {/* Settings + Window controls */}
       <div className="titlebar-no-drag" style={{ display: 'flex', height: '100%' }}>
+        {/* Settings gear */}
+        {onSettings && (
+          <button
+            className="titlebar-window-btn"
+            onClick={onSettings}
+            aria-label="Settings"
+            style={{ marginRight: 2 }}
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="12" cy="12" r="3" />
+              <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
+            </svg>
+          </button>
+        )}
+
         {/* Minimize */}
         <button
           className="titlebar-window-btn"
           onClick={() => window.electron.windowMinimize()}
           aria-label="Minimize"
         >
-          <svg width="10" height="1" viewBox="0 0 10 1">
-            <rect width="10" height="1" fill="currentColor" />
+          <svg width="10" height="10" viewBox="0 0 10 10" overflow="visible">
+            <line x1="0" y1="5" x2="10" y2="5" stroke="currentColor" strokeWidth="1" />
           </svg>
         </button>
 
@@ -212,13 +219,13 @@ const TitleBar: React.FC<TitleBarProps> = ({
         >
           {isMaximized ? (
             // Restore icon (overlapping squares)
-            <svg width="10" height="10" viewBox="0 0 10 10">
+            <svg width="10" height="10" viewBox="-0.5 -0.5 11 11">
               <rect x="2" y="0" width="8" height="8" fill="none" stroke="currentColor" strokeWidth="1" rx="0.5" />
               <rect x="0" y="2" width="8" height="8" fill="#151923" stroke="currentColor" strokeWidth="1" rx="0.5" />
             </svg>
           ) : (
             // Maximize icon (single square)
-            <svg width="10" height="10" viewBox="0 0 10 10">
+            <svg width="10" height="10" viewBox="-0.5 -0.5 11 11">
               <rect x="0" y="0" width="10" height="10" fill="none" stroke="currentColor" strokeWidth="1" rx="0.5" />
             </svg>
           )}
@@ -230,7 +237,7 @@ const TitleBar: React.FC<TitleBarProps> = ({
           onClick={() => window.electron.windowClose()}
           aria-label="Close"
         >
-          <svg width="10" height="10" viewBox="0 0 10 10">
+          <svg width="10" height="10" viewBox="-0.5 -0.5 11 11">
             <line x1="0" y1="0" x2="10" y2="10" stroke="currentColor" strokeWidth="1.2" />
             <line x1="10" y1="0" x2="0" y2="10" stroke="currentColor" strokeWidth="1.2" />
           </svg>

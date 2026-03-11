@@ -94,25 +94,48 @@ const TabBar: React.FC = () => {
           >
             {tab.label}
 
-            {/* Connection count badge - colored by most severe status */}
+            {/* Connection count badge with status icon for accessibility */}
             {tab.id === 'connections' && totalCount > 0 && (
               <span
                 className={`tab-badge${errorCount > 0 ? ' pulse-red' : ''}`}
                 aria-label={`${totalCount} connection${totalCount !== 1 ? 's' : ''}${errorCount > 0 ? `, ${errorCount} error${errorCount !== 1 ? 's' : ''}` : ''}`}
                 style={{
                   backgroundColor: errorCount > 0
-                    ? theme.accent.red
+                    ? 'rgba(255, 92, 92, 0.15)'
                     : connectingCount > 0
-                      ? theme.accent.orange
-                      : theme.status.success,
-                  color: theme.text.inverted,
+                      ? 'rgba(255, 171, 64, 0.15)'
+                      : 'rgba(61, 214, 140, 0.15)',
+                  color: errorCount > 0
+                    ? '#e87272'
+                    : connectingCount > 0
+                      ? '#d4943a'
+                      : '#5ab882',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '3px',
                 }}
               >
+                {/* Status icon: differentiates states beyond color alone */}
+                {errorCount > 0 ? (
+                  <svg width="10" height="10" viewBox="0 0 10 10" fill="none" aria-hidden="true">
+                    <path d="M5 1L9 9H1L5 1Z" stroke="currentColor" strokeWidth="1.2" fill="none" />
+                    <line x1="5" y1="4" x2="5" y2="6" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
+                    <circle cx="5" cy="7.5" r="0.5" fill="currentColor" />
+                  </svg>
+                ) : connectingCount > 0 ? (
+                  <svg width="10" height="10" viewBox="0 0 10 10" fill="none" aria-hidden="true" style={{ animation: 'spin 1.5s linear infinite' }}>
+                    <path d="M5 1A4 4 0 0 1 9 5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
+                  </svg>
+                ) : (
+                  <svg width="10" height="10" viewBox="0 0 10 10" fill="none" aria-hidden="true">
+                    <path d="M2 5L4.5 7.5L8 3" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                )}
                 {totalCount}
               </span>
             )}
 
-            {/* Red alert dot when errors exist and user is on another tab */}
+            {/* Alert dot when errors exist and user is on another tab */}
             {tab.id === 'connections' && errorCount > 0 && activeTab !== 'connections' && (
               <span
                 className="pulse-dot"
@@ -124,7 +147,7 @@ const TabBar: React.FC = () => {
                   width: '6px',
                   height: '6px',
                   borderRadius: '50%',
-                  backgroundColor: theme.accent.red,
+                  backgroundColor: '#e87272',
                 }}
               />
             )}

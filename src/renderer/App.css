@@ -25,28 +25,37 @@ a,
   cursor: pointer !important;
 }
 
-/* Node Hover Effect - Enhanced for Dark Theme */
-.device-node:hover {
-  transform: scale(1.05);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.8), 0 0 20px rgba(77, 124, 254, 0.2) !important;
-  transition: all 0.2s ease;
-}
+/* Node Hover Effect removed - no size/brightness change on hover */
 
-/* Selected Node - Gray Outline */
+/* Remove default selection styling from full node */
 .react-flow__node.selected .device-node {
-  box-shadow: 0 0 0 3px #9ca3af !important;
+  box-shadow: none !important;
 }
 
-/* Button Interactions */
-button:hover {
-  opacity: 0.9;
-  transform: translateY(-1px);
-  transition: all 0.15s ease;
+/* Selection outline - dashed, icon only */
+.react-flow__node.selected .device-node-icon-area {
+  outline: 2px dashed var(--node-color, #9ca3af);
+  outline-offset: 2px;
+  border-radius: 6px;
 }
 
-button:active {
-  transform: translateY(0);
+/* Inline label editing */
+.device-node-label-input {
+  background: transparent;
+  border: 1px solid #4d7cfe;
+  border-radius: 3px;
+  color: inherit;
+  font: inherit;
+  text-align: center;
+  outline: none;
+  padding: 1px 4px;
+  width: 100%;
+  box-shadow: 0 0 0 2px rgba(77, 124, 254, 0.25);
 }
+
+/* Button Interactions - scoped to interactive controls, not global */
+/* Hover/active transforms removed globally to prevent layout jitter.
+   Use component-level hover styles (background-color, border-color) instead. */
 
 /* Input Focus - Modern Blue Glow */
 input:focus,
@@ -83,19 +92,31 @@ textarea:focus {
   color: #e8ecf4;
 }
 
-/* ReactFlow Controls - Dark Theme Override */
+/* ReactFlow Controls - Unified Glass Style */
 .react-flow__controls {
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.6) !important;
+  background: rgba(0, 0, 0, 0.85) !important;
+  backdrop-filter: blur(10px) !important;
+  border: 1px solid #3a4556 !important;
+  border-radius: 12px !important;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5), 0 2px 8px rgba(0, 0, 0, 0.3) !important;
+  overflow: hidden !important;
 }
 
 .react-flow__controls-button {
-  background: #1e2433 !important;
-  border-color: #3a4556 !important;
+  background: transparent !important;
+  border-color: rgba(255, 255, 255, 0.08) !important;
   color: #e8ecf4 !important;
+  width: 32px !important;
+  height: 32px !important;
+  transition: background 0.15s ease !important;
 }
 
 .react-flow__controls-button:hover {
-  background: #252d3f !important;
+  background: rgba(255, 255, 255, 0.1) !important;
+}
+
+.react-flow__controls-button svg {
+  fill: #e8ecf4 !important;
 }
 
 /* ReactFlow MiniMap - Dark Theme Override */
@@ -104,9 +125,11 @@ textarea:focus {
   border: 1px solid #3a4556 !important;
 }
 
-/* Smooth Transitions - Exclude ReactFlow elements for better performance */
-*:not(.react-flow):not(.react-flow *) {
-  transition-property: background-color, border-color, color, fill, stroke, opacity, box-shadow;
+/* Smooth Transitions - Scoped to interactive elements for performance */
+button, a, input, select, textarea,
+[role="tab"], [role="menuitem"], [role="button"],
+[tabindex]:not([tabindex="-1"]) {
+  transition-property: background-color, border-color, color, opacity, box-shadow;
   transition-duration: 0.15s;
   transition-timing-function: ease-in-out;
 }
@@ -169,8 +192,8 @@ body.using-keyboard *:focus {
 
 /* ===== Phase 4: Enhanced Micro-interactions ===== */
 
-/* Button press animation */
-button:active:not(:disabled) {
+/* Button press animation - scoped to avoid layout shift on non-interactive buttons */
+button:active:not(:disabled):not(.titlebar-window-btn):not(.titlebar-menu-btn) {
   transform: scale(0.98);
   transition: transform 0.05s ease;
 }
@@ -278,4 +301,41 @@ a:hover {
 @keyframes spin {
   0% { transform: rotate(0deg); }
   100% { transform: rotate(360deg); }
+}
+
+/* ===== Node Connection Status Ring ===== */
+
+@keyframes pulse-ring {
+  0%, 100% { box-shadow: 0 0 0 2px rgba(255, 171, 64, 0.56); }
+  50% { box-shadow: 0 0 0 2px rgba(255, 171, 64, 0.15); }
+}
+
+/* ===== Badge Glow Pulses ===== */
+
+@keyframes badge-glow-green {
+  0%, 100% { box-shadow: 0 0 4px #3dd68c60, 0 0 8px #3dd68c30; }
+  50% { box-shadow: 0 0 8px #3dd68c90, 0 0 14px #3dd68c50; }
+}
+
+@keyframes badge-glow-orange {
+  0%, 100% { box-shadow: 0 0 4px #ffab4060, 0 0 8px #ffab4030; }
+  50% { box-shadow: 0 0 8px #ffab4090, 0 0 14px #ffab4050; }
+}
+
+@keyframes badge-glow-red {
+  0%, 100% { box-shadow: 0 0 4px #ff5c5c60, 0 0 8px #ff5c5c30; }
+  50% { box-shadow: 0 0 8px #ff5c5c90, 0 0 14px #ff5c5c50; }
+}
+
+/* ===== Reduced Motion: Accessibility ===== */
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }
