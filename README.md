@@ -4,7 +4,7 @@
 
 # Archy – Visual Infrastructure + Remote Access in One Place
 ## Overview
-Archy is an based desktop application that combines network architecture visualization with built-in remote access tools.
+Archy is a desktop application that combines network architecture visualization with built-in remote access tools.
 
 In many real-world environments such as labs, pentest engagements, infrastructure operations, or homelabs—engineers often juggle several tools at once:
 - a diagram tool to understand the infrastructure
