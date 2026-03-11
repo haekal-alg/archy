@@ -25,8 +25,8 @@ if errorlevel 1 (
 )
 echo       Done.
 
-echo [4/4] Creating portable executable...
-call npx electron-builder --win portable --x64
+echo [4/4] Creating installer...
+call npx electron-builder --win nsis --x64
 if errorlevel 1 (
     echo.
     echo [ERROR] Packaging failed!

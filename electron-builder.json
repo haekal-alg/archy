@@ -45,18 +45,23 @@
   "compression": "maximum",
   "electronLanguages": ["en-US"],
   "asar": true,
+  "afterPack": "./scripts/afterPack.js",
   "win": {
     "target": [{
-      "target": "portable",
+      "target": "nsis",
       "arch": ["x64"]
     }],
     "icon": "build/icon.png",
     "forceCodeSigning": false,
     "signAndEditExecutable": false
   },
-  "portable": {
-    "artifactName": "${productName}-${version}-portable.${ext}",
-    "splashImage": "build/splash.bmp"
+  "nsis": {
+    "oneClick": true,
+    "perMachine": false,
+    "deleteAppDataOnUninstall": false,
+    "createDesktopShortcut": true,
+    "createStartMenuShortcut": true,
+    "artifactName": "Archy-Setup-${version}.${ext}"
   },
   "linux": {
     "target": ["AppImage"],

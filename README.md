@@ -48,9 +48,16 @@ npm start
 # Development mode
 npm run dev
 
-# Create distributable
+# Create distributable (NSIS installer)
 npm run package
+# Output: release/Archy-Setup-<version>.exe
 ```
+
+### Installation
+Run `Archy-Setup-<version>.exe` — single-click install, no admin required.
+- Installs to `%LOCALAPPDATA%\Programs\archy`
+- Creates Desktop and Start Menu shortcuts
+- Uninstall via Settings > Apps (preserves user data in `%APPDATA%\archy`)
 ## Security Considerations
 
 **Important**: Archy stores credentials in plain text locally for convenience in lab environments.
