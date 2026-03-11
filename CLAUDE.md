@@ -251,7 +251,8 @@ Centralized theme configuration in `src/theme.ts`:
 - `src/config.ts` - Centralized UI configuration (handle sizing, edge settings, panel widths, node sizing, zoom ranges)
 - `webpack.config.js` - Renderer build configuration
 - `tsconfig.json` - TypeScript compiler options
-- `electron-builder.json` - Packaging configuration (portable Windows exe, AppImage, DMG)
+- `electron-builder.json` - Packaging configuration (NSIS installer for Windows, AppImage, DMG)
+- `scripts/afterPack.js` - Post-pack hook to stamp app icon onto Windows exe via rcedit
 
 ### Icons
 - `icons/categories.json` - Icon category definitions and metadata
@@ -341,7 +342,10 @@ Key constants in `src/main/buffer-manager.ts`:
 ### Electron Bundle
 - Production builds use ASAR packaging
 - electron-builder excludes source maps and TypeScript files
-- Portable Windows build for single-exe distribution
+- NSIS installer for Windows (one-click, per-user install to `%LOCALAPPDATA%\Programs\archy`)
+- `afterPack` hook (`scripts/afterPack.js`) stamps app icon via rcedit (required because `signAndEditExecutable: false`)
+- Desktop and Start Menu shortcuts created automatically
+- Uninstall preserves user data (`deleteAppDataOnUninstall: false`)
 - Maximum compression enabled
 
 ## Security Notes
