@@ -1,0 +1,27 @@
+1. dont forget to add changelog after finalizing the readme file.
+2. make it enganging, insightful and helpful for people
+
+---
+Rule
+1. simple words and words flow thats easy to understand
+2. max. 2-3 paragraphs. users need to be hooked and enganged in as few sentences as possible.
+
+---
+<enganging opening statement>
+
+<description>
+	- jokes regarding use of gazillion token used and pollution made by AI
+ 	- mention that user experience is so important and that while this a tool made by a single person, i still want to make this as premium as possible. i also want this to be as intuitive as possible so that an IT user that has not use this once can immediately understand
+	- briefly why this tool exists
+	- what has been the improvement
+
+<final words>
+
+<link to github>
+
+<4-5 pictures showcasing the most amazing feature functionally or visually>
+1. main icon
+2. dashboard
+3. multiple terminal workflow
+4.
+5.
