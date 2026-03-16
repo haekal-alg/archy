@@ -293,6 +293,28 @@ ipcMain.handle('upload-custom-icon', async () => {
 });
 
 // ============================================================================
+// Custom Icon Library IPC Handlers (persistent storage)
+// ============================================================================
+
+ipcMain.handle('get-custom-icons', async () => {
+  return store.get('customIcons', []);
+});
+
+ipcMain.handle('save-custom-icon', async (_event: any, { name, base64 }: { name: string; base64: string }) => {
+  const icons: Array<{ id: string; name: string; base64: string }> = store.get('customIcons', []);
+  const entry = { id: `custom-${Date.now()}`, name, base64 };
+  icons.push(entry);
+  store.set('customIcons', icons);
+  return entry;
+});
+
+ipcMain.handle('delete-custom-icon', async (_event: any, { id }: { id: string }) => {
+  const icons: Array<{ id: string; name: string; base64: string }> = store.get('customIcons', []);
+  store.set('customIcons', icons.filter((i: any) => i.id !== id));
+  return { success: true };
+});
+
+// ============================================================================
 // Settings IPC Handlers
 // ============================================================================
 

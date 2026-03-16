@@ -1,7 +1,7 @@
 import React from 'react';
 import { createRoot } from 'react-dom/client';
 import App from './App';
-import { loadIcons } from './iconStore';
+import { loadIcons, loadCustomIcons } from './iconStore';
 
 // Set document title based on environment
 (async () => {
@@ -13,8 +13,9 @@ import { loadIcons } from './iconStore';
   }
 })();
 
-// Load custom icons from disk (non-blocking)
+// Load icons from disk (non-blocking)
 loadIcons();
+loadCustomIcons();
 
 const container = document.getElementById('root');
 if (!container) throw new Error('Root element not found');

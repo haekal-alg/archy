@@ -165,6 +165,14 @@ contextBridge.exposeInMainWorld('electron', {
   uploadCustomIcon: () =>
     ipcRenderer.invoke('upload-custom-icon'),
 
+  // Custom icon library (persistent)
+  getCustomIcons: () =>
+    ipcRenderer.invoke('get-custom-icons'),
+  saveCustomIcon: (data: { name: string; base64: string }) =>
+    ipcRenderer.invoke('save-custom-icon', data),
+  deleteCustomIcon: (data: { id: string }) =>
+    ipcRenderer.invoke('delete-custom-icon', data),
+
   // Window controls (custom title bar)
   windowMinimize: () => ipcRenderer.invoke('window-minimize'),
   windowMaximize: () => ipcRenderer.invoke('window-maximize'),

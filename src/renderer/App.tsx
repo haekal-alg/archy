@@ -40,6 +40,7 @@ import CommandPalette from './components/CommandPalette';
 import { ToolPalette } from './components/ToolPalette';
 import { ToolType } from './types/tools';
 import { useToast } from './hooks/useToast';
+import { getCustomIcon } from './iconStore';
 import './App.css';
 import './styles/theme-vars.css';
 import './styles/common.css';
@@ -1433,6 +1434,34 @@ const AppContent: React.FC = () => {
                 // Save to history after adding text
                 setTimeout(() => saveToHistory(), 0);
                 return;
+              }
+
+              // Handle custom icon drops
+              if (type.startsWith('custom-')) {
+                const customIcon = getCustomIcon(type);
+                if (customIcon) {
+                  const newNode: Node = {
+                    id: `node-${Date.now()}`,
+                    type: 'enhanced',
+                    position: position,
+                    data: {
+                      label: customIcon.name,
+                      type: 'generic',
+                      customIconBase64: customIcon.base64,
+                      host: '',
+                      port: 22,
+                      username: '',
+                      password: '',
+                      ipAddress: '',
+                      description: '',
+                      connections: []
+                    }
+                  };
+
+                  setNodes((nds) => nds.concat(newNode));
+                  setTimeout(() => saveToHistory(), 0);
+                  return;
+                }
               }
 
               // Handle device drops

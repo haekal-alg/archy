@@ -17,7 +17,7 @@ import {
   MobileIcon
 } from './NetworkIcons';
 import theme from '../../theme';
-import { getCategories, getIcons, isLoaded, onIconsLoaded, IconCategory, LoadedIcon } from '../iconStore';
+import { getCategories, getIcons, isLoaded, onIconsLoaded, IconCategory, LoadedIcon, getCustomIcons, onCustomIconsChanged, addCustomIcon, removeCustomIcon, CustomIcon } from '../iconStore';
 
 interface ShapeLibraryProps {
   onAddNode: (type: string) => void;
@@ -58,9 +58,13 @@ interface ShapeEntry {
   iconName: string; // key in loaded icons (or builtInIcons)
 }
 
+const CUSTOM_CATEGORY_ID = 'custom';
+
 const ShapeLibrary: React.FC<ShapeLibraryProps> = ({ onAddNode, onAddGroup, onAddText, isOpen, onToggle }) => {
   const [activeCategory, setActiveCategory] = useState('devices');
   const [, forceUpdate] = useState(0);
+  const [customIcons, setCustomIcons] = useState<CustomIcon[]>(getCustomIcons());
+  const [contextMenuIcon, setContextMenuIcon] = useState<{ id: string; x: number; y: number } | null>(null);
 
   // Re-render once icons finish loading
   useEffect(() => {
@@ -68,6 +72,19 @@ const ShapeLibrary: React.FC<ShapeLibraryProps> = ({ onAddNode, onAddGroup, onAd
       return onIconsLoaded(() => forceUpdate((n) => n + 1));
     }
   }, []);
+
+  // Subscribe to custom icon changes
+  useEffect(() => {
+    return onCustomIconsChanged(() => setCustomIcons(getCustomIcons()));
+  }, []);
+
+  // Close context menu on click outside
+  useEffect(() => {
+    if (!contextMenuIcon) return;
+    const handler = () => setContextMenuIcon(null);
+    window.addEventListener('click', handler);
+    return () => window.removeEventListener('click', handler);
+  }, [contextMenuIcon]);
 
   // Build categories and shapes from loaded data (or fallback)
   const categories = isLoaded() && getCategories().length > 0 ? getCategories() : fallbackCategories;
@@ -114,7 +131,23 @@ const ShapeLibrary: React.FC<ShapeLibraryProps> = ({ onAddNode, onAddGroup, onAd
     return <GenericIcon size={36} />;
   };
 
-  const activeShapes = getShapesForCategory(activeCategory);
+  const activeShapes = activeCategory !== CUSTOM_CATEGORY_ID ? getShapesForCategory(activeCategory) : [];
+  const allCategoryTabs = [...categories, { id: CUSTOM_CATEGORY_ID, label: 'Custom', icons: [] }];
+
+  const handleUploadCustomIcon = async () => {
+    const result = await window.electron.uploadCustomIcon();
+    if (result.success && result.base64) {
+      const name = prompt('Enter a name for this icon:', 'Custom Icon');
+      if (name) {
+        await addCustomIcon(name, result.base64);
+      }
+    }
+  };
+
+  const handleDeleteCustomIcon = async (id: string) => {
+    await removeCustomIcon(id);
+    setContextMenuIcon(null);
+  };
 
   return (
     <div
@@ -158,7 +191,7 @@ const ShapeLibrary: React.FC<ShapeLibraryProps> = ({ onAddNode, onAddGroup, onAd
         padding: theme.spacing.md,
         background: theme.background.primary
       }}>
-        {categories.map((cat) => (
+        {allCategoryTabs.map((cat) => (
           <button
             key={cat.id}
             onClick={() => setActiveCategory(cat.id)}
@@ -190,55 +223,195 @@ const ShapeLibrary: React.FC<ShapeLibraryProps> = ({ onAddNode, onAddGroup, onAd
         gap: theme.spacing.md,
         alignContent: 'start'
       }}>
-        {activeShapes.map((shape) => (
-          <button
-            key={`${activeCategory}-${shape.iconName}`}
-            draggable
-            onDragStart={(e) => {
-              e.dataTransfer.setData('application/reactflow', shape.type);
-              e.dataTransfer.effectAllowed = 'move';
-            }}
-            onClick={() => onAddNode(shape.type)}
-            style={{
-              padding: `${theme.spacing.lg} ${theme.spacing.md}`,
-              border: `1px solid ${theme.border.default}`,
-              borderRadius: theme.radius.md,
-              background: theme.background.tertiary,
-              cursor: 'grab',
-              transition: theme.transition.normal,
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center',
-              gap: theme.spacing.sm,
-              color: theme.text.primary
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.transform = 'translateY(-2px)';
-              e.currentTarget.style.background = theme.background.hover;
-              e.currentTarget.style.boxShadow = theme.shadow.md;
-              e.currentTarget.style.borderColor = theme.accent.blue;
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.transform = 'translateY(0)';
-              e.currentTarget.style.background = theme.background.tertiary;
-              e.currentTarget.style.boxShadow = 'none';
-              e.currentTarget.style.borderColor = theme.border.default;
-            }}
-          >
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              {renderShapeIcon(shape)}
-            </div>
-            <span style={{
-              fontSize: theme.fontSize.xs,
-              fontWeight: theme.fontWeight.medium,
-              textAlign: 'center',
-              color: theme.text.secondary
-            }}>
-              {shape.label}
-            </span>
-          </button>
-        ))}
+        {activeCategory !== CUSTOM_CATEGORY_ID ? (
+          activeShapes.map((shape) => (
+            <button
+              key={`${activeCategory}-${shape.iconName}`}
+              draggable
+              onDragStart={(e) => {
+                e.dataTransfer.setData('application/reactflow', shape.type);
+                e.dataTransfer.effectAllowed = 'move';
+              }}
+              onClick={() => onAddNode(shape.type)}
+              style={{
+                padding: `${theme.spacing.lg} ${theme.spacing.md}`,
+                border: `1px solid ${theme.border.default}`,
+                borderRadius: theme.radius.md,
+                background: theme.background.tertiary,
+                cursor: 'grab',
+                transition: theme.transition.normal,
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                gap: theme.spacing.sm,
+                color: theme.text.primary
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.transform = 'translateY(-2px)';
+                e.currentTarget.style.background = theme.background.hover;
+                e.currentTarget.style.boxShadow = theme.shadow.md;
+                e.currentTarget.style.borderColor = theme.accent.blue;
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.transform = 'translateY(0)';
+                e.currentTarget.style.background = theme.background.tertiary;
+                e.currentTarget.style.boxShadow = 'none';
+                e.currentTarget.style.borderColor = theme.border.default;
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                {renderShapeIcon(shape)}
+              </div>
+              <span style={{
+                fontSize: theme.fontSize.xs,
+                fontWeight: theme.fontWeight.medium,
+                textAlign: 'center',
+                color: theme.text.secondary
+              }}>
+                {shape.label}
+              </span>
+            </button>
+          ))
+        ) : (
+          <>
+            {customIcons.map((icon) => (
+              <button
+                key={icon.id}
+                draggable
+                onDragStart={(e) => {
+                  e.dataTransfer.setData('application/reactflow', icon.id);
+                  e.dataTransfer.effectAllowed = 'move';
+                }}
+                onContextMenu={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  setContextMenuIcon({ id: icon.id, x: e.clientX, y: e.clientY });
+                }}
+                style={{
+                  padding: `${theme.spacing.lg} ${theme.spacing.md}`,
+                  border: `1px solid ${theme.border.default}`,
+                  borderRadius: theme.radius.md,
+                  background: theme.background.tertiary,
+                  cursor: 'grab',
+                  transition: theme.transition.normal,
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  gap: theme.spacing.sm,
+                  color: theme.text.primary,
+                  position: 'relative',
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.transform = 'translateY(-2px)';
+                  e.currentTarget.style.background = theme.background.hover;
+                  e.currentTarget.style.boxShadow = theme.shadow.md;
+                  e.currentTarget.style.borderColor = theme.accent.blue;
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.transform = 'translateY(0)';
+                  e.currentTarget.style.background = theme.background.tertiary;
+                  e.currentTarget.style.boxShadow = 'none';
+                  e.currentTarget.style.borderColor = theme.border.default;
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <img
+                    src={icon.base64}
+                    width={36}
+                    height={36}
+                    style={{ objectFit: 'contain' }}
+                    alt={icon.name}
+                    draggable={false}
+                  />
+                </div>
+                <span style={{
+                  fontSize: theme.fontSize.xs,
+                  fontWeight: theme.fontWeight.medium,
+                  textAlign: 'center',
+                  color: theme.text.secondary,
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  whiteSpace: 'nowrap',
+                  width: '100%',
+                }}>
+                  {icon.name}
+                </span>
+              </button>
+            ))}
+
+            {/* Upload button */}
+            <button
+              onClick={handleUploadCustomIcon}
+              style={{
+                padding: `${theme.spacing.lg} ${theme.spacing.md}`,
+                border: `1px dashed ${theme.border.default}`,
+                borderRadius: theme.radius.md,
+                background: 'transparent',
+                cursor: 'pointer',
+                transition: theme.transition.normal,
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: theme.spacing.sm,
+                color: theme.text.tertiary,
+                minHeight: 80,
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.borderColor = theme.accent.blue;
+                e.currentTarget.style.color = theme.text.secondary;
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.borderColor = theme.border.default;
+                e.currentTarget.style.color = theme.text.tertiary;
+              }}
+            >
+              <span style={{ fontSize: '24px', lineHeight: 1 }}>+</span>
+              <span style={{ fontSize: theme.fontSize.xs, fontWeight: theme.fontWeight.medium }}>
+                Upload Image
+              </span>
+            </button>
+          </>
+        )}
       </div>
+
+      {/* Context menu for custom icon deletion */}
+      {contextMenuIcon && (
+        <div
+          style={{
+            position: 'fixed',
+            left: contextMenuIcon.x,
+            top: contextMenuIcon.y,
+            background: theme.background.secondary,
+            border: `1px solid ${theme.border.default}`,
+            borderRadius: theme.radius.sm,
+            boxShadow: theme.shadow.lg,
+            zIndex: 9999,
+            padding: theme.spacing.xs,
+            minWidth: 120,
+          }}
+          onClick={(e) => e.stopPropagation()}
+        >
+          <button
+            onClick={() => handleDeleteCustomIcon(contextMenuIcon.id)}
+            style={{
+              width: '100%',
+              padding: `${theme.spacing.sm} ${theme.spacing.md}`,
+              background: 'transparent',
+              border: 'none',
+              borderRadius: theme.radius.xs,
+              color: theme.accent.red,
+              cursor: 'pointer',
+              fontSize: theme.fontSize.sm,
+              textAlign: 'left',
+            }}
+            onMouseEnter={(e) => { e.currentTarget.style.background = theme.background.hover; }}
+            onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
+          >
+            Delete Icon
+          </button>
+        </div>
+      )}
 
       {/* Add Group and Text Buttons */}
       <div style={{

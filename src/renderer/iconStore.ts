@@ -97,3 +97,65 @@ export function getIconByDeviceType(deviceType: string): LoadedIcon | undefined 
   const name = state.deviceTypeMap[deviceType];
   return name ? state.icons[name] : undefined;
 }
+
+// ============================================================================
+// Custom Icon Library (user-uploaded, persisted via electron-store)
+// ============================================================================
+
+export interface CustomIcon {
+  id: string;
+  name: string;
+  base64: string;
+}
+
+const customIconState: { icons: CustomIcon[]; loaded: boolean } = {
+  icons: [],
+  loaded: false,
+};
+
+const customIconListeners: Array<() => void> = [];
+
+export function onCustomIconsChanged(cb: () => void): () => void {
+  customIconListeners.push(cb);
+  return () => {
+    const idx = customIconListeners.indexOf(cb);
+    if (idx >= 0) customIconListeners.splice(idx, 1);
+  };
+}
+
+function notifyCustomIconListeners(): void {
+  customIconListeners.forEach((cb) => cb());
+}
+
+export async function loadCustomIcons(): Promise<void> {
+  try {
+    const icons = await window.electron.getCustomIcons();
+    customIconState.icons = icons;
+    customIconState.loaded = true;
+    notifyCustomIconListeners();
+  } catch (err) {
+    console.error('Error loading custom icons:', err);
+    customIconState.loaded = true;
+  }
+}
+
+export function getCustomIcons(): CustomIcon[] {
+  return customIconState.icons;
+}
+
+export function getCustomIcon(id: string): CustomIcon | undefined {
+  return customIconState.icons.find((i) => i.id === id);
+}
+
+export async function addCustomIcon(name: string, base64: string): Promise<CustomIcon> {
+  const entry = await window.electron.saveCustomIcon({ name, base64 });
+  customIconState.icons.push(entry);
+  notifyCustomIconListeners();
+  return entry;
+}
+
+export async function removeCustomIcon(id: string): Promise<void> {
+  await window.electron.deleteCustomIcon({ id });
+  customIconState.icons = customIconState.icons.filter((i) => i.id !== id);
+  notifyCustomIconListeners();
+}

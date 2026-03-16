@@ -133,6 +133,11 @@ export interface ElectronAPI {
   // Custom icon upload
   uploadCustomIcon: () => Promise<{ success: boolean; base64?: string; error?: string }>;
 
+  // Custom icon library (persistent)
+  getCustomIcons: () => Promise<Array<{ id: string; name: string; base64: string }>>;
+  saveCustomIcon: (data: { name: string; base64: string }) => Promise<{ id: string; name: string; base64: string }>;
+  deleteCustomIcon: (data: { id: string }) => Promise<{ success: boolean }>;
+
   // Window controls (custom title bar)
   windowMinimize: () => Promise<void>;
   windowMaximize: () => Promise<void>;
