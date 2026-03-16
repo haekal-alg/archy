@@ -4,6 +4,7 @@
  */
 
 import { BrowserWindow } from 'electron';
+import log from './logger';
 
 // Buffer configuration - optimized for 60fps rendering and low latency
 export const BUFFER_TIME_MS = 4; // Minimum latency mode (trade-off: higher CPU during throughput)
@@ -108,7 +109,7 @@ export function flushBuffer(connectionId: string): void {
       // Log warning if queue exceeds threshold
       if (session.queuedBytes >= MAX_QUEUED_BYTES && !session.isPaused) {
         session.isPaused = true;
-        console.warn(`[${connectionId}] Queue exceeded threshold: ${session.queuedBytes} bytes (note: node-pty doesn't support backpressure)`);
+        log.warn(`[${connectionId}] Queue exceeded threshold: ${session.queuedBytes} bytes (note: node-pty doesn't support backpressure)`);
       }
     }
   }
@@ -121,7 +122,7 @@ export function flushBuffer(connectionId: string): void {
 
       if (localSession.queuedBytes >= MAX_QUEUED_BYTES && !localSession.isPaused) {
         localSession.isPaused = true;
-        console.warn(`[${connectionId}] Local queue exceeded threshold: ${localSession.queuedBytes} bytes`);
+        log.warn(`[${connectionId}] Local queue exceeded threshold: ${localSession.queuedBytes} bytes`);
       }
     }
   }

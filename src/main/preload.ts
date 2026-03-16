@@ -157,6 +157,14 @@ contextBridge.exposeInMainWorld('electron', {
   localRename: (config: { oldPath: string; newPath: string }) => ipcRenderer.invoke('local-rename', config),
   localMkdir: (dirPath: string) => ipcRenderer.invoke('local-mkdir', dirPath),
 
+  // Logging (renderer → main)
+  log: (level: string, message: string) =>
+    ipcRenderer.send('log-message', { level, message }),
+
+  // Custom icon upload
+  uploadCustomIcon: () =>
+    ipcRenderer.invoke('upload-custom-icon'),
+
   // Window controls (custom title bar)
   windowMinimize: () => ipcRenderer.invoke('window-minimize'),
   windowMaximize: () => ipcRenderer.invoke('window-maximize'),

@@ -36,6 +36,7 @@ import { TabProvider, useTabContext } from './contexts/TabContext';
 import { SettingsProvider } from './contexts/SettingsContext';
 import { NodeConnectionStatusProvider } from './contexts/NodeConnectionStatusContext';
 import SettingsModal, { SettingsTab } from './components/SettingsModal';
+import CommandPalette from './components/CommandPalette';
 import { ToolPalette } from './components/ToolPalette';
 import { ToolType } from './types/tools';
 import { useToast } from './hooks/useToast';
@@ -101,6 +102,7 @@ const AppContent: React.FC = () => {
   // Export state
   const [isExporting, setIsExporting] = useState(false);
   const [showClearConfirm, setShowClearConfirm] = useState(false);
+  const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
 
   // Setup menu event listeners with refs to avoid stale closures
   const nodesRef = useRef(nodes);
@@ -434,6 +436,10 @@ const AppContent: React.FC = () => {
         event.preventDefault();
         setActiveTab('connections');
         document.dispatchEvent(new Event('open-sftp-modal'));
+      } else if ((event.ctrlKey || event.metaKey) && event.key === 'p') {
+        // Command palette
+        event.preventDefault();
+        setCommandPaletteOpen(prev => !prev);
       } else if ((event.ctrlKey || event.metaKey) && event.key === 's') {
         // Save diagram
         event.preventDefault();
@@ -1297,6 +1303,7 @@ const AppContent: React.FC = () => {
         canUndo={canUndo}
         canRedo={canRedo}
         onSettings={() => setSettingsModal({ open: true, tab: 'terminal' })}
+        onCommandPalette={() => setCommandPaletteOpen(true)}
       />
       <nav aria-label="Main navigation" style={{ display: isTerminalFullscreen ? 'none' : undefined }}>
         <TabBar />
@@ -1605,6 +1612,61 @@ const AppContent: React.FC = () => {
           overlay
           size="lg"
           text={loadingText}
+        />
+      )}
+
+      {/* Command Palette */}
+      {commandPaletteOpen && (
+        <CommandPalette
+          nodes={nodes}
+          onFocusNode={(nodeId) => {
+            setActiveTab('design');
+            // Use the existing focusNode mechanism from TabContext
+            if (reactFlowInstance) {
+              const node = nodes.find(n => n.id === nodeId);
+              if (node) {
+                reactFlowInstance.fitView({ nodes: [{ id: nodeId }], duration: 400, padding: 0.5 });
+                setSelectedNode(node);
+                setIsStylePanelOpen(true);
+              }
+            }
+            setCommandPaletteOpen(false);
+          }}
+          onConnectSSH={(node) => {
+            const data = node.data as unknown as EnhancedDeviceData;
+            // Find first SSH connection config, or use top-level credentials
+            const sshConn = data.connections?.find(c => c.type === 'ssh');
+            if (sshConn) {
+              handleConnectToDevice(node, sshConn);
+            } else if (data.host) {
+              handleConnectToDevice(node, {
+                id: 'default',
+                type: 'ssh',
+                host: data.host,
+                port: data.port || 22,
+                username: data.username,
+                password: data.password,
+              });
+            }
+            setCommandPaletteOpen(false);
+          }}
+          onConnectRDP={(node) => {
+            const data = node.data as unknown as EnhancedDeviceData;
+            const rdpConn = data.connections?.find(c => c.type === 'rdp');
+            if (rdpConn) {
+              handleConnectToDevice(node, rdpConn);
+            } else if (data.host) {
+              handleConnectToDevice(node, {
+                id: 'default',
+                type: 'rdp',
+                host: data.host,
+                username: data.username,
+                password: data.password,
+              });
+            }
+            setCommandPaletteOpen(false);
+          }}
+          onClose={() => setCommandPaletteOpen(false)}
         />
       )}
 

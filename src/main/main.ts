@@ -5,7 +5,9 @@
 
 import { app, BrowserWindow, ipcMain, dialog, clipboard, session, shell } from 'electron';
 import * as path from 'path';
+import * as fs from 'fs';
 import { execFile } from 'child_process';
+import log from './logger';
 
 // Module imports
 import { createMenu } from './menu-system';
@@ -73,7 +75,7 @@ function createSplashWindow(): BrowserWindow {
 
   const splashPath = path.join(__dirname, '../src/splash.html');
   splash.loadFile(splashPath).catch((err) => {
-    console.error('Failed to load splash screen:', err);
+    log.error('Failed to load splash screen:', err);
   });
 
   splash.center();
@@ -242,6 +244,55 @@ app.on('activate', () => {
 });
 
 // ============================================================================
+// Logging IPC Handler (renderer → main log forwarding)
+// ============================================================================
+
+ipcMain.on('log-message', (_event: any, { level, message }: { level: string; message: string }) => {
+  const logLevel = level as keyof typeof log;
+  if (typeof log[logLevel] === 'function') {
+    (log[logLevel] as Function)(`[renderer] ${message}`);
+  } else {
+    log.info(`[renderer] ${message}`);
+  }
+});
+
+// ============================================================================
+// Custom Icon IPC Handler
+// ============================================================================
+
+ipcMain.handle('upload-custom-icon', async () => {
+  const result = await dialog.showOpenDialog(mainWindow!, {
+    title: 'Select Custom Icon',
+    filters: [
+      { name: 'Images', extensions: ['png', 'jpg', 'jpeg', 'svg'] },
+    ],
+    properties: ['openFile'],
+  });
+
+  if (result.canceled || result.filePaths.length === 0) {
+    return { success: false };
+  }
+
+  try {
+    const filePath = result.filePaths[0];
+    const ext = path.extname(filePath).toLowerCase();
+    const mimeMap: Record<string, string> = {
+      '.png': 'image/png',
+      '.jpg': 'image/jpeg',
+      '.jpeg': 'image/jpeg',
+      '.svg': 'image/svg+xml',
+    };
+    const mime = mimeMap[ext] || 'image/png';
+    const buffer = fs.readFileSync(filePath);
+    const base64 = `data:${mime};base64,${buffer.toString('base64')}`;
+    return { success: true, base64 };
+  } catch (error: any) {
+    log.error('Failed to read custom icon:', error.message);
+    return { success: false, error: error.message };
+  }
+});
+
+// ============================================================================
 // Settings IPC Handlers
 // ============================================================================
 
@@ -302,10 +353,10 @@ ipcMain.handle('launch-mstsc', async (event, { host }) => {
   return new Promise((resolve, reject) => {
     execFile('mstsc', [`/v:${host}`], (error) => {
       if (error) {
-        console.error(`mstsc launch error: ${error.message}`);
+        log.error(`mstsc launch error: ${error.message}`);
         reject(error);
       } else {
-        console.log(`mstsc launched for host: ${host}`);
+        log.info(`mstsc launched for host: ${host}`);
         resolve({ success: true });
       }
     });
@@ -320,10 +371,10 @@ ipcMain.handle('execute-custom-command', async (event, { command }) => {
   return new Promise((resolve, reject) => {
     execFile('cmd', ['/c', 'start', 'cmd', '/k', command], (error) => {
       if (error) {
-        console.error(`Custom command error: ${error.message}`);
+        log.error(`Custom command error: ${error.message}`);
         reject(error);
       } else {
-        console.log(`Custom command executed in CMD: ${command}`);
+        log.info(`Custom command executed in CMD: ${command}`);
         resolve({ success: true });
       }
     });
@@ -336,7 +387,7 @@ ipcMain.handle('show-open-dialog', async (event, options) => {
     const result = await dialog.showOpenDialog(mainWindow!, options);
     return result;
   } catch (error) {
-    console.error('Error showing open dialog:', error);
+    log.error('Error showing open dialog:', error);
     throw error;
   }
 });

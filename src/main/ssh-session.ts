@@ -5,6 +5,7 @@
 
 import * as pty from 'node-pty';
 import { BrowserWindow } from 'electron';
+import log from './logger';
 import {
   bufferData,
   cleanupBuffer,
@@ -133,7 +134,7 @@ export function createSSHSession(config: SSHSessionConfig): Promise<{ success: b
     // Clean up any existing session with the same ID (for retry support)
     const existingSession = sshSessions.get(connectionId);
     if (existingSession) {
-      console.log(`[${connectionId}] Cleaning up existing session for retry`);
+      log.info(`[${connectionId}] Cleaning up existing session for retry`);
       if (existingSession.connectionTimeout) {
         clearTimeout(existingSession.connectionTimeout);
       }
@@ -200,12 +201,12 @@ export function createSSHSession(config: SSHSessionConfig): Promise<{ success: b
           env: process.env as { [key: string]: string },
         });
       } catch (spawnError: any) {
-        console.error(`[${connectionId}] Failed to spawn SSH process:`, spawnError);
+        log.error(`[${connectionId}] Failed to spawn SSH process:`, spawnError);
         reject(new Error(`Failed to spawn SSH process: ${spawnError.message}`));
         return;
       }
 
-      console.log(`[${connectionId}] SSH spawned: ${shell} ${args.join(' ')}`);
+      log.info(`[${connectionId}] SSH spawned: ${shell} ${args.join(' ')}`);
 
       let connectionEstablished = false;
       let outputBuffer = ''; // Accumulate output for prompt detection
@@ -243,7 +244,7 @@ export function createSSHSession(config: SSHSessionConfig): Promise<{ success: b
         // Detect password prompt and auto-type password
         const passwordPromptRegex = /(password|passphrase).*:\s*$/i;
         if (!currentSession.passwordSent && currentSession.password && passwordPromptRegex.test(outputBuffer.toLowerCase())) {
-          console.log(`[${connectionId}] Password prompt detected, auto-typing password`);
+          log.info(`[${connectionId}] Password prompt detected, auto-typing password`);
           currentSession.passwordSent = true;
           ptyProcess.write(currentSession.password + '\r');
           return;
@@ -260,7 +261,7 @@ export function createSSHSession(config: SSHSessionConfig): Promise<{ success: b
 
           if (successIndicators.some(pattern => pattern.test(outputBuffer))) {
             connectionEstablished = true;
-            console.log(`[${connectionId}] SSH connection established`);
+            log.info(`[${connectionId}] SSH connection established`);
             // Clear connection timeout
             if (session.connectionTimeout) {
               clearTimeout(session.connectionTimeout);
@@ -279,7 +280,7 @@ export function createSSHSession(config: SSHSessionConfig): Promise<{ success: b
           const authFailureRegex = /(permission denied|authentication failed|access denied)/i;
           if (authFailureRegex.test(outputBuffer)) {
             authFailed = true;
-            console.error(`[${connectionId}] Authentication failed`);
+            log.error(`[${connectionId}] Authentication failed`);
             ptyProcess.kill();
             sshSessions.delete(connectionId);
             reject(new Error('Authentication failed'));
@@ -293,7 +294,7 @@ export function createSSHSession(config: SSHSessionConfig): Promise<{ success: b
 
       // Handle process exit
       ptyProcess.onExit(({ exitCode, signal }) => {
-        console.log(`[${connectionId}] SSH process exited: code=${exitCode}, signal=${signal}`);
+        log.info(`[${connectionId}] SSH process exited: code=${exitCode}, signal=${signal}`);
 
         // Guard: skip if session was already cleaned up by closeSSHSession
         if (!sshSessions.has(connectionId)) {
@@ -309,7 +310,7 @@ export function createSSHSession(config: SSHSessionConfig): Promise<{ success: b
         // after a new session with the same connectionId is already stored.
         const currentSession = sshSessions.get(connectionId);
         if (currentSession && currentSession.ptyProcess !== ptyProcess) {
-          console.log(`[${connectionId}] Ignoring stale onExit from previous session`);
+          log.info(`[${connectionId}] Ignoring stale onExit from previous session`);
           if (!connectionEstablished && !authFailed) {
             reject(new Error(`SSH connection failed: exit code ${exitCode}`));
           }
@@ -359,7 +360,7 @@ export function createSSHSession(config: SSHSessionConfig): Promise<{ success: b
       // Timeout if connection doesn't establish in 20 seconds
       session.connectionTimeout = setTimeout(() => {
         if (!connectionEstablished && sshSessions.has(connectionId)) {
-          console.error(`[${connectionId}] SSH connection timeout`);
+          log.error(`[${connectionId}] SSH connection timeout`);
           session.connectionTimeout = undefined;
           ptyProcess.kill();
           sshSessions.delete(connectionId);
@@ -368,7 +369,7 @@ export function createSSHSession(config: SSHSessionConfig): Promise<{ success: b
       }, 20000);
 
     } catch (error: any) {
-      console.error(`[${connectionId}] Failed to create SSH session:`, error);
+      log.error(`[${connectionId}] Failed to create SSH session:`, error);
       sshSessions.delete(connectionId);
       reject(new Error(`Failed to create SSH session: ${error.message}`));
     }
@@ -420,7 +421,7 @@ export function closeSSHSession(connectionId: string, userInitiated: boolean = f
     try {
       session.ptyProcess.kill();
     } catch (e) {
-      console.log(`[${connectionId}] SSH process already terminated`);
+      log.info(`[${connectionId}] SSH process already terminated`);
     }
     sshSessions.delete(connectionId);
   }
@@ -436,7 +437,7 @@ export function handleSSHDataConsumed(connectionId: string, bytesConsumed: numbe
 
     if (session.queuedBytes < 32768 && session.isPaused) {
       session.isPaused = false;
-      console.log(`[${connectionId}] SSH queue resumed: queue size ${session.queuedBytes} bytes`);
+      log.info(`[${connectionId}] SSH queue resumed: queue size ${session.queuedBytes} bytes`);
     }
   }
 }

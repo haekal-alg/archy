@@ -4,6 +4,7 @@
  */
 
 import { ipcMain, app } from 'electron';
+import log from './logger';
 import * as path from 'path';
 import * as fs from 'fs';
 import { promises as fsPromises } from 'fs';
@@ -71,7 +72,7 @@ async function loadAllIcons(): Promise<LoadIconsResult> {
           deviceType: meta.deviceType,
         };
       } catch {
-        console.warn(`Icon file not found: ${pngPath}`);
+        log.warn(`Icon file not found: ${pngPath}`);
       }
     }
 
@@ -81,7 +82,7 @@ async function loadAllIcons(): Promise<LoadIconsResult> {
       icons,
     };
   } catch (err: any) {
-    console.error('Failed to load icons:', err);
+    log.error('Failed to load icons:', err);
     return {
       success: false,
       categories: [],

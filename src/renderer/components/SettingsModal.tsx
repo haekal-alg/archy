@@ -56,6 +56,7 @@ const shortcuts: Shortcut[] = [
   { key: 'Alt + 1', description: 'Switch to Design tab', category: 'Navigation' },
   { key: 'Alt + 2', description: 'Switch to Connections tab', category: 'Navigation' },
   { key: 'Ctrl + T', description: 'Open local terminal', category: 'Navigation' },
+  { key: 'Ctrl + P', description: 'Command palette', category: 'Navigation' },
   { key: 'Ctrl + Shift + F', description: 'Open SFTP modal', category: 'Navigation' },
   { key: 'Space + Drag', description: 'Pan canvas', category: 'Navigation' },
   { key: 'Mouse Wheel', description: 'Zoom in/out', category: 'Navigation' },

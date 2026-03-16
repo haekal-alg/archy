@@ -10,6 +10,7 @@ interface TitleBarProps {
   canUndo: boolean;
   canRedo: boolean;
   onSettings?: () => void;
+  onCommandPalette?: () => void;
 }
 
 interface MenuItem {
@@ -25,7 +26,7 @@ type MenuId = 'file' | 'edit' | 'view';
 const TitleBar: React.FC<TitleBarProps> = ({
   onSave, onLoad, onExport, onClear,
   onUndo, onRedo, canUndo, canRedo,
-  onSettings,
+  onSettings, onCommandPalette,
 }) => {
   const [openMenu, setOpenMenu] = useState<MenuId | null>(null);
   const [isMaximized, setIsMaximized] = useState(false);
@@ -104,6 +105,8 @@ const TitleBar: React.FC<TitleBarProps> = ({
     view: {
       label: 'View',
       items: [
+        { label: 'Command Palette', shortcut: 'Ctrl+P', action: onCommandPalette },
+        { separator: true, label: '' },
         { label: 'Reload', shortcut: 'Ctrl+R', action: () => window.electron.windowReload() },
         { label: 'Toggle DevTools', shortcut: 'F12', action: () => window.electron.windowToggleDevTools() },
         { separator: true, label: '' },

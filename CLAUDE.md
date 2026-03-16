@@ -3,7 +3,8 @@
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
 ## Important Development Guide
-- do not ask permission when editing any javascript or typescript file
+- do not ask permission when editing any javascript or typescript file 
+- when implementing a feature or large refactor, commit your changes by using the skill /commit-convention
 
 ## Project Overview
 

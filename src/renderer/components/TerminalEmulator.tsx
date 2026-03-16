@@ -106,18 +106,20 @@ function enqueueChunk(state: PendingDataState, chunk: string): void {
 }
 
 // Schedule batched write to terminal
+// Uses setTimeout instead of requestAnimationFrame so writes proceed even when
+// the terminal container is hidden (e.g. user is on the Design tab).
 function scheduleTerminalWrite(connectionId: string, state: PendingDataState): void {
   if (state.writeScheduled || state.chunks.length === 0) return;
 
   state.writeScheduled = true;
-  requestAnimationFrame(() => {
+  setTimeout(() => {
     const instance = terminalInstances.get(connectionId);
     if (!instance || state.chunks.length === 0) {
       state.writeScheduled = false;
       return;
     }
 
-    // Collect up to WRITE_BATCH_SIZE bytes for this frame
+    // Collect up to WRITE_BATCH_SIZE bytes for this batch
     let writeData = '';
     let bytesToWrite = 0;
 
@@ -154,7 +156,7 @@ function scheduleTerminalWrite(connectionId: string, state: PendingDataState): v
     if (state.chunks.length > 0) {
       scheduleTerminalWrite(connectionId, state);
     }
-  });
+  }, 0);
 }
 
 
@@ -409,10 +411,19 @@ const TerminalEmulator: React.FC<TerminalEmulatorProps> = ({ connectionId, isVis
       resizeObserver.observe(terminalRef.current);
     }
 
-    // Fit terminal when it becomes visible
+    // Fit terminal when it becomes visible + flush any pending data
     if (isVisible && instance) {
+      // Flush any data that accumulated while the terminal was hidden
+      const bufState = pendingDataStates.get(connectionId);
+      if (bufState && bufState.chunks.length > 0) {
+        bufState.writeScheduled = false;
+        scheduleTerminalWrite(connectionId, bufState);
+      }
+
       // Single focus attempt using requestAnimationFrame for optimal timing
       requestAnimationFrame(() => {
+        // Force terminal redraw to fix any rendering artifacts from being hidden
+        instance.terminal.refresh(0, instance.terminal.rows - 1);
         instance.fitAddon.fit();
         instance.terminal.focus();
       });

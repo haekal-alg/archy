@@ -7,6 +7,7 @@ import * as path from 'path';
 import { promises as fsPromises } from 'fs';
 import { exec } from 'child_process';
 import { app } from 'electron';
+import log from './logger';
 
 const { writeFile } = fsPromises;
 
@@ -64,7 +65,7 @@ kdcproxyname:s:`;
   return new Promise((resolve, reject) => {
     exec(fullCommand, (error) => {
       if (error) {
-        console.error('RDP connection error:', error);
+        log.error('RDP connection error:', error);
         reject(error);
       } else {
         resolve({ success: true });

@@ -4,6 +4,7 @@
  */
 
 import { ipcMain, BrowserWindow } from 'electron';
+import log from './logger';
 import * as path from 'path';
 import { promises as fsPromises } from 'fs';
 import { getSSHSession, SSHSession } from './ssh-session';
@@ -69,15 +70,15 @@ export function registerSFTPIPCHandlers(): void {
 
   // List remote files via SFTP protocol
   ipcMain.handle('list-remote-files', async (event, { connectionId, path: remotePath }) => {
-    console.log(`[SFTP] Listing remote files for connection ${connectionId}, path: ${remotePath}`);
+    log.info(`[SFTP] Listing remote files for connection ${connectionId}, path: ${remotePath}`);
 
     const session = getSSHSession(connectionId);
     if (!session) {
-      console.error('[SFTP] SSH session not found for connectionId:', connectionId);
+      log.error('[SFTP] SSH session not found for connectionId:', connectionId);
       throw new Error('SSH session not found. Please connect first.');
     }
 
-    console.log(`[SFTP] Found session - host: ${session.host}, port: ${session.port}, username: ${session.username}`);
+    log.info(`[SFTP] Found session - host: ${session.host}, port: ${session.port}, username: ${session.username}`);
 
     let sftp = sftpClients.get(connectionId);
     let needsNewConnection = !sftp;
@@ -86,9 +87,9 @@ export function registerSFTPIPCHandlers(): void {
     if (sftp) {
       try {
         await sftp.cwd();
-        console.log('[SFTP] Reusing existing SFTP connection (validated)');
+        log.info('[SFTP] Reusing existing SFTP connection (validated)');
       } catch (validationError) {
-        console.log('[SFTP] Existing connection is stale, creating new one');
+        log.info('[SFTP] Existing connection is stale, creating new one');
         try {
           await sftp.end();
         } catch (e) {
@@ -101,7 +102,7 @@ export function registerSFTPIPCHandlers(): void {
     }
 
     if (needsNewConnection) {
-      console.log('[SFTP] Creating new SFTP client');
+      log.info('[SFTP] Creating new SFTP client');
       sftp = new SftpClient();
 
       const config: any = {
@@ -115,7 +116,7 @@ export function registerSFTPIPCHandlers(): void {
 
       // Add authentication (password or private key)
       if (session.privateKeyPath && session.privateKeyPath.trim() !== '') {
-        console.log(`[SFTP] Using private key authentication: ${session.privateKeyPath}`);
+        log.info(`[SFTP] Using private key authentication: ${session.privateKeyPath}`);
         try {
           const privateKey = await readFile(session.privateKeyPath, 'utf8');
           config.privateKey = privateKey;
@@ -123,25 +124,25 @@ export function registerSFTPIPCHandlers(): void {
             config.passphrase = session.password;
           }
         } catch (error: any) {
-          console.error('[SFTP] Failed to read private key:', error.message);
+          log.error('[SFTP] Failed to read private key:', error.message);
           throw new Error(`Failed to read private key file: ${error.message}`);
         }
       } else if (session.password) {
-        console.log('[SFTP] Using password authentication');
+        log.info('[SFTP] Using password authentication');
         config.password = session.password;
       } else {
-        console.error('[SFTP] No authentication method available');
+        log.error('[SFTP] No authentication method available');
         throw new Error('No authentication credentials found');
       }
 
       try {
-        console.log('[SFTP] Connecting to SFTP server...');
+        log.info('[SFTP] Connecting to SFTP server...');
         await sftp.connect(config);
-        console.log('[SFTP] Connected successfully');
+        log.info('[SFTP] Connected successfully');
         sftpClients.set(connectionId, sftp);
-        console.log('[SFTP] Connection stored for reuse');
+        log.info('[SFTP] Connection stored for reuse');
       } catch (error: any) {
-        console.error('[SFTP] Connection failed:', error.message);
+        log.error('[SFTP] Connection failed:', error.message);
         try {
           await sftp.end();
         } catch (e) {
@@ -152,9 +153,9 @@ export function registerSFTPIPCHandlers(): void {
     }
 
     try {
-      console.log(`[SFTP] Listing directory: ${remotePath}`);
+      log.info(`[SFTP] Listing directory: ${remotePath}`);
       const fileList = await sftp.list(remotePath);
-      console.log(`[SFTP] Number of items: ${fileList.length}`);
+      log.info(`[SFTP] Number of items: ${fileList.length}`);
 
       const files = fileList.map((file: any) => ({
         name: file.name,
@@ -176,10 +177,10 @@ export function registerSFTPIPCHandlers(): void {
         });
       }
 
-      console.log(`[SFTP] Returning ${files.length} files`);
+      log.info(`[SFTP] Returning ${files.length} files`);
       return files;
     } catch (error: any) {
-      console.error('[SFTP] Error listing files:', error.message);
+      log.error('[SFTP] Error listing files:', error.message);
       sftpClients.delete(connectionId);
       try {
         await sftp.end();
@@ -192,36 +193,36 @@ export function registerSFTPIPCHandlers(): void {
 
   // Close SFTP connection
   ipcMain.handle('close-sftp-connection', async (event, connectionId: string) => {
-    console.log(`[SFTP] Closing connection for ${connectionId}`);
+    log.info(`[SFTP] Closing connection for ${connectionId}`);
 
     const sftp = sftpClients.get(connectionId);
     if (sftp) {
       try {
         await sftp.end();
         sftpClients.delete(connectionId);
-        console.log(`[SFTP] Connection closed and removed from cache`);
+        log.info(`[SFTP] Connection closed and removed from cache`);
       } catch (error: any) {
-        console.error('[SFTP] Error closing connection:', error.message);
+        log.error('[SFTP] Error closing connection:', error.message);
         sftpClients.delete(connectionId);
       }
     } else {
-      console.log(`[SFTP] No active connection found for ${connectionId}`);
+      log.info(`[SFTP] No active connection found for ${connectionId}`);
     }
   });
 
   // Upload file from local to remote (with progress reporting)
   ipcMain.handle('upload-file', async (event, { connectionId, localPath: localFilePath, remotePath, fileName }) => {
-    console.log(`[SFTP] Upload file request:`, { connectionId, localPath: localFilePath, remotePath, fileName });
+    log.info(`[SFTP] Upload file request:`, { connectionId, localPath: localFilePath, remotePath, fileName });
 
     const sftp = sftpClients.get(connectionId);
     if (!sftp) {
-      console.error('[SFTP] No active SFTP connection for upload');
+      log.error('[SFTP] No active SFTP connection for upload');
       throw new Error('No active SFTP connection. Please ensure connection is established.');
     }
 
     try {
       const remoteFilePath = path.posix.join(remotePath, fileName);
-      console.log(`[SFTP] Uploading from ${localFilePath} to ${remoteFilePath}`);
+      log.info(`[SFTP] Uploading from ${localFilePath} to ${remoteFilePath}`);
 
       const mainWindow = BrowserWindow.getAllWindows()[0];
       let lastProgressTime = 0;
@@ -243,31 +244,31 @@ export function registerSFTPIPCHandlers(): void {
           },
         });
       } catch (fastPutError: any) {
-        console.log('[SFTP] fastPut failed, falling back to put:', fastPutError.message);
+        log.info('[SFTP] fastPut failed, falling back to put:', fastPutError.message);
         await sftp.put(localFilePath, remoteFilePath);
       }
 
-      console.log(`[SFTP] Upload successful: ${fileName}`);
+      log.info(`[SFTP] Upload successful: ${fileName}`);
       return { success: true };
     } catch (error: any) {
-      console.error('[SFTP] Upload error:', error.message);
+      log.error('[SFTP] Upload error:', error.message);
       throw new Error(`Failed to upload file: ${error.message}`);
     }
   });
 
   // Download file from remote to local (with progress reporting)
   ipcMain.handle('download-file', async (event, { connectionId, remotePath, localPath, fileName }) => {
-    console.log(`[SFTP] Download file request:`, { connectionId, remotePath, localPath, fileName });
+    log.info(`[SFTP] Download file request:`, { connectionId, remotePath, localPath, fileName });
 
     const sftp = sftpClients.get(connectionId);
     if (!sftp) {
-      console.error('[SFTP] No active SFTP connection for download');
+      log.error('[SFTP] No active SFTP connection for download');
       throw new Error('No active SFTP connection. Please ensure connection is established.');
     }
 
     try {
       const localFilePath = path.join(localPath, fileName);
-      console.log(`[SFTP] Downloading from ${remotePath} to ${localFilePath}`);
+      log.info(`[SFTP] Downloading from ${remotePath} to ${localFilePath}`);
 
       const mainWindow = BrowserWindow.getAllWindows()[0];
       let lastProgressTime = 0;
@@ -289,14 +290,14 @@ export function registerSFTPIPCHandlers(): void {
           },
         });
       } catch (fastGetError: any) {
-        console.log('[SFTP] fastGet failed, falling back to get:', fastGetError.message);
+        log.info('[SFTP] fastGet failed, falling back to get:', fastGetError.message);
         await sftp.get(remotePath, localFilePath);
       }
 
-      console.log(`[SFTP] Download successful: ${fileName}`);
+      log.info(`[SFTP] Download successful: ${fileName}`);
       return { success: true };
     } catch (error: any) {
-      console.error('[SFTP] Download error:', error.message);
+      log.error('[SFTP] Download error:', error.message);
       throw new Error(`Failed to download file: ${error.message}`);
     }
   });
@@ -380,7 +381,7 @@ export async function closeAllSFTPConnections(): Promise<void> {
   for (const [connectionId, sftp] of sftpClients) {
     try {
       await sftp.end();
-      console.log(`[SFTP] Closed connection ${connectionId}`);
+      log.info(`[SFTP] Closed connection ${connectionId}`);
     } catch (e) {
       // Ignore cleanup errors
     }

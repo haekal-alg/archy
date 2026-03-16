@@ -127,6 +127,12 @@ export interface ElectronAPI {
   localRename: (config: { oldPath: string; newPath: string }) => Promise<{ success: boolean }>;
   localMkdir: (dirPath: string) => Promise<{ success: boolean }>;
 
+  // Logging (renderer → main)
+  log: (level: string, message: string) => void;
+
+  // Custom icon upload
+  uploadCustomIcon: () => Promise<{ success: boolean; base64?: string; error?: string }>;
+
   // Window controls (custom title bar)
   windowMinimize: () => Promise<void>;
   windowMaximize: () => Promise<void>;

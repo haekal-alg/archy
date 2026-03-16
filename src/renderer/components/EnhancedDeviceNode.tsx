@@ -58,6 +58,7 @@ export interface EnhancedDeviceData {
   connections?: ConnectionConfig[];
   iconSize?: number;
   labelSize?: number;
+  customIconBase64?: string;
 }
 
 // Static style constants extracted to module scope (never re-created)
@@ -96,6 +97,24 @@ const EnhancedDeviceNode: React.FC<NodeProps> = React.memo(({ id, data, selected
   const getIcon = () => {
     const color = deviceData.color;
     const size = effectiveIconSize;
+
+    // Custom icon takes priority over type-based icons
+    if (deviceData.customIconBase64) {
+      return (
+        <img
+          src={deviceData.customIconBase64}
+          alt={deviceData.label}
+          width={size}
+          height={size}
+          style={{
+            objectFit: 'contain',
+            filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.3))',
+          }}
+          draggable={false}
+        />
+      );
+    }
+
     const builtIn = (() => {
       switch (deviceData.type) {
         case 'router': return <RouterIcon color={color} size={size} />;

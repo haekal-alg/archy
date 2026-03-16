@@ -798,6 +798,72 @@ const StylePanel: React.FC<StylePanelProps> = ({
                           />
                         </div>
                       )}
+
+                      {/* Custom Icon - only for enhanced nodes */}
+                      {selectedNode.type !== 'group' && selectedNode.type !== 'text' && (
+                        <div style={fieldGroupStyle}>
+                          <label style={labelStyle}>Custom Icon</label>
+                          {(selectedNode.data as any).customIconBase64 && (
+                            <div style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: theme.spacing.sm,
+                              marginBottom: theme.spacing.sm,
+                            }}>
+                              <img
+                                src={(selectedNode.data as any).customIconBase64}
+                                alt="Custom icon"
+                                style={{
+                                  width: 32,
+                                  height: 32,
+                                  objectFit: 'contain',
+                                  borderRadius: theme.radius.sm,
+                                  border: `1px solid ${theme.border.default}`,
+                                  background: theme.background.tertiary,
+                                  padding: 2,
+                                }}
+                              />
+                              <button
+                                onClick={() => {
+                                  onUpdateNode(selectedNode.id, { customIconBase64: undefined });
+                                }}
+                                style={{
+                                  padding: `${theme.spacing.xs} ${theme.spacing.sm}`,
+                                  background: theme.background.tertiary,
+                                  border: `1px solid ${theme.border.default}`,
+                                  borderRadius: theme.radius.sm,
+                                  color: theme.accent.red,
+                                  cursor: 'pointer',
+                                  fontSize: theme.fontSize.xs,
+                                }}
+                              >
+                                Remove
+                              </button>
+                            </div>
+                          )}
+                          <button
+                            onClick={async () => {
+                              const result = await window.electron.uploadCustomIcon();
+                              if (result.success && result.base64) {
+                                onUpdateNode(selectedNode.id, { customIconBase64: result.base64 });
+                              }
+                            }}
+                            style={{
+                              width: '100%',
+                              padding: `${theme.spacing.sm} ${theme.spacing.md}`,
+                              background: theme.background.tertiary,
+                              border: `1px solid ${theme.border.default}`,
+                              borderRadius: theme.radius.sm,
+                              color: theme.text.secondary,
+                              cursor: 'pointer',
+                              fontSize: theme.fontSize.sm,
+                              transition: theme.transition.normal,
+                            }}
+                          >
+                            Upload Icon...
+                          </button>
+                        </div>
+                      )}
                     </CollapsibleSection>
 
                     {/* Color Section */}

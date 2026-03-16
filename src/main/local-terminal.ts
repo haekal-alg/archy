@@ -5,6 +5,7 @@
 
 import * as pty from 'node-pty';
 import { BrowserWindow } from 'electron';
+import log from './logger';
 import {
   getHomeDirectory,
   resolveLocalCwd,
@@ -98,7 +99,7 @@ export function createLocalTerminal(connectionId: string, cwd?: string, shellTyp
       // Clean up any existing session with the same ID (for retry support)
       const existingSession = localSessions.get(connectionId);
       if (existingSession) {
-        console.log(`[${connectionId}] Cleaning up existing local session for retry`);
+        log.info(`[${connectionId}] Cleaning up existing local session for retry`);
         try {
           existingSession.ptyProcess.kill();
         } catch (e) {
@@ -173,7 +174,7 @@ export function createLocalTerminal(connectionId: string, cwd?: string, shellTyp
         // Guard: skip if a new session has replaced this one (retry scenario)
         const currentSession = localSessions.get(connectionId);
         if (currentSession && currentSession.ptyProcess !== ptyProcess) {
-          console.log(`[${connectionId}] Ignoring stale onExit from previous local session`);
+          log.info(`[${connectionId}] Ignoring stale onExit from previous local session`);
           return;
         }
 
@@ -275,7 +276,7 @@ export function closeLocalTerminal(connectionId: string): void {
     try {
       session.ptyProcess.kill();
     } catch (e) {
-      console.log(`[${connectionId}] Local process already terminated`);
+      log.info(`[${connectionId}] Local process already terminated`);
     }
     localSessions.delete(connectionId);
     localInputBuffers.delete(connectionId);
@@ -315,7 +316,7 @@ export function handleLocalDataConsumed(connectionId: string, bytesConsumed: num
 
     if (session.queuedBytes < 32768 && session.isPaused) {
       session.isPaused = false;
-      console.log(`[${connectionId}] Local terminal queue resumed: queue size ${session.queuedBytes} bytes`);
+      log.info(`[${connectionId}] Local terminal queue resumed: queue size ${session.queuedBytes} bytes`);
     }
   }
 }
