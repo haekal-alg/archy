@@ -131,7 +131,7 @@ export interface ElectronAPI {
   log: (level: string, message: string) => void;
 
   // Custom icon upload
-  uploadCustomIcon: () => Promise<{ success: boolean; base64?: string; error?: string }>;
+  uploadCustomIcon: () => Promise<{ success: boolean; base64?: string; name?: string; error?: string }>;
 
   // Custom icon library (persistent)
   getCustomIcons: () => Promise<Array<{ id: string; name: string; base64: string }>>;

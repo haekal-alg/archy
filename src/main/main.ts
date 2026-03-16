@@ -285,7 +285,8 @@ ipcMain.handle('upload-custom-icon', async () => {
     const mime = mimeMap[ext] || 'image/png';
     const buffer = fs.readFileSync(filePath);
     const base64 = `data:${mime};base64,${buffer.toString('base64')}`;
-    return { success: true, base64 };
+    const name = path.basename(filePath, ext);
+    return { success: true, base64, name };
   } catch (error: any) {
     log.error('Failed to read custom icon:', error.message);
     return { success: false, error: error.message };

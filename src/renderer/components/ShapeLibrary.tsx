@@ -137,10 +137,8 @@ const ShapeLibrary: React.FC<ShapeLibraryProps> = ({ onAddNode, onAddGroup, onAd
   const handleUploadCustomIcon = async () => {
     const result = await window.electron.uploadCustomIcon();
     if (result.success && result.base64) {
-      const name = prompt('Enter a name for this icon:', 'Custom Icon');
-      if (name) {
-        await addCustomIcon(name, result.base64);
-      }
+      const name = result.name || 'Custom Icon';
+      await addCustomIcon(name, result.base64);
     }
   };
 
