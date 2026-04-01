@@ -189,12 +189,8 @@ export const cleanupTerminal = (connectionId: string) => {
 export const refreshTerminal = (connectionId: string): void => {
   const instance = terminalInstances.get(connectionId);
   if (instance) {
-    instance.terminal.refresh(0, instance.terminal.rows - 1);
-    try {
-      instance.fitAddon.fit();
-    } catch (e) {
-      // fit can throw if container has zero dimensions
-    }
+    try { instance.fitAddon.fit(); } catch (_) { /* container may have zero dimensions */ }
+    instance.terminal.scrollToBottom();
   }
 };
 
@@ -376,13 +372,14 @@ const TerminalEmulator: React.FC<TerminalEmulatorProps> = ({ connectionId, isVis
       };
       terminalInstances.set(connectionId, instance);
     } else {
-      // Reattach existing terminal to DOM if needed
+      // Reattach existing terminal to DOM if needed (move element, don't re-render)
       const element = terminalRef.current;
-      if (element && instance && !element.contains(instance.terminal.element!)) {
-        instance.terminal.open(element);
+      if (element && instance && instance.terminal.element && !element.contains(instance.terminal.element)) {
+        element.appendChild(instance.terminal.element);
         const inst = instance; // Capture for closure
         requestAnimationFrame(() => {
           inst.fitAddon.fit();
+          inst.terminal.scrollToBottom();
           inst.terminal.focus();
         });
       }
@@ -420,11 +417,10 @@ const TerminalEmulator: React.FC<TerminalEmulatorProps> = ({ connectionId, isVis
         scheduleTerminalWrite(connectionId, bufState);
       }
 
-      // Single focus attempt using requestAnimationFrame for optimal timing
+      // Re-fit and snap viewport to bottom after becoming visible
       requestAnimationFrame(() => {
-        // Force terminal redraw to fix any rendering artifacts from being hidden
-        instance.terminal.refresh(0, instance.terminal.rows - 1);
-        instance.fitAddon.fit();
+        try { instance.fitAddon.fit(); } catch (_) { /* container may have zero dimensions */ }
+        instance.terminal.scrollToBottom();
         instance.terminal.focus();
       });
     }
