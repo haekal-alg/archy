@@ -1,9 +1,8 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { Node } from '@xyflow/react';
 import { EnhancedDeviceData } from './EnhancedDeviceNode';
-import { DynamicIcon, GenericIcon } from './NetworkIcons';
+import { GenericIcon } from './NetworkIcons';
 import { getIconByDeviceType } from '../iconStore';
-import theme from '../../theme';
 
 interface CommandPaletteProps {
   nodes: Node[];
@@ -19,6 +18,16 @@ interface ActionItem {
   action: () => void;
 }
 
+const FONT_STACK = '-apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Segoe UI", Roboto, Helvetica, Arial, sans-serif';
+
+const CATEGORIES = [
+  { id: 'all', label: 'All' },
+  { id: 'network', label: 'Network', types: ['router', 'switch', 'firewall'] },
+  { id: 'compute', label: 'Compute', types: ['server', 'desktop', 'laptop', 'linux', 'windows', 'mobile'] },
+  { id: 'cloud', label: 'Cloud', types: ['cloud', 'cloud2', 'database'] },
+  { id: 'security', label: 'Security', types: ['attacker'] },
+];
+
 const CommandPalette: React.FC<CommandPaletteProps> = ({
   nodes,
   onFocusNode,
@@ -29,6 +38,7 @@ const CommandPalette: React.FC<CommandPaletteProps> = ({
   const [query, setQuery] = useState('');
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [actionNode, setActionNode] = useState<Node | null>(null);
+  const [activeCategory, setActiveCategory] = useState('all');
   const inputRef = useRef<HTMLInputElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
 
@@ -37,23 +47,40 @@ const CommandPalette: React.FC<CommandPaletteProps> = ({
     inputRef.current?.focus();
   }, []);
 
-  // Filter enhanced nodes by query
+  // Filter enhanced nodes by query and category
   const filteredNodes = useMemo(() => {
     const enhancedNodes = nodes.filter((n) => n.type === 'enhanced');
-    if (!query.trim()) return enhancedNodes;
 
-    const q = query.toLowerCase();
-    return enhancedNodes.filter((n) => {
-      const data = n.data as unknown as EnhancedDeviceData;
-      return (
-        data.label?.toLowerCase().includes(q) ||
-        data.type?.toLowerCase().includes(q) ||
-        data.ipAddress?.toLowerCase().includes(q) ||
-        data.host?.toLowerCase().includes(q) ||
-        data.description?.toLowerCase().includes(q)
-      );
-    });
-  }, [nodes, query]);
+    let filtered = enhancedNodes;
+
+    // Apply category filter
+    if (activeCategory !== 'all') {
+      const cat = CATEGORIES.find(c => c.id === activeCategory);
+      if (cat?.types) {
+        filtered = filtered.filter((n) => {
+          const data = n.data as unknown as EnhancedDeviceData;
+          return cat.types!.includes(data.type);
+        });
+      }
+    }
+
+    // Apply text search
+    if (query.trim()) {
+      const q = query.toLowerCase();
+      filtered = filtered.filter((n) => {
+        const data = n.data as unknown as EnhancedDeviceData;
+        return (
+          data.label?.toLowerCase().includes(q) ||
+          data.type?.toLowerCase().includes(q) ||
+          data.ipAddress?.toLowerCase().includes(q) ||
+          data.host?.toLowerCase().includes(q) ||
+          data.description?.toLowerCase().includes(q)
+        );
+      });
+    }
+
+    return filtered;
+  }, [nodes, query, activeCategory]);
 
   // Actions for selected node
   const actions = useMemo((): ActionItem[] => {
@@ -70,7 +97,6 @@ const CommandPalette: React.FC<CommandPaletteProps> = ({
       },
     ];
 
-    // Only show SSH if there's connection info
     if (data.host) {
       items.push({
         label: 'Connect SSH',
@@ -99,7 +125,7 @@ const CommandPalette: React.FC<CommandPaletteProps> = ({
   // Reset selection when items change
   useEffect(() => {
     setSelectedIndex(0);
-  }, [query, actionNode]);
+  }, [query, actionNode, activeCategory]);
 
   // Scroll selected item into view
   useEffect(() => {
@@ -161,24 +187,25 @@ const CommandPalette: React.FC<CommandPaletteProps> = ({
   };
 
   const renderActionIcon = (icon: string) => {
+    const color = 'currentColor';
     switch (icon) {
       case 'focus':
         return (
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <circle cx="11" cy="11" r="8" />
             <line x1="21" y1="21" x2="16.65" y2="16.65" />
           </svg>
         );
       case 'ssh':
         return (
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <polyline points="4 17 10 11 4 5" />
             <line x1="12" y1="19" x2="20" y2="19" />
           </svg>
         );
       case 'rdp':
         return (
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <rect x="2" y="3" width="20" height="14" rx="2" ry="2" />
             <line x1="8" y1="21" x2="16" y2="21" />
             <line x1="12" y1="17" x2="12" y2="21" />
@@ -194,96 +221,172 @@ const CommandPalette: React.FC<CommandPaletteProps> = ({
       style={{
         position: 'fixed',
         inset: 0,
-        backgroundColor: 'rgba(0, 0, 0, 0.5)',
+        backgroundColor: 'rgba(0, 0, 0, 0.4)',
         display: 'flex',
         alignItems: 'flex-start',
         justifyContent: 'center',
-        paddingTop: '15vh',
+        paddingTop: '14vh',
         zIndex: 10000,
+        fontFamily: FONT_STACK,
       }}
       onClick={(e) => {
         if (e.target === e.currentTarget) onClose();
       }}
       onKeyDown={handleKeyDown}
     >
+      {/* Glassmorphism panel */}
       <div
         style={{
-          width: 520,
+          width: 580,
           maxHeight: '60vh',
-          backgroundColor: '#151923',
-          border: '1px solid #2d3548',
-          borderRadius: 12,
+          backgroundColor: 'rgba(25, 30, 42, 0.82)',
+          backdropFilter: 'blur(40px) saturate(150%)',
+          WebkitBackdropFilter: 'blur(40px) saturate(150%)',
+          border: '1px solid rgba(255, 255, 255, 0.08)',
+          borderRadius: 20,
           overflow: 'hidden',
-          boxShadow: '0 16px 48px rgba(0, 0, 0, 0.6)',
+          boxShadow: '0 24px 80px rgba(0, 0, 0, 0.5), 0 0 1px rgba(255, 255, 255, 0.1), inset 0 0 0 0.5px rgba(255, 255, 255, 0.05)',
           display: 'flex',
           flexDirection: 'column',
         }}
       >
-        {/* Search input */}
-        <div style={{ display: 'flex', alignItems: 'center', padding: '12px 16px', borderBottom: '1px solid #2d3548' }}>
-          {actionNode && (
-            <div
+        {/* Search input area */}
+        <div style={{ padding: '14px 16px 12px' }}>
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 10,
+              padding: '10px 14px',
+              backgroundColor: 'rgba(255, 255, 255, 0.06)',
+              borderRadius: 12,
+              border: '1px solid rgba(255, 255, 255, 0.06)',
+            }}
+          >
+            {/* Action mode: device chip */}
+            {actionNode && (
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 6,
+                  padding: '4px 10px 4px 6px',
+                  backgroundColor: 'rgba(77, 124, 254, 0.15)',
+                  border: '1px solid rgba(77, 124, 254, 0.25)',
+                  borderRadius: 9999,
+                  fontSize: 12,
+                  fontWeight: 500,
+                  color: '#8fb4ff',
+                  whiteSpace: 'nowrap',
+                  flexShrink: 0,
+                }}
+              >
+                <span style={{ display: 'flex', alignItems: 'center', width: 16, height: 16 }}>
+                  {renderNodeIcon(actionNode)}
+                </span>
+                <span>{(actionNode.data as unknown as EnhancedDeviceData).label}</span>
+              </div>
+            )}
+
+            {/* Magnifying glass */}
+            <svg
+              width="18"
+              height="18"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="#5a6375"
+              strokeWidth="2.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              style={{ flexShrink: 0 }}
+            >
+              <circle cx="11" cy="11" r="7" />
+              <line x1="16.5" y1="16.5" x2="21" y2="21" />
+            </svg>
+
+            {/* Input */}
+            <input
+              ref={inputRef}
+              type="text"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder={actionNode ? 'Select action...' : 'Search devices...'}
               style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 6,
-                padding: '3px 8px',
-                backgroundColor: '#1e2a4a',
-                borderRadius: 4,
-                marginRight: 8,
-                fontSize: 12,
-                color: '#6b9aff',
-                whiteSpace: 'nowrap',
+                flex: 1,
+                background: 'none',
+                border: 'none',
+                outline: 'none',
+                color: '#e8ecf4',
+                fontSize: 15,
+                fontWeight: 400,
+                fontFamily: FONT_STACK,
+                letterSpacing: '-0.01em',
+              }}
+            />
+
+            {/* ESC badge */}
+            <kbd
+              style={{
+                padding: '3px 7px',
+                backgroundColor: 'rgba(255, 255, 255, 0.06)',
+                border: '1px solid rgba(255, 255, 255, 0.08)',
+                borderRadius: 6,
+                fontSize: 10,
+                fontWeight: 500,
+                fontFamily: FONT_STACK,
+                color: '#5a6375',
+                lineHeight: 1,
               }}
             >
-              {renderNodeIcon(actionNode)}
-              <span>{(actionNode.data as unknown as EnhancedDeviceData).label}</span>
-            </div>
-          )}
-          <svg
-            width="16"
-            height="16"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="#6b7280"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            style={{ flexShrink: 0, marginRight: 8 }}
-          >
-            <circle cx="11" cy="11" r="8" />
-            <line x1="21" y1="21" x2="16.65" y2="16.65" />
-          </svg>
-          <input
-            ref={inputRef}
-            type="text"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder={actionNode ? 'Select action...' : 'Search devices...'}
-            style={{
-              flex: 1,
-              background: 'none',
-              border: 'none',
-              outline: 'none',
-              color: '#e0e4ec',
-              fontSize: 14,
-              fontFamily: 'inherit',
-            }}
-          />
-          <kbd
-            style={{
-              padding: '2px 6px',
-              backgroundColor: '#111827',
-              border: '1px solid #2d3548',
-              borderRadius: 4,
-              fontSize: 10,
-              fontFamily: 'monospace',
-              color: '#6b7280',
-            }}
-          >
-            ESC
-          </kbd>
+              ESC
+            </kbd>
+          </div>
         </div>
+
+        {/* Category chips (only in device list mode) */}
+        {!actionNode && (
+          <div
+            style={{
+              display: 'flex',
+              gap: 6,
+              padding: '0 16px 10px',
+              overflowX: 'auto',
+            }}
+          >
+            {CATEGORIES.map(cat => (
+              <button
+                key={cat.id}
+                onClick={() => setActiveCategory(cat.id)}
+                style={{
+                  padding: '5px 12px',
+                  borderRadius: 9999,
+                  border: 'none',
+                  cursor: 'pointer',
+                  fontSize: 12,
+                  fontWeight: 500,
+                  fontFamily: FONT_STACK,
+                  letterSpacing: '0.01em',
+                  whiteSpace: 'nowrap',
+                  transition: 'all 0.15s ease',
+                  backgroundColor: activeCategory === cat.id
+                    ? 'rgba(77, 124, 254, 0.2)'
+                    : 'rgba(255, 255, 255, 0.05)',
+                  color: activeCategory === cat.id
+                    ? '#8fb4ff'
+                    : '#6b7280',
+                  ...(activeCategory === cat.id
+                    ? { boxShadow: 'inset 0 0 0 1px rgba(77, 124, 254, 0.3)' }
+                    : {}),
+                }}
+              >
+                {cat.label}
+              </button>
+            ))}
+          </div>
+        )}
+
+        {/* Separator */}
+        <div style={{ height: 1, backgroundColor: 'rgba(255, 255, 255, 0.06)', margin: '0 16px' }} />
 
         {/* Results list */}
         <div
@@ -291,7 +394,7 @@ const CommandPalette: React.FC<CommandPaletteProps> = ({
           style={{
             flex: 1,
             overflowY: 'auto',
-            padding: '4px 0',
+            padding: '6px 8px',
           }}
         >
           {actionNode
@@ -303,22 +406,65 @@ const CommandPalette: React.FC<CommandPaletteProps> = ({
                   style={{
                     display: 'flex',
                     alignItems: 'center',
-                    gap: 10,
-                    padding: '8px 16px',
+                    gap: 12,
+                    padding: '10px 12px',
                     cursor: 'pointer',
-                    backgroundColor: i === selectedIndex ? '#1e2a4a' : 'transparent',
-                    color: i === selectedIndex ? '#e0e4ec' : '#8892a6',
-                    transition: 'background-color 0.1s',
+                    borderRadius: 10,
+                    position: 'relative',
+                    backgroundColor: i === selectedIndex ? 'rgba(77, 124, 254, 0.12)' : 'transparent',
+                    transition: 'background-color 0.15s ease',
                   }}
                 >
-                  <span style={{ display: 'flex', alignItems: 'center', width: 20, justifyContent: 'center' }}>
+                  {/* Accent bar */}
+                  {i === selectedIndex && (
+                    <div style={{
+                      position: 'absolute',
+                      left: 0,
+                      top: '50%',
+                      transform: 'translateY(-50%)',
+                      width: 3,
+                      height: 20,
+                      borderRadius: 3,
+                      backgroundColor: '#4d7cfe',
+                    }} />
+                  )}
+
+                  {/* Action icon container */}
+                  <span
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      width: 32,
+                      height: 32,
+                      borderRadius: 8,
+                      backgroundColor: 'rgba(255, 255, 255, 0.06)',
+                      color: i === selectedIndex ? '#8fb4ff' : '#6b7280',
+                      flexShrink: 0,
+                      transition: 'color 0.15s ease',
+                    }}
+                  >
                     {renderActionIcon(action.icon)}
                   </span>
-                  <span style={{ fontSize: 13 }}>{action.label}</span>
+
+                  <span style={{
+                    fontSize: 13,
+                    fontWeight: 500,
+                    color: i === selectedIndex ? '#e8ecf4' : '#b4bcc9',
+                    transition: 'color 0.15s ease',
+                  }}>
+                    {action.label}
+                  </span>
                 </div>
               ))
             : filteredNodes.length === 0 ? (
-                <div style={{ padding: '20px 16px', textAlign: 'center', color: '#6b7280', fontSize: 13 }}>
+                <div style={{
+                  padding: '28px 16px',
+                  textAlign: 'center',
+                  color: '#5a6375',
+                  fontSize: 13,
+                  fontWeight: 400,
+                }}>
                   No devices found
                 </div>
               ) : (
@@ -332,46 +478,83 @@ const CommandPalette: React.FC<CommandPaletteProps> = ({
                       style={{
                         display: 'flex',
                         alignItems: 'center',
-                        gap: 10,
-                        padding: '8px 16px',
+                        gap: 12,
+                        padding: '9px 12px',
                         cursor: 'pointer',
-                        backgroundColor: i === selectedIndex ? '#1e2a4a' : 'transparent',
-                        transition: 'background-color 0.1s',
+                        borderRadius: 10,
+                        position: 'relative',
+                        backgroundColor: i === selectedIndex ? 'rgba(77, 124, 254, 0.12)' : 'transparent',
+                        transition: 'background-color 0.15s ease',
                       }}
                     >
-                      <span style={{ display: 'flex', alignItems: 'center', width: 24, justifyContent: 'center' }}>
+                      {/* Accent bar */}
+                      {i === selectedIndex && (
+                        <div style={{
+                          position: 'absolute',
+                          left: 0,
+                          top: '50%',
+                          transform: 'translateY(-50%)',
+                          width: 3,
+                          height: 20,
+                          borderRadius: 3,
+                          backgroundColor: '#4d7cfe',
+                        }} />
+                      )}
+
+                      {/* Device icon container */}
+                      <span
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          width: 36,
+                          height: 36,
+                          borderRadius: 10,
+                          backgroundColor: 'rgba(255, 255, 255, 0.06)',
+                          flexShrink: 0,
+                        }}
+                      >
                         {renderNodeIcon(node)}
                       </span>
+
+                      {/* Text */}
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <div style={{
                           fontSize: 13,
-                          color: i === selectedIndex ? '#e0e4ec' : '#c9cdd5',
+                          fontWeight: 500,
+                          color: i === selectedIndex ? '#e8ecf4' : '#c9cdd5',
                           overflow: 'hidden',
                           textOverflow: 'ellipsis',
                           whiteSpace: 'nowrap',
+                          transition: 'color 0.15s ease',
+                          letterSpacing: '-0.01em',
                         }}>
                           {data.label}
                         </div>
                         <div style={{
                           fontSize: 11,
-                          color: '#6b7280',
+                          fontWeight: 400,
+                          color: '#5a6375',
                           overflow: 'hidden',
                           textOverflow: 'ellipsis',
                           whiteSpace: 'nowrap',
+                          marginTop: 1,
                         }}>
                           {[data.type, data.ipAddress || data.host].filter(Boolean).join(' \u00b7 ')}
                         </div>
                       </div>
+
+                      {/* Chevron */}
                       <svg
                         width="14"
                         height="14"
                         viewBox="0 0 24 24"
                         fill="none"
-                        stroke="#4d5565"
+                        stroke={i === selectedIndex ? '#5a6375' : '#3a4556'}
                         strokeWidth="2"
                         strokeLinecap="round"
                         strokeLinejoin="round"
-                        style={{ flexShrink: 0 }}
+                        style={{ flexShrink: 0, transition: 'stroke 0.15s ease' }}
                       >
                         <polyline points="9 18 15 12 9 6" />
                       </svg>
@@ -381,34 +564,37 @@ const CommandPalette: React.FC<CommandPaletteProps> = ({
               )}
         </div>
 
-        {/* Footer hint */}
+        {/* Footer hints */}
         <div
           style={{
-            padding: '6px 16px',
-            borderTop: '1px solid #2d3548',
+            padding: '8px 16px',
+            borderTop: '1px solid rgba(255, 255, 255, 0.06)',
+            backgroundColor: 'rgba(255, 255, 255, 0.02)',
             display: 'flex',
             gap: 16,
             fontSize: 11,
+            fontWeight: 400,
             color: '#4d5565',
           }}
         >
-          <span><kbd style={kbdMini}>&uarr;&darr;</kbd> navigate</span>
-          <span><kbd style={kbdMini}>Enter</kbd> select</span>
-          <span><kbd style={kbdMini}>Esc</kbd> {actionNode ? 'back' : 'close'}</span>
+          <span><kbd style={kbdStyle}>&uarr;&darr;</kbd> navigate</span>
+          <span><kbd style={kbdStyle}>Enter</kbd> select</span>
+          <span><kbd style={kbdStyle}>Esc</kbd> {actionNode ? 'back' : 'close'}</span>
         </div>
       </div>
     </div>
   );
 };
 
-const kbdMini: React.CSSProperties = {
-  padding: '1px 4px',
-  backgroundColor: '#111827',
-  border: '1px solid #2d3548',
-  borderRadius: 3,
+const kbdStyle: React.CSSProperties = {
+  padding: '2px 5px',
+  backgroundColor: 'rgba(255, 255, 255, 0.06)',
+  border: '1px solid rgba(255, 255, 255, 0.08)',
+  borderRadius: 4,
   fontSize: 10,
-  fontFamily: 'monospace',
-  color: '#6b7280',
+  fontWeight: 500,
+  fontFamily: '-apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", sans-serif',
+  color: '#5a6375',
 };
 
 export default CommandPalette;
