@@ -349,12 +349,9 @@ const EnhancedDeviceNode: React.FC<NodeProps> = React.memo(({ id, data, selected
             }}
           >
             <svg width={handleSize + 4} height={handleSize + 4} viewBox="0 0 14 14">
-              <circle cx="12" cy="5" r="1.5" fill={borderColor} />
-              <circle cx="8" cy="9" r="1.5" fill={borderColor} />
-              <circle cx="12" cy="9" r="1.5" fill={borderColor} />
-              <circle cx="4" cy="13" r="1.5" fill={borderColor} />
-              <circle cx="8" cy="13" r="1.5" fill={borderColor} />
-              <circle cx="12" cy="13" r="1.5" fill={borderColor} />
+              <circle cx="3" cy="11" r="1.5" fill={borderColor} />
+              <circle cx="7.5" cy="6.5" r="1.5" fill={borderColor} />
+              <circle cx="12" cy="2" r="1.5" fill={borderColor} />
             </svg>
           </div>
 
