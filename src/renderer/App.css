@@ -39,11 +39,16 @@ a,
   border-radius: 6px;
 }
 
-/* Resize handle cursors — override the global * { cursor: default !important } */
-.resize-handle-hitarea.cursor-nwse { cursor: nwse-resize !important; }
-.resize-handle-hitarea.cursor-nesw { cursor: nesw-resize !important; }
-.resize-handle-hitarea.cursor-ns   { cursor: ns-resize !important; }
-.resize-handle-hitarea.cursor-ew   { cursor: ew-resize !important; }
+/* Resize handle cursors — override the global * { cursor: default !important }
+   Must target BOTH the hitarea AND its child .resize-handle, since * applies to all elements */
+.resize-handle-hitarea.cursor-nwse,
+.resize-handle-hitarea.cursor-nwse .resize-handle { cursor: nwse-resize !important; }
+.resize-handle-hitarea.cursor-nesw,
+.resize-handle-hitarea.cursor-nesw .resize-handle { cursor: nesw-resize !important; }
+.resize-handle-hitarea.cursor-ns,
+.resize-handle-hitarea.cursor-ns .resize-handle   { cursor: ns-resize !important; }
+.resize-handle-hitarea.cursor-ew,
+.resize-handle-hitarea.cursor-ew .resize-handle   { cursor: ew-resize !important; }
 
 /* Resize handles - Figma-style */
 .resize-handle {
