@@ -9,7 +9,8 @@ import CONFIG from '../../config';
 
 interface HandleConfig {
   id: string;
-  cursor: string;
+  cursor: string;          // inline fallback
+  cursorClass: string;     // CSS class that applies cursor with !important (overrides global reset)
   affectsWidth: boolean;
   affectsHeight: boolean;
   invertX: boolean;   // true = left-side handle (positive drag shrinks)
@@ -26,28 +27,28 @@ const HANDLE_CONFIGS: HandleConfig[] = [
   // Corners
   {
     id: 'top-left',
-    cursor: 'nwse-resize',
+    cursor: 'nwse-resize', cursorClass: 'cursor-nwse',
     affectsWidth: true, affectsHeight: true,
     invertX: true, invertY: true,
     positionStyle: { top: HIT_OFFSET, left: HIT_OFFSET },
   },
   {
     id: 'top-right',
-    cursor: 'nesw-resize',
+    cursor: 'nesw-resize', cursorClass: 'cursor-nesw',
     affectsWidth: true, affectsHeight: true,
     invertX: false, invertY: true,
     positionStyle: { top: HIT_OFFSET, right: HIT_OFFSET },
   },
   {
     id: 'bottom-left',
-    cursor: 'nesw-resize',
+    cursor: 'nesw-resize', cursorClass: 'cursor-nesw',
     affectsWidth: true, affectsHeight: true,
     invertX: true, invertY: false,
     positionStyle: { bottom: HIT_OFFSET, left: HIT_OFFSET },
   },
   {
     id: 'bottom-right',
-    cursor: 'nwse-resize',
+    cursor: 'nwse-resize', cursorClass: 'cursor-nwse',
     affectsWidth: true, affectsHeight: true,
     invertX: false, invertY: false,
     positionStyle: { bottom: HIT_OFFSET, right: HIT_OFFSET },
@@ -55,28 +56,28 @@ const HANDLE_CONFIGS: HandleConfig[] = [
   // Edge midpoints
   {
     id: 'top',
-    cursor: 'ns-resize',
+    cursor: 'ns-resize', cursorClass: 'cursor-ns',
     affectsWidth: false, affectsHeight: true,
     invertX: false, invertY: true,
     positionStyle: { top: HIT_OFFSET, left: '50%', transform: 'translateX(-50%)' },
   },
   {
     id: 'right',
-    cursor: 'ew-resize',
+    cursor: 'ew-resize', cursorClass: 'cursor-ew',
     affectsWidth: true, affectsHeight: false,
     invertX: false, invertY: false,
     positionStyle: { top: '50%', right: HIT_OFFSET, transform: 'translateY(-50%)' },
   },
   {
     id: 'bottom',
-    cursor: 'ns-resize',
+    cursor: 'ns-resize', cursorClass: 'cursor-ns',
     affectsWidth: false, affectsHeight: true,
     invertX: false, invertY: false,
     positionStyle: { bottom: HIT_OFFSET, left: '50%', transform: 'translateX(-50%)' },
   },
   {
     id: 'left',
-    cursor: 'ew-resize',
+    cursor: 'ew-resize', cursorClass: 'cursor-ew',
     affectsWidth: true, affectsHeight: false,
     invertX: true, invertY: false,
     positionStyle: { top: '50%', left: HIT_OFFSET, transform: 'translateY(-50%)' },
@@ -276,7 +277,7 @@ const ResizeHandles: React.FC<ResizeHandlesProps> = ({
           // Outer hit-area: larger invisible click target (16x16)
           <div
             key={handle.id}
-            className="resize-handle-hitarea nodrag nopan"
+            className={`resize-handle-hitarea ${handle.cursorClass} nodrag nopan`}
             onPointerDown={(e) => onPointerDown(e, handle)}
             onPointerMove={onPointerMove}
             onPointerUp={onPointerUp}
@@ -284,7 +285,6 @@ const ResizeHandles: React.FC<ResizeHandlesProps> = ({
               position: 'absolute',
               width: HIT_AREA,
               height: HIT_AREA,
-              cursor: handle.cursor,
               pointerEvents: isVisible ? 'auto' : 'none',
               zIndex: 10,
               display: 'flex',

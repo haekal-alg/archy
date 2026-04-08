@@ -39,6 +39,12 @@ a,
   border-radius: 6px;
 }
 
+/* Resize handle cursors — override the global * { cursor: default !important } */
+.resize-handle-hitarea.cursor-nwse { cursor: nwse-resize !important; }
+.resize-handle-hitarea.cursor-nesw { cursor: nesw-resize !important; }
+.resize-handle-hitarea.cursor-ns   { cursor: ns-resize !important; }
+.resize-handle-hitarea.cursor-ew   { cursor: ew-resize !important; }
+
 /* Resize handles - Figma-style */
 .resize-handle {
   transition: width 0.1s ease, height 0.1s ease,
