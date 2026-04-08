@@ -14,11 +14,13 @@ interface HandleConfig {
   affectsHeight: boolean;
   invertX: boolean;   // true = left-side handle (positive drag shrinks)
   invertY: boolean;   // true = top-side handle (positive drag shrinks)
-  // CSS positioning for where the handle sits on the node boundary
+  // CSS positioning for the hit-area wrapper on the node boundary
   positionStyle: React.CSSProperties;
 }
 
-const HALF = CONFIG.deviceNodes.resizeHandleSize / 2;
+const HANDLE_SIZE = CONFIG.deviceNodes.resizeHandleSize;
+const HIT_AREA = HANDLE_SIZE * 2;           // 16px invisible click target
+const HIT_OFFSET = -(HIT_AREA / 2);        // center hit area on the boundary edge
 
 const HANDLE_CONFIGS: HandleConfig[] = [
   // Corners
@@ -27,28 +29,28 @@ const HANDLE_CONFIGS: HandleConfig[] = [
     cursor: 'nwse-resize',
     affectsWidth: true, affectsHeight: true,
     invertX: true, invertY: true,
-    positionStyle: { top: -HALF, left: -HALF },
+    positionStyle: { top: HIT_OFFSET, left: HIT_OFFSET },
   },
   {
     id: 'top-right',
     cursor: 'nesw-resize',
     affectsWidth: true, affectsHeight: true,
     invertX: false, invertY: true,
-    positionStyle: { top: -HALF, right: -HALF },
+    positionStyle: { top: HIT_OFFSET, right: HIT_OFFSET },
   },
   {
     id: 'bottom-left',
     cursor: 'nesw-resize',
     affectsWidth: true, affectsHeight: true,
     invertX: true, invertY: false,
-    positionStyle: { bottom: -HALF, left: -HALF },
+    positionStyle: { bottom: HIT_OFFSET, left: HIT_OFFSET },
   },
   {
     id: 'bottom-right',
     cursor: 'nwse-resize',
     affectsWidth: true, affectsHeight: true,
     invertX: false, invertY: false,
-    positionStyle: { bottom: -HALF, right: -HALF },
+    positionStyle: { bottom: HIT_OFFSET, right: HIT_OFFSET },
   },
   // Edge midpoints
   {
@@ -56,30 +58,32 @@ const HANDLE_CONFIGS: HandleConfig[] = [
     cursor: 'ns-resize',
     affectsWidth: false, affectsHeight: true,
     invertX: false, invertY: true,
-    positionStyle: { top: -HALF, left: '50%', transform: 'translateX(-50%)' },
+    positionStyle: { top: HIT_OFFSET, left: '50%', transform: 'translateX(-50%)' },
   },
   {
     id: 'right',
     cursor: 'ew-resize',
     affectsWidth: true, affectsHeight: false,
     invertX: false, invertY: false,
-    positionStyle: { top: '50%', right: -HALF, transform: 'translateY(-50%)' },
+    positionStyle: { top: '50%', right: HIT_OFFSET, transform: 'translateY(-50%)' },
   },
   {
     id: 'bottom',
     cursor: 'ns-resize',
     affectsWidth: false, affectsHeight: true,
     invertX: false, invertY: false,
-    positionStyle: { bottom: -HALF, left: '50%', transform: 'translateX(-50%)' },
+    positionStyle: { bottom: HIT_OFFSET, left: '50%', transform: 'translateX(-50%)' },
   },
   {
     id: 'left',
     cursor: 'ew-resize',
     affectsWidth: true, affectsHeight: false,
     invertX: true, invertY: false,
-    positionStyle: { top: '50%', left: -HALF, transform: 'translateY(-50%)' },
+    positionStyle: { top: '50%', left: HIT_OFFSET, transform: 'translateY(-50%)' },
   },
 ];
+
+// --- Component ---
 
 interface ResizeHandlesProps {
   nodeId: string;
@@ -98,6 +102,9 @@ interface DragState {
   startNodeY: number;
 }
 
+type LimitState = 'none' | 'min' | 'max';
+
+const LIMIT_COLOR = '#ff5c5c';
 const clamp = (v: number, min: number, max: number) => Math.min(max, Math.max(min, v));
 
 const ResizeHandles: React.FC<ResizeHandlesProps> = ({
@@ -110,13 +117,19 @@ const ResizeHandles: React.FC<ResizeHandlesProps> = ({
   const { updateNodeData, setNodes, getNode } = useReactFlow();
   const storeApi = useStoreApi();
   const dragRef = useRef<DragState | null>(null);
+  const rafRef = useRef<number | null>(null);
+  // Store latest pointer event data for rAF callback (avoids stale closures)
+  const latestEventRef = useRef<{ clientX: number; clientY: number; altKey: boolean } | null>(null);
+
   const [activeHandleId, setActiveHandleId] = useState<string | null>(null);
   const [liveSize, setLiveSize] = useState<number | null>(null);
   const [tooltipPos, setTooltipPos] = useState<{ x: number; y: number } | null>(null);
+  const [limitState, setLimitState] = useState<LimitState>('none');
 
-  const handleSize = CONFIG.deviceNodes.resizeHandleSize;
   const minSize = CONFIG.deviceNodes.minIconSize;
   const maxSize = CONFIG.deviceNodes.maxIconSize;
+
+  // --- Pointer handlers ---
 
   const onPointerDown = useCallback((e: React.PointerEvent, handle: HandleConfig) => {
     e.stopPropagation();
@@ -136,15 +149,18 @@ const ResizeHandles: React.FC<ResizeHandlesProps> = ({
     };
     setActiveHandleId(handle.id);
     setLiveSize(iconSize);
+    setLimitState('none');
   }, [getNode, nodeId, iconSize]);
 
-  const onPointerMove = useCallback((e: React.PointerEvent) => {
+  // The actual resize computation — called inside rAF
+  const computeResize = useCallback(() => {
     const drag = dragRef.current;
-    if (!drag) return;
+    const evt = latestEventRef.current;
+    if (!drag || !evt) return;
 
     const zoom = storeApi.getState().transform[2];
-    const rawDx = (e.clientX - drag.startX) / zoom;
-    const rawDy = (e.clientY - drag.startY) / zoom;
+    const rawDx = (evt.clientX - drag.startX) / zoom;
+    const rawDy = (evt.clientY - drag.startY) / zoom;
 
     const { handle } = drag;
 
@@ -163,8 +179,15 @@ const ResizeHandles: React.FC<ResizeHandlesProps> = ({
       delta = effectiveDy;
     }
 
-    const newSize = Math.round(clamp(drag.startSize + delta, minSize, maxSize));
+    const rawNewSize = drag.startSize + delta;
+    const newSize = Math.round(clamp(rawNewSize, minSize, maxSize));
     const actualDelta = newSize - drag.startSize;
+
+    // --- Limit detection ---
+    // Check if the user is pushing beyond the boundary
+    const hitMin = rawNewSize <= minSize;
+    const hitMax = rawNewSize >= maxSize;
+    setLimitState(hitMin ? 'min' : hitMax ? 'max' : 'none');
 
     // Compute new node position — shift when resizing from top/left
     let newX = drag.startNodeX;
@@ -178,7 +201,7 @@ const ResizeHandles: React.FC<ResizeHandlesProps> = ({
     }
 
     // Alt key: resize from center (both sides move equally)
-    if (e.altKey) {
+    if (evt.altKey) {
       newX = drag.startNodeX - actualDelta / 2;
       newY = drag.startNodeY - actualDelta / 2;
     }
@@ -198,47 +221,94 @@ const ResizeHandles: React.FC<ResizeHandlesProps> = ({
     }
 
     setLiveSize(newSize);
+    rafRef.current = null;
+  }, [storeApi, nodeId, updateNodeData, setNodes, minSize, maxSize]);
 
-    // Position tooltip near the active handle element
+  const onPointerMove = useCallback((e: React.PointerEvent) => {
+    if (!dragRef.current) return;
+
+    // Store latest event data for the rAF callback
+    latestEventRef.current = {
+      clientX: e.clientX,
+      clientY: e.clientY,
+      altKey: e.altKey,
+    };
+
+    // Position tooltip near the active handle (immediate, outside rAF for responsiveness)
     const rect = (e.target as HTMLElement).getBoundingClientRect();
     setTooltipPos({ x: rect.left + rect.width / 2, y: rect.top - 8 });
-  }, [storeApi, nodeId, updateNodeData, setNodes, minSize, maxSize]);
+
+    // Throttle resize computation to animation frames
+    if (!rafRef.current) {
+      rafRef.current = requestAnimationFrame(computeResize);
+    }
+  }, [computeResize]);
 
   const onPointerUp = useCallback((e: React.PointerEvent) => {
     if (!dragRef.current) return;
     (e.target as HTMLElement).releasePointerCapture(e.pointerId);
+
+    // Cancel any pending rAF
+    if (rafRef.current) {
+      cancelAnimationFrame(rafRef.current);
+      rafRef.current = null;
+    }
+
     dragRef.current = null;
+    latestEventRef.current = null;
     setActiveHandleId(null);
     setLiveSize(null);
     setTooltipPos(null);
+    setLimitState('none');
     onResizeEnd();
   }, [onResizeEnd]);
 
+  // --- Render ---
+
+  const isAtLimit = limitState !== 'none';
+  const handleColor = isAtLimit ? LIMIT_COLOR : color;
+
   return (
     <>
-      {HANDLE_CONFIGS.map((handle) => (
-        <div
-          key={handle.id}
-          className="resize-handle nodrag nopan"
-          onPointerDown={(e) => onPointerDown(e, handle)}
-          onPointerMove={onPointerMove}
-          onPointerUp={onPointerUp}
-          style={{
-            position: 'absolute',
-            width: handleSize,
-            height: handleSize,
-            borderRadius: '50%',
-            background: color,
-            border: `${CONFIG.deviceNodes.resizeHandleBorder}px solid ${CONFIG.deviceNodes.resizeHandleBorderColor}`,
-            cursor: handle.cursor,
-            opacity: isVisible ? (activeHandleId === handle.id ? 1 : 0.85) : 0,
-            pointerEvents: isVisible ? 'auto' : 'none',
-            zIndex: 10,
-            boxSizing: 'border-box',
-            ...handle.positionStyle,
-          }}
-        />
-      ))}
+      {HANDLE_CONFIGS.map((handle) => {
+        const isActive = activeHandleId === handle.id;
+        return (
+          // Outer hit-area: larger invisible click target (16x16)
+          <div
+            key={handle.id}
+            className="resize-handle-hitarea nodrag nopan"
+            onPointerDown={(e) => onPointerDown(e, handle)}
+            onPointerMove={onPointerMove}
+            onPointerUp={onPointerUp}
+            style={{
+              position: 'absolute',
+              width: HIT_AREA,
+              height: HIT_AREA,
+              cursor: handle.cursor,
+              pointerEvents: isVisible ? 'auto' : 'none',
+              zIndex: 10,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              ...handle.positionStyle,
+            }}
+          >
+            {/* Visible handle circle */}
+            <div
+              className={`resize-handle${isAtLimit && isActive ? ' resize-handle-at-limit' : ''}`}
+              style={{
+                width: HANDLE_SIZE,
+                height: HANDLE_SIZE,
+                borderRadius: '50%',
+                background: isActive ? handleColor : color,
+                border: `${CONFIG.deviceNodes.resizeHandleBorder}px solid ${CONFIG.deviceNodes.resizeHandleBorderColor}`,
+                opacity: isVisible ? (isActive ? 1 : 0.85) : 0,
+                boxSizing: 'border-box',
+              }}
+            />
+          </div>
+        );
+      })}
 
       {/* Size tooltip during active resize */}
       {liveSize !== null && tooltipPos && (
@@ -248,7 +318,7 @@ const ResizeHandles: React.FC<ResizeHandlesProps> = ({
             left: tooltipPos.x,
             top: tooltipPos.y,
             transform: 'translate(-50%, -100%)',
-            background: 'rgba(0, 0, 0, 0.8)',
+            background: isAtLimit ? 'rgba(255, 92, 92, 0.9)' : 'rgba(0, 0, 0, 0.8)',
             color: '#e8ecf4',
             fontSize: '10px',
             fontWeight: 600,
@@ -257,9 +327,10 @@ const ResizeHandles: React.FC<ResizeHandlesProps> = ({
             whiteSpace: 'nowrap',
             pointerEvents: 'none',
             zIndex: 9999,
+            transition: 'background-color 0.15s ease',
           }}
         >
-          {liveSize}px
+          {liveSize}px{limitState === 'min' ? ' MIN' : limitState === 'max' ? ' MAX' : ''}
         </div>
       )}
     </>
