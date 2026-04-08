@@ -65,6 +65,10 @@ export const CONFIG = {
     defaultFontSize: 14, // Default font size
     minBorderWidth: 1, // Minimum border width
     maxBorderWidth: 10, // Maximum border width
+    minWidth: 50, // Minimum width for text nodes
+    minHeight: 30, // Minimum height for text nodes
+    maxWidth: 600, // Maximum width for text nodes
+    maxHeight: 400, // Maximum height for text nodes
   },
 };
 

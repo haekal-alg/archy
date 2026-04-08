@@ -84,9 +84,10 @@ const HANDLE_CONFIGS: HandleConfig[] = [
   },
 ];
 
-// --- Component ---
+// --- Props: two modes ---
 
-interface ResizeHandlesProps {
+interface IconModeProps {
+  mode: 'icon';
   nodeId: string;
   isVisible: boolean;
   color: string;
@@ -94,13 +95,35 @@ interface ResizeHandlesProps {
   onResizeEnd: () => void;
 }
 
+interface RectModeProps {
+  mode: 'rect';
+  nodeId: string;
+  isVisible: boolean;
+  color: string;
+  width: number;
+  height: number;
+  minWidth: number;
+  minHeight: number;
+  maxWidth?: number;
+  maxHeight?: number;
+  onResizeEnd: () => void;
+}
+
+type ResizeHandlesProps = IconModeProps | RectModeProps;
+
+// --- Drag state ---
+
 interface DragState {
   handle: HandleConfig;
   startX: number;
   startY: number;
-  startSize: number;
   startNodeX: number;
   startNodeY: number;
+  // Icon mode
+  startSize?: number;
+  // Rect mode
+  startWidth?: number;
+  startHeight?: number;
 }
 
 type LimitState = 'none' | 'min' | 'max';
@@ -108,27 +131,19 @@ type LimitState = 'none' | 'min' | 'max';
 const LIMIT_COLOR = '#ff5c5c';
 const clamp = (v: number, min: number, max: number) => Math.min(max, Math.max(min, v));
 
-const ResizeHandles: React.FC<ResizeHandlesProps> = ({
-  nodeId,
-  isVisible,
-  color,
-  iconSize,
-  onResizeEnd,
-}) => {
+const ResizeHandles: React.FC<ResizeHandlesProps> = (props) => {
+  const { mode, nodeId, isVisible, color, onResizeEnd } = props;
+
   const { updateNodeData, setNodes, getNode } = useReactFlow();
   const storeApi = useStoreApi();
   const dragRef = useRef<DragState | null>(null);
   const rafRef = useRef<number | null>(null);
-  // Store latest pointer event data for rAF callback (avoids stale closures)
   const latestEventRef = useRef<{ clientX: number; clientY: number; altKey: boolean } | null>(null);
 
   const [activeHandleId, setActiveHandleId] = useState<string | null>(null);
-  const [liveSize, setLiveSize] = useState<number | null>(null);
   const [tooltipPos, setTooltipPos] = useState<{ x: number; y: number } | null>(null);
   const [limitState, setLimitState] = useState<LimitState>('none');
-
-  const minSize = CONFIG.deviceNodes.minIconSize;
-  const maxSize = CONFIG.deviceNodes.maxIconSize;
+  const [tooltipText, setTooltipText] = useState('');
 
   // --- Pointer handlers ---
 
@@ -140,18 +155,27 @@ const ResizeHandles: React.FC<ResizeHandlesProps> = ({
     const node = getNode(nodeId);
     if (!node) return;
 
-    dragRef.current = {
+    const base: DragState = {
       handle,
       startX: e.clientX,
       startY: e.clientY,
-      startSize: iconSize,
       startNodeX: node.position.x,
       startNodeY: node.position.y,
     };
+
+    if (mode === 'icon') {
+      base.startSize = (props as IconModeProps).iconSize;
+      setTooltipText(`${base.startSize}px`);
+    } else {
+      base.startWidth = (props as RectModeProps).width;
+      base.startHeight = (props as RectModeProps).height;
+      setTooltipText(`${base.startWidth} \u00d7 ${base.startHeight}`);
+    }
+
+    dragRef.current = base;
     setActiveHandleId(handle.id);
-    setLiveSize(iconSize);
     setLimitState('none');
-  }, [getNode, nodeId, iconSize]);
+  }, [getNode, nodeId, mode, props]);
 
   // The actual resize computation — called inside rAF
   const computeResize = useCallback(() => {
@@ -164,82 +188,132 @@ const ResizeHandles: React.FC<ResizeHandlesProps> = ({
     const rawDy = (evt.clientY - drag.startY) / zoom;
 
     const { handle } = drag;
-
-    // Compute effective delta per axis based on handle direction
     const effectiveDx = handle.invertX ? -rawDx : rawDx;
     const effectiveDy = handle.invertY ? -rawDy : rawDy;
 
-    // Determine the size delta from applicable axes
-    let delta: number;
-    if (handle.affectsWidth && handle.affectsHeight) {
-      // Corner handle: average both axes for smooth diagonal resize
-      delta = (effectiveDx + effectiveDy) / 2;
-    } else if (handle.affectsWidth) {
-      delta = effectiveDx;
+    if (mode === 'icon') {
+      // --- Icon mode: single square size ---
+      const minSize = CONFIG.deviceNodes.minIconSize;
+      const maxSize = CONFIG.deviceNodes.maxIconSize;
+
+      let delta: number;
+      if (handle.affectsWidth && handle.affectsHeight) {
+        delta = (effectiveDx + effectiveDy) / 2;
+      } else if (handle.affectsWidth) {
+        delta = effectiveDx;
+      } else {
+        delta = effectiveDy;
+      }
+
+      const rawNewSize = drag.startSize! + delta;
+      const newSize = Math.round(clamp(rawNewSize, minSize, maxSize));
+      const actualDelta = newSize - drag.startSize!;
+
+      const hitMin = rawNewSize <= minSize;
+      const hitMax = rawNewSize >= maxSize;
+      setLimitState(hitMin ? 'min' : hitMax ? 'max' : 'none');
+
+      let newX = drag.startNodeX;
+      let newY = drag.startNodeY;
+
+      if (handle.invertX && handle.affectsWidth) {
+        newX = drag.startNodeX - actualDelta;
+      }
+      if (handle.invertY && handle.affectsHeight) {
+        newY = drag.startNodeY - actualDelta;
+      }
+
+      if (evt.altKey) {
+        newX = drag.startNodeX - actualDelta / 2;
+        newY = drag.startNodeY - actualDelta / 2;
+      }
+
+      updateNodeData(nodeId, { iconSize: newSize });
+
+      if (newX !== drag.startNodeX || newY !== drag.startNodeY) {
+        setNodes((nds) =>
+          nds.map((n) =>
+            n.id === nodeId ? { ...n, position: { x: newX, y: newY } } : n
+          )
+        );
+      }
+
+      const suffix = hitMin ? ' MIN' : hitMax ? ' MAX' : '';
+      setTooltipText(`${newSize}px${suffix}`);
+
     } else {
-      delta = effectiveDy;
-    }
+      // --- Rect mode: independent width and height ---
+      const rp = props as RectModeProps;
+      const minW = rp.minWidth;
+      const minH = rp.minHeight;
+      const maxW = rp.maxWidth ?? Infinity;
+      const maxH = rp.maxHeight ?? Infinity;
 
-    const rawNewSize = drag.startSize + delta;
-    const newSize = Math.round(clamp(rawNewSize, minSize, maxSize));
-    const actualDelta = newSize - drag.startSize;
+      const rawW = handle.affectsWidth ? drag.startWidth! + effectiveDx : drag.startWidth!;
+      const rawH = handle.affectsHeight ? drag.startHeight! + effectiveDy : drag.startHeight!;
 
-    // --- Limit detection ---
-    // Check if the user is pushing beyond the boundary
-    const hitMin = rawNewSize <= minSize;
-    const hitMax = rawNewSize >= maxSize;
-    setLimitState(hitMin ? 'min' : hitMax ? 'max' : 'none');
+      const newWidth = Math.round(clamp(rawW, minW, maxW));
+      const newHeight = Math.round(clamp(rawH, minH, maxH));
 
-    // Compute new node position — shift when resizing from top/left
-    let newX = drag.startNodeX;
-    let newY = drag.startNodeY;
+      const deltaW = newWidth - drag.startWidth!;
+      const deltaH = newHeight - drag.startHeight!;
 
-    if (handle.invertX && handle.affectsWidth) {
-      newX = drag.startNodeX - actualDelta;
-    }
-    if (handle.invertY && handle.affectsHeight) {
-      newY = drag.startNodeY - actualDelta;
-    }
+      // Limit detection: check if either axis is at a boundary
+      const hitMinW = handle.affectsWidth && rawW <= minW;
+      const hitMinH = handle.affectsHeight && rawH <= minH;
+      const hitMaxW = handle.affectsWidth && rawW >= maxW;
+      const hitMaxH = handle.affectsHeight && rawH >= maxH;
+      const hitMin = hitMinW || hitMinH;
+      const hitMax = hitMaxW || hitMaxH;
+      setLimitState(hitMin ? 'min' : hitMax ? 'max' : 'none');
 
-    // Alt key: resize from center (both sides move equally)
-    if (evt.altKey) {
-      newX = drag.startNodeX - actualDelta / 2;
-      newY = drag.startNodeY - actualDelta / 2;
-    }
+      let newX = drag.startNodeX;
+      let newY = drag.startNodeY;
 
-    // Update icon size in node data (live during drag)
-    updateNodeData(nodeId, { iconSize: newSize });
+      if (handle.invertX && handle.affectsWidth) {
+        newX = drag.startNodeX - deltaW;
+      }
+      if (handle.invertY && handle.affectsHeight) {
+        newY = drag.startNodeY - deltaH;
+      }
 
-    // Update node position if it changed
-    if (newX !== drag.startNodeX || newY !== drag.startNodeY) {
+      if (evt.altKey) {
+        newX = drag.startNodeX - deltaW / 2;
+        newY = drag.startNodeY - deltaH / 2;
+      }
+
+      // Update node style (width/height) and position in one pass
       setNodes((nds) =>
         nds.map((n) =>
           n.id === nodeId
-            ? { ...n, position: { x: newX, y: newY } }
+            ? {
+                ...n,
+                position: { x: newX, y: newY },
+                style: { ...n.style, width: newWidth, height: newHeight },
+              }
             : n
         )
       );
+
+      const suffix = (hitMin || hitMax) ? (hitMin ? ' MIN' : ' MAX') : '';
+      setTooltipText(`${newWidth} \u00d7 ${newHeight}${suffix}`);
     }
 
-    setLiveSize(newSize);
     rafRef.current = null;
-  }, [storeApi, nodeId, updateNodeData, setNodes, minSize, maxSize]);
+  }, [storeApi, nodeId, mode, props, updateNodeData, setNodes]);
 
   const onPointerMove = useCallback((e: React.PointerEvent) => {
     if (!dragRef.current) return;
 
-    // Store latest event data for the rAF callback
     latestEventRef.current = {
       clientX: e.clientX,
       clientY: e.clientY,
       altKey: e.altKey,
     };
 
-    // Position tooltip near the active handle (immediate, outside rAF for responsiveness)
     const rect = (e.target as HTMLElement).getBoundingClientRect();
     setTooltipPos({ x: rect.left + rect.width / 2, y: rect.top - 8 });
 
-    // Throttle resize computation to animation frames
     if (!rafRef.current) {
       rafRef.current = requestAnimationFrame(computeResize);
     }
@@ -249,7 +323,6 @@ const ResizeHandles: React.FC<ResizeHandlesProps> = ({
     if (!dragRef.current) return;
     (e.target as HTMLElement).releasePointerCapture(e.pointerId);
 
-    // Cancel any pending rAF
     if (rafRef.current) {
       cancelAnimationFrame(rafRef.current);
       rafRef.current = null;
@@ -258,8 +331,8 @@ const ResizeHandles: React.FC<ResizeHandlesProps> = ({
     dragRef.current = null;
     latestEventRef.current = null;
     setActiveHandleId(null);
-    setLiveSize(null);
     setTooltipPos(null);
+    setTooltipText('');
     setLimitState('none');
     onResizeEnd();
   }, [onResizeEnd]);
@@ -268,13 +341,13 @@ const ResizeHandles: React.FC<ResizeHandlesProps> = ({
 
   const isAtLimit = limitState !== 'none';
   const handleColor = isAtLimit ? LIMIT_COLOR : color;
+  const isDragging = activeHandleId !== null;
 
   return (
     <>
       {HANDLE_CONFIGS.map((handle) => {
         const isActive = activeHandleId === handle.id;
         return (
-          // Outer hit-area: larger invisible click target (16x16)
           <div
             key={handle.id}
             className={`resize-handle-hitarea ${handle.cursorClass} nodrag nopan`}
@@ -293,7 +366,6 @@ const ResizeHandles: React.FC<ResizeHandlesProps> = ({
               ...handle.positionStyle,
             }}
           >
-            {/* Visible handle circle */}
             <div
               className={`resize-handle${isAtLimit && isActive ? ' resize-handle-at-limit' : ''}`}
               style={{
@@ -311,7 +383,7 @@ const ResizeHandles: React.FC<ResizeHandlesProps> = ({
       })}
 
       {/* Size tooltip during active resize */}
-      {liveSize !== null && tooltipPos && (
+      {isDragging && tooltipPos && (
         <div
           style={{
             position: 'fixed',
@@ -330,7 +402,7 @@ const ResizeHandles: React.FC<ResizeHandlesProps> = ({
             transition: 'background-color 0.15s ease',
           }}
         >
-          {liveSize}px{limitState === 'min' ? ' MIN' : limitState === 'max' ? ' MAX' : ''}
+          {tooltipText}
         </div>
       )}
     </>

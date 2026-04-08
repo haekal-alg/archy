@@ -927,6 +927,10 @@ const AppContent: React.FC = () => {
         x: Math.random() * 400 + 200,
         y: Math.random() * 300 + 150
       },
+      style: {
+        width: 120,
+        height: 40,
+      },
       data: {
         label: 'Text',
         fontSize: 14,
@@ -1410,6 +1414,10 @@ const AppContent: React.FC = () => {
                   id: `text-${Date.now()}`,
                   type: 'text',
                   position: position,
+                  style: {
+                    width: 120,
+                    height: 40,
+                  },
                   data: {
                     label: 'Text',
                     fontSize: 14,

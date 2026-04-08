@@ -291,6 +291,7 @@ const EnhancedDeviceNode: React.FC<NodeProps> = React.memo(({ id, data, selected
 
           {/* Figma-style 8-handle resize system */}
           <ResizeHandles
+            mode="icon"
             nodeId={id}
             isVisible={!!selected}
             color={borderColor}
