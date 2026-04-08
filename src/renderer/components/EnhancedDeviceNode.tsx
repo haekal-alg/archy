@@ -1,5 +1,6 @@
 import React, { useState, useMemo, useCallback, useRef } from 'react';
-import { Handle, Position, NodeProps, useReactFlow, useStoreApi } from '@xyflow/react';
+import { Handle, Position, NodeProps, useReactFlow } from '@xyflow/react';
+import ResizeHandles from './ResizeHandles';
 import CONFIG from '../../config';
 import theme from '../../theme';
 import { useNodeConnectionStatus, NodeConnectionStatus } from '../contexts/NodeConnectionStatusContext';
@@ -81,22 +82,18 @@ const STATUS_COLORS: Record<NodeConnectionStatus, string> = {
 const EnhancedDeviceNode: React.FC<NodeProps> = React.memo(({ id, data, selected }) => {
   const deviceData = data as unknown as EnhancedDeviceData;
   const [isHovered, setIsHovered] = useState(false);
-  const [dragIconSize, setDragIconSize] = useState<number | null>(null);
   const [isEditingLabel, setIsEditingLabel] = useState(false);
   const [editValue, setEditValue] = useState('');
   const labelInputRef = useRef<HTMLInputElement>(null);
-  const dragRef = useRef<{ startX: number; startY: number; startSize: number } | null>(null);
   const { updateNodeData } = useReactFlow();
-  const storeApi = useStoreApi();
   const connectionStatus = useNodeConnectionStatus(id);
 
   const iconSize = deviceData.iconSize ?? CONFIG.deviceNodes.defaultIconSize;
   const labelSize = deviceData.labelSize ?? CONFIG.deviceNodes.defaultLabelSize;
-  const effectiveIconSize = dragIconSize ?? iconSize;
 
   const getIcon = () => {
     const color = deviceData.color;
-    const size = effectiveIconSize;
+    const size = iconSize;
 
     // Custom icon takes priority over type-based icons
     if (deviceData.customIconBase64) {
@@ -172,36 +169,9 @@ const EnhancedDeviceNode: React.FC<NodeProps> = React.memo(({ id, data, selected
     };
   }, [borderColor, handleOpacity]);
 
-  // Resize handle drag logic
-  const onResizePointerDown = useCallback((e: React.PointerEvent) => {
-    e.stopPropagation();
-    e.preventDefault();
-    (e.target as HTMLElement).setPointerCapture(e.pointerId);
-    dragRef.current = { startX: e.clientX, startY: e.clientY, startSize: effectiveIconSize };
-  }, [effectiveIconSize]);
-
-  const onResizePointerMove = useCallback((e: React.PointerEvent) => {
-    if (!dragRef.current) return;
-    const zoom = storeApi.getState().transform[2];
-    const dx = (e.clientX - dragRef.current.startX) / zoom;
-    const dy = (e.clientY - dragRef.current.startY) / zoom;
-    const delta = (dx + dy) / 2;
-    const newSize = Math.round(
-      Math.min(CONFIG.deviceNodes.maxIconSize,
-        Math.max(CONFIG.deviceNodes.minIconSize, dragRef.current.startSize + delta))
-    );
-    setDragIconSize(newSize);
-  }, [storeApi]);
-
-  const onResizePointerUp = useCallback((e: React.PointerEvent) => {
-    if (!dragRef.current) return;
-    (e.target as HTMLElement).releasePointerCapture(e.pointerId);
-    const finalSize = dragIconSize ?? effectiveIconSize;
-    dragRef.current = null;
-    setDragIconSize(null);
-    updateNodeData(id, { iconSize: finalSize });
+  const onResizeEnd = useCallback(() => {
     window.dispatchEvent(new CustomEvent('node-resize-end'));
-  }, [dragIconSize, effectiveIconSize, id, updateNodeData]);
+  }, []);
 
   // Label inline editing
   const onLabelDoubleClick = useCallback((e: React.MouseEvent) => {
@@ -239,18 +209,13 @@ const EnhancedDeviceNode: React.FC<NodeProps> = React.memo(({ id, data, selected
     };
   }, [connectionStatus]);
 
-  const showResizeHandle = selected;
-  const handleSize = CONFIG.deviceNodes.resizeHandleSize;
-  const isDragging = dragIconSize !== null;
-  const [isResizeHovered, setIsResizeHovered] = useState(false);
-
   return (
     <div
       className="enhanced-device-node device-node"
       style={{
         padding: theme.spacing.md,
         background: 'transparent',
-        minWidth: `${effectiveIconSize + 20}px`,
+        minWidth: `${iconSize + 20}px`,
         cursor: 'pointer',
         position: 'relative',
         ...(selected ? { '--node-color': borderColor } as React.CSSProperties : {}),
@@ -324,58 +289,14 @@ const EnhancedDeviceNode: React.FC<NodeProps> = React.memo(({ id, data, selected
             </div>
           )}
 
-          {/* Resize handle - grip dots at bottom-right corner */}
-          <div
-            className="nodrag nopan"
-            onPointerDown={onResizePointerDown}
-            onPointerMove={onResizePointerMove}
-            onPointerUp={onResizePointerUp}
-            onMouseEnter={() => setIsResizeHovered(true)}
-            onMouseLeave={() => setIsResizeHovered(false)}
-            style={{
-              position: 'absolute',
-              right: -4,
-              bottom: -4,
-              width: handleSize + 8,
-              height: handleSize + 8,
-              cursor: 'nwse-resize',
-              opacity: showResizeHandle ? (isResizeHovered || isDragging ? 1 : 0.6) : 0,
-              transition: 'opacity 0.15s ease-in-out',
-              zIndex: 10,
-              pointerEvents: showResizeHandle ? 'auto' : 'none',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}
-          >
-            <svg width={handleSize + 4} height={handleSize + 4} viewBox="0 0 14 14">
-              <circle cx="3" cy="11" r="1.5" fill={borderColor} />
-              <circle cx="7.5" cy="6.5" r="1.5" fill={borderColor} />
-              <circle cx="12" cy="2" r="1.5" fill={borderColor} />
-            </svg>
-          </div>
-
-          {/* Size tooltip during resize */}
-          {isDragging && (
-            <div
-              style={{
-                position: 'absolute',
-                right: -4,
-                bottom: handleSize + 12,
-                background: 'rgba(0, 0, 0, 0.8)',
-                color: '#e8ecf4',
-                fontSize: '10px',
-                fontWeight: 600,
-                padding: '2px 6px',
-                borderRadius: 4,
-                whiteSpace: 'nowrap',
-                pointerEvents: 'none',
-                zIndex: 20,
-              }}
-            >
-              {effectiveIconSize}px
-            </div>
-          )}
+          {/* Figma-style 8-handle resize system */}
+          <ResizeHandles
+            nodeId={id}
+            isVisible={!!selected}
+            color={borderColor}
+            iconSize={iconSize}
+            onResizeEnd={onResizeEnd}
+          />
         </div>
 
 

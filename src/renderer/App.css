@@ -39,6 +39,15 @@ a,
   border-radius: 6px;
 }
 
+/* Resize handles - Figma-style */
+.resize-handle {
+  transition: opacity 0.15s ease-in-out, box-shadow 0.1s ease;
+}
+
+.resize-handle:hover {
+  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.3);
+}
+
 /* Inline label editing */
 .device-node-label-input {
   background: transparent;
