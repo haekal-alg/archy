@@ -53,7 +53,7 @@ export const CONFIG = {
     defaultLabelSize: 11,
     minLabelSize: 8,
     maxLabelSize: 24,
-    resizeHandleSize: 8,
+    resizeHandleSize: 10,
   },
 
   // Text Node Settings

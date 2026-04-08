@@ -239,8 +239,10 @@ const EnhancedDeviceNode: React.FC<NodeProps> = React.memo(({ id, data, selected
     };
   }, [connectionStatus]);
 
-  const showResizeHandle = selected && isHovered;
+  const showResizeHandle = selected;
   const handleSize = CONFIG.deviceNodes.resizeHandleSize;
+  const isDragging = dragIconSize !== null;
+  const [isResizeHovered, setIsResizeHovered] = useState(false);
 
   return (
     <div
@@ -322,27 +324,60 @@ const EnhancedDeviceNode: React.FC<NodeProps> = React.memo(({ id, data, selected
             </div>
           )}
 
-          {/* Resize handle - triangle at bottom-right corner */}
-          {showResizeHandle && (
+          {/* Resize handle - grip dots at bottom-right corner */}
+          <div
+            className="nodrag nopan"
+            onPointerDown={onResizePointerDown}
+            onPointerMove={onResizePointerMove}
+            onPointerUp={onResizePointerUp}
+            onMouseEnter={() => setIsResizeHovered(true)}
+            onMouseLeave={() => setIsResizeHovered(false)}
+            style={{
+              position: 'absolute',
+              right: -4,
+              bottom: -4,
+              width: handleSize + 8,
+              height: handleSize + 8,
+              cursor: 'nwse-resize',
+              opacity: showResizeHandle ? (isResizeHovered || isDragging ? 1 : 0.6) : 0,
+              transition: 'opacity 0.15s ease-in-out',
+              zIndex: 10,
+              pointerEvents: showResizeHandle ? 'auto' : 'none',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+          >
+            <svg width={handleSize + 4} height={handleSize + 4} viewBox="0 0 14 14">
+              <circle cx="12" cy="5" r="1.5" fill={borderColor} />
+              <circle cx="8" cy="9" r="1.5" fill={borderColor} />
+              <circle cx="12" cy="9" r="1.5" fill={borderColor} />
+              <circle cx="4" cy="13" r="1.5" fill={borderColor} />
+              <circle cx="8" cy="13" r="1.5" fill={borderColor} />
+              <circle cx="12" cy="13" r="1.5" fill={borderColor} />
+            </svg>
+          </div>
+
+          {/* Size tooltip during resize */}
+          {isDragging && (
             <div
-              className="nodrag nopan"
-              onPointerDown={onResizePointerDown}
-              onPointerMove={onResizePointerMove}
-              onPointerUp={onResizePointerUp}
               style={{
                 position: 'absolute',
-                right: -2,
-                bottom: -2,
-                width: 0,
-                height: 0,
-                borderStyle: 'solid',
-                borderWidth: `0 0 ${handleSize + 4}px ${handleSize + 4}px`,
-                borderColor: `transparent transparent ${borderColor} transparent`,
-                cursor: 'nwse-resize',
-                opacity: 0.85,
-                zIndex: 10,
+                right: -4,
+                bottom: handleSize + 12,
+                background: 'rgba(0, 0, 0, 0.8)',
+                color: '#e8ecf4',
+                fontSize: '10px',
+                fontWeight: 600,
+                padding: '2px 6px',
+                borderRadius: 4,
+                whiteSpace: 'nowrap',
+                pointerEvents: 'none',
+                zIndex: 20,
               }}
-            />
+            >
+              {effectiveIconSize}px
+            </div>
           )}
         </div>
 
