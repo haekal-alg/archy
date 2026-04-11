@@ -135,6 +135,8 @@ const StylePanel: React.FC<StylePanelProps> = ({
   const [edgeMarkerStart, setEdgeMarkerStart] = useState<string>('none');
   const [edgeMarkerEnd, setEdgeMarkerEnd] = useState<string>('arrow');
   const [edgeStrokeWidth, setEdgeStrokeWidth] = useState<number>(4);
+  const [edgeRoutingMode, setEdgeRoutingMode] = useState<'auto' | 'manual'>('auto');
+  const [edgeWaypointCount, setEdgeWaypointCount] = useState(0);
 
   // Device node icon/label size
   const [nodeIconSize, setNodeIconSize] = useState(CONFIG.deviceNodes.defaultIconSize);
@@ -260,6 +262,8 @@ const StylePanel: React.FC<StylePanelProps> = ({
       setEdgeMarkerStart(typeof data.markerStart === 'string' ? data.markerStart : 'none');
       setEdgeMarkerEnd(typeof data.markerEnd === 'string' ? data.markerEnd : 'arrow');
       setEdgeStrokeWidth(style.strokeWidth || data.strokeWidth || 4);
+      setEdgeRoutingMode((data as any).routingMode || 'auto');
+      setEdgeWaypointCount((data as any).waypoints?.length || 0);
     }
   }, [selectedEdge]);
 
@@ -1177,6 +1181,102 @@ const StylePanel: React.FC<StylePanelProps> = ({
                   </button>
                 ))}
               </div>
+            </div>
+
+            {/* Routing Mode (Auto / Manual) */}
+            <div style={{ marginBottom: theme.spacing.lg }}>
+              <label style={{
+                display: 'block',
+                fontSize: theme.fontSize.sm,
+                marginBottom: theme.spacing.xs,
+                fontWeight: theme.fontWeight.medium,
+                color: theme.text.secondary
+              }}>
+                Path Mode
+              </label>
+              <div style={{ display: 'flex', gap: theme.spacing.sm, alignItems: 'center' }}>
+                {(['auto', 'manual'] as const).map((mode) => (
+                  <button
+                    key={mode}
+                    onClick={() => {
+                      setEdgeRoutingMode(mode);
+                      if (selectedEdge) {
+                        onUpdateEdge(selectedEdge.id, {
+                          label: edgeLabel,
+                          color: edgeColor,
+                          strokeWidth: edgeStrokeWidth,
+                          style: edgeStyle,
+                          routingType: edgeRouting,
+                          animated: edgeAnimated,
+                          markerStart: edgeMarkerStart,
+                          markerEnd: edgeMarkerEnd,
+                          routingMode: mode,
+                        });
+                      }
+                    }}
+                    style={{
+                      flex: 1,
+                      padding: theme.spacing.sm,
+                      border: edgeRoutingMode === mode ? `1px solid ${theme.text.primary}` : `1px solid ${theme.border.default}`,
+                      borderRadius: theme.radius.sm,
+                      background: edgeRoutingMode === mode ? theme.background.active : theme.background.tertiary,
+                      color: theme.text.primary,
+                      cursor: 'pointer',
+                      fontSize: theme.fontSize.xs,
+                      fontWeight: theme.fontWeight.medium,
+                      textTransform: 'capitalize'
+                    }}
+                  >
+                    {mode}
+                  </button>
+                ))}
+              </div>
+              {edgeRoutingMode === 'manual' && (
+                <div style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  marginTop: theme.spacing.xs,
+                }}>
+                  <span style={{
+                    fontSize: theme.fontSize.xs,
+                    color: theme.text.disabled,
+                  }}>
+                    {edgeWaypointCount} waypoint{edgeWaypointCount !== 1 ? 's' : ''}
+                  </span>
+                  <button
+                    onClick={() => {
+                      setEdgeRoutingMode('auto');
+                      setEdgeWaypointCount(0);
+                      if (selectedEdge) {
+                        onUpdateEdge(selectedEdge.id, {
+                          label: edgeLabel,
+                          color: edgeColor,
+                          strokeWidth: edgeStrokeWidth,
+                          style: edgeStyle,
+                          routingType: edgeRouting,
+                          animated: edgeAnimated,
+                          markerStart: edgeMarkerStart,
+                          markerEnd: edgeMarkerEnd,
+                          routingMode: 'auto',
+                          waypoints: undefined,
+                        });
+                      }
+                    }}
+                    style={{
+                      padding: `${theme.spacing.xs} ${theme.spacing.sm}`,
+                      border: `1px solid ${theme.border.default}`,
+                      borderRadius: theme.radius.sm,
+                      background: theme.background.tertiary,
+                      color: theme.text.secondary,
+                      cursor: 'pointer',
+                      fontSize: theme.fontSize.xs,
+                    }}
+                  >
+                    Reset Path
+                  </button>
+                </div>
+              )}
             </div>
 
             {/* Edge Color - in Line section */}

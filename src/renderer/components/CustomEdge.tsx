@@ -8,6 +8,16 @@ import {
   getStraightPath
 } from '@xyflow/react';
 import theme from '../../theme';
+import {
+  Waypoint,
+  RoutingMode,
+  buildPolylinePath,
+  buildSmoothStepManualPath,
+  buildBezierManualPath,
+  computeLabelPosition,
+  buildSegmentPaths,
+} from '../utils/edgePath';
+import { useEdgeInteractionContext } from '../contexts/EdgeInteractionContext';
 
 export type MarkerType = 'arrow' | 'none';
 
@@ -20,7 +30,11 @@ export interface CustomEdgeData {
   routingType?: 'bezier' | 'smoothstep' | 'straight';
   markerStart?: MarkerType;
   markerEnd?: MarkerType;
+  waypoints?: Waypoint[];
+  routingMode?: RoutingMode;
 }
+
+const HANDLE_SIZE = 8;
 
 const CustomEdge: React.FC<EdgeProps> = ({
   id,
@@ -36,6 +50,7 @@ const CustomEdge: React.FC<EdgeProps> = ({
 }) => {
   const [isHovered, setIsHovered] = useState(false);
   const edgeData = data as CustomEdgeData;
+  const interaction = useEdgeInteractionContext();
 
   const color = edgeData?.color || theme.border.default;
   const routingType = edgeData?.routingType || 'bezier';
@@ -46,14 +61,16 @@ const CustomEdge: React.FC<EdgeProps> = ({
   const markerStartType = edgeData?.markerStart || 'none';
   const markerEndType = edgeData?.markerEnd || 'arrow';
 
+  const routingMode = edgeData?.routingMode || 'auto';
+  const waypoints = edgeData?.waypoints || [];
+  const isManual = routingMode === 'manual' && waypoints.length > 0;
+
   // Generate marker URL references
   const getMarkerUrl = (markerType: MarkerType, position: 'start' | 'end') => {
     if (markerType === 'none') return undefined;
-    // Use red markers when hovered or selected
     if (isHovered || selected) {
       return `url(#${markerType}-${position}-ff5c5c)`;
     }
-    // Encode color for URL (remove # and handle transparency)
     const colorId = color.replace('#', '');
     return `url(#${markerType}-${position}-${colorId})`;
   };
@@ -61,42 +78,55 @@ const CustomEdge: React.FC<EdgeProps> = ({
   const markerStartUrl = getMarkerUrl(markerStartType, 'start');
   const markerEndUrl = getMarkerUrl(markerEndType, 'end');
 
-  // Get the appropriate path based on routing type
+  // ─── Path Computation ──────────────────────────────────────
   let path: string;
   let labelX: number;
   let labelY: number;
 
-  if (routingType === 'smoothstep') {
-    [path, labelX, labelY] = getSmoothStepPath({
-      sourceX,
-      sourceY,
-      sourcePosition,
-      targetX,
-      targetY,
-      targetPosition,
-    });
-  } else if (routingType === 'straight') {
-    [path, labelX, labelY] = getStraightPath({
-      sourceX,
-      sourceY,
-      targetX,
-      targetY,
-    });
+  const source = { x: sourceX, y: sourceY };
+  const target = { x: targetX, y: targetY };
+
+  if (isManual) {
+    // Manual mode: build path from stored waypoints
+    if (routingType === 'smoothstep') {
+      path = buildSmoothStepManualPath(source, target, waypoints);
+    } else if (routingType === 'bezier') {
+      path = buildBezierManualPath(source, target, waypoints);
+    } else {
+      path = buildPolylinePath(source, target, waypoints);
+    }
+    const labelPos = computeLabelPosition(source, target, waypoints);
+    labelX = labelPos.x;
+    labelY = labelPos.y;
   } else {
-    [path, labelX, labelY] = getBezierPath({
-      sourceX,
-      sourceY,
-      sourcePosition,
-      targetX,
-      targetY,
-      targetPosition,
-    });
+    // Auto mode: use React Flow's built-in path computation
+    if (routingType === 'smoothstep') {
+      [path, labelX, labelY] = getSmoothStepPath({
+        sourceX, sourceY, sourcePosition,
+        targetX, targetY, targetPosition,
+      });
+    } else if (routingType === 'straight') {
+      [path, labelX, labelY] = getStraightPath({
+        sourceX, sourceY, targetX, targetY,
+      });
+    } else {
+      [path, labelX, labelY] = getBezierPath({
+        sourceX, sourceY, sourcePosition,
+        targetX, targetY, targetPosition,
+      });
+    }
   }
 
   const strokeDasharray = strokeStyle === 'dashed' ? '8 4' : strokeStyle === 'dotted' ? '2 4' : 'none';
 
+  // Build segment hit-zone paths for click-to-add-waypoint
+  const segmentPaths = (selected || isHovered) && interaction
+    ? buildSegmentPaths(source, target, waypoints)
+    : [];
+
   return (
     <>
+      {/* Main edge path */}
       <BaseEdge
         id={id}
         path={path}
@@ -112,10 +142,24 @@ const CustomEdge: React.FC<EdgeProps> = ({
         onMouseLeave={() => setIsHovered(false)}
       />
 
+      {/* Segment hit zones for adding waypoints */}
+      {segmentPaths.map((segPath, i) => (
+        <path
+          key={`hit-${id}-${i}`}
+          d={segPath}
+          fill="none"
+          stroke="transparent"
+          strokeWidth={20}
+          style={{ cursor: 'crosshair', pointerEvents: 'stroke' }}
+          onClick={(e) => interaction?.onSegmentClick(id, i, e)}
+          onMouseEnter={() => setIsHovered(true)}
+          onMouseLeave={() => setIsHovered(false)}
+        />
+      ))}
+
       {/* Animated flow effect with intense glow */}
       {animated && (
         <>
-          {/* Outer glow layer */}
           <path
             d={path}
             fill="none"
@@ -127,7 +171,6 @@ const CustomEdge: React.FC<EdgeProps> = ({
               animation: 'glow-pulse 1.5s ease-in-out infinite'
             }}
           />
-          {/* Middle glow layer */}
           <path
             d={path}
             fill="none"
@@ -139,7 +182,6 @@ const CustomEdge: React.FC<EdgeProps> = ({
               animation: 'glow-pulse 1.5s ease-in-out infinite 0.3s'
             }}
           />
-          {/* Animated dashes */}
           <path
             d={path}
             fill="none"
@@ -179,6 +221,35 @@ const CustomEdge: React.FC<EdgeProps> = ({
         </EdgeLabelRenderer>
       )}
 
+      {/* Waypoint handles (visible when selected and in manual mode) */}
+      {selected && isManual && interaction && (
+        <EdgeLabelRenderer>
+          {waypoints.map((wp, i) => (
+            <div
+              key={`wp-${id}-${i}`}
+              style={{
+                position: 'absolute',
+                transform: `translate(-50%, -50%) translate(${wp.x}px,${wp.y}px)`,
+                width: HANDLE_SIZE,
+                height: HANDLE_SIZE,
+                borderRadius: '50%',
+                background: '#ffffff',
+                border: `2px solid ${color}`,
+                cursor: 'grab',
+                pointerEvents: 'all',
+                boxShadow: '0 0 4px rgba(0,0,0,0.3)',
+                zIndex: 10,
+              }}
+              className="nodrag nopan"
+              onMouseDown={(e) => interaction.onWaypointDragStart(id, i, e)}
+              onDoubleClick={(e) => {
+                e.stopPropagation();
+                interaction.onWaypointDoubleClick(id, i);
+              }}
+            />
+          ))}
+        </EdgeLabelRenderer>
+      )}
     </>
   );
 };

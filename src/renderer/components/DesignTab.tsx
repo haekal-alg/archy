@@ -17,6 +17,8 @@ import '@xyflow/react/dist/style.css';
 import { ToolType } from '../types/tools';
 import CustomEdge from './CustomEdge';
 import theme from '../../theme';
+import { EdgeInteractionProvider } from '../contexts/EdgeInteractionContext';
+import { useEdgeInteraction } from '../hooks/useEdgeInteraction';
 
 interface DesignTabProps {
   nodes: Node[];
@@ -41,6 +43,8 @@ interface DesignTabProps {
   isShapeLibraryOpen?: boolean;
   onTemporaryHandToolStart: () => void;
   onTemporaryHandToolEnd: () => void;
+  setEdges: React.Dispatch<React.SetStateAction<Edge[]>>;
+  saveToHistory: () => void;
   children?: React.ReactNode;
 }
 
@@ -72,8 +76,13 @@ const DesignTab: React.FC<DesignTabProps> = ({
   isShapeLibraryOpen = true,
   onTemporaryHandToolStart,
   onTemporaryHandToolEnd,
+  setEdges,
+  saveToHistory,
   children,
 }) => {
+  // Edge interaction for waypoint editing
+  const edgeInteraction = useEdgeInteraction({ edges, setEdges, saveToHistory });
+
   // Configure ReactFlow behavior based on active tool
   const isHandTool = activeTool === 'hand';
   const isSelectionTool = activeTool === 'selection';
@@ -178,6 +187,7 @@ const DesignTab: React.FC<DesignTabProps> = ({
       onDrop={() => setIsDragOver(false)}
     >
       {children}
+      <EdgeInteractionProvider value={edgeInteraction}>
       <ReactFlow
         nodes={nodes}
         edges={edges}
@@ -253,6 +263,7 @@ const DesignTab: React.FC<DesignTabProps> = ({
           />
         )}
       </ReactFlow>
+      </EdgeInteractionProvider>
 
       {/* #1: Empty Canvas Onboarding */}
       {isEmpty && (

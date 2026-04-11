@@ -321,7 +321,12 @@ const AppContent: React.FC = () => {
       });
       const snapshotEdges = edges.map(edge => ({
         ...edge,
-        data: edge.data ? { ...edge.data } : undefined,
+        data: edge.data ? {
+          ...edge.data,
+          waypoints: (edge.data as any)?.waypoints
+            ? (edge.data as any).waypoints.map((wp: any) => ({ ...wp }))
+            : undefined,
+        } : undefined,
         style: edge.style ? { ...edge.style } : undefined,
       }));
 
@@ -1063,7 +1068,12 @@ const AppContent: React.FC = () => {
             ...(data.style !== undefined && { lineStyle: data.style }),
             ...(data.animated !== undefined && { animated: data.animated }),
             ...(data.markerStart !== undefined && { markerStart: data.markerStart }),
-            ...(data.markerEnd !== undefined && { markerEnd: data.markerEnd })
+            ...(data.markerEnd !== undefined && { markerEnd: data.markerEnd }),
+            ...(data.routingMode !== undefined && {
+              routingMode: data.routingMode,
+              ...(data.routingMode === 'auto' && { waypoints: undefined }),
+            }),
+            ...(data.waypoints !== undefined && { waypoints: data.waypoints }),
           };
 
           return updates;
@@ -1515,6 +1525,8 @@ const AppContent: React.FC = () => {
           }}
           nodeTypes={nodeTypes}
           reactFlowWrapper={reactFlowWrapper}
+          setEdges={setEdges}
+          saveToHistory={saveToHistory}
         >
             {/* Tool Palette */}
             <ToolPalette
