@@ -51,7 +51,7 @@ export const RouterIcon: React.FC<IconProps> = ({ color = '#4d7cfe', size = 52 }
     {/* Right edge depth */}
     <path d="M42 22 H43 Q46 22 46 25 V38 Q46 41 43 41 H42 V22Z" fill="black" opacity="0.12" />
     {/* Bottom edge depth */}
-    <rect x="8" y="37" width="38" height="4" rx="0 0 3 3" fill="black" opacity="0.08" />
+    <rect x="8" y="37" width="38" height="4" rx="3" fill="black" opacity="0.08" />
     {/* Display panel 1 */}
     <rect x="12" y="25" width="10" height="6" rx="1.5" fill="black" opacity="0.35" />
     <rect x="12.5" y="25.5" width="9" height="5" rx="1" fill="white" opacity="0.82" />
@@ -236,12 +236,12 @@ export const LinuxIcon: React.FC<IconProps> = ({ color = '#ffab40', size = 52 })
     {/* Right edge depth */}
     <path d="M43 7 H43 Q47 7 47 11 V43 Q47 47 43 47 H43 V7Z" fill="black" opacity="0.15" />
     {/* Bottom edge depth */}
-    <rect x="7" y="43" width="40" height="4" rx="0 0 4 4" fill="black" opacity="0.08" />
+    <rect x="7" y="43" width="40" height="4" rx="4" fill="black" opacity="0.08" />
     {/* Title bar */}
-    <rect x="7" y="7" width="40" height="10" rx="4 4 0 0" fill={color} />
+    <rect x="7" y="7" width="40" height="10" rx="4" fill={color} />
     <rect x="7" y="13" width="40" height="4" fill={color} />
     {/* Title bar highlight */}
-    <rect x="7" y="7" width="40" height="4" rx="4 4 0 0" fill="white" opacity="0.2" />
+    <rect x="7" y="7" width="40" height="4" rx="4" fill="white" opacity="0.2" />
     {/* Traffic light buttons */}
     <circle cx="13" cy="12" r="2.2" fill="#ff5f56" />
     <circle cx="12.5" cy="11.5" r="0.8" fill="white" opacity="0.3" />
@@ -283,7 +283,7 @@ export const SwitchIcon: React.FC<IconProps> = ({ color = '#7b8fa3', size = 52 }
     {/* Right edge depth */}
     <path d="M46 18 H47 Q50 18 50 21 V33 Q50 36 47 36 H46 V18Z" fill="black" opacity="0.12" />
     {/* Bottom edge */}
-    <rect x="4" y="32" width="46" height="4" rx="0 0 3 3" fill="black" opacity="0.08" />
+    <rect x="4" y="32" width="46" height="4" rx="3" fill="black" opacity="0.08" />
     {/* Power LED */}
     <circle cx="9" cy="27" r="2.2" fill="#4caf50" />
     <circle cx="8.5" cy="26.5" r="0.8" fill="white" opacity="0.45" />
@@ -339,7 +339,7 @@ export const CloudIcon: React.FC<IconProps> = ({ color = '#6b96ff', size = 52 })
     <circle cx="33" cy="18" r="3" fill="white" opacity="0.1" />
     <circle cx="41" cy="25" r="2.5" fill="white" opacity="0.08" />
     {/* Bottom shadow on cloud body */}
-    <rect x="6" y="34" width="43" height="6" rx="0 0 6 6" fill="black" opacity="0.1" />
+    <rect x="6" y="34" width="43" height="6" rx="6" fill="black" opacity="0.1" />
     {/* Inner light spot */}
     <ellipse cx="24" cy="28" rx="8" ry="4" fill="white" opacity="0.08" />
   </svg>
@@ -412,7 +412,7 @@ export const GenericIcon: React.FC<IconProps> = ({ color = '#8892a6', size = 52 
     {/* Right edge depth */}
     <path d="M40 12 H41 Q44 12 44 15 V39 Q44 42 41 42 H40 V12Z" fill="black" opacity="0.12" />
     {/* Bottom edge */}
-    <rect x="10" y="38" width="34" height="4" rx="0 0 3 3" fill="black" opacity="0.08" />
+    <rect x="10" y="38" width="34" height="4" rx="3" fill="black" opacity="0.08" />
     {/* Screen area */}
     <rect x="13" y="15" width="22" height="14" rx="1.5" fill="black" opacity="0.3" />
     <rect x="13.5" y="15.5" width="21" height="13" rx="1" fill="white" opacity="0.12" />
@@ -529,7 +529,7 @@ export const MobileIcon: React.FC<IconProps> = ({ color = '#3ddc84', size = 52 }
     {/* Right edge depth */}
     <path d="M35 3 H34 Q39 3 39 8 V46 Q39 51 34 51 H35 V3Z" fill="black" opacity="0.12" />
     {/* Bottom edge */}
-    <rect x="15" y="47" width="24" height="4" rx="0 0 5 5" fill="black" opacity="0.08" />
+    <rect x="15" y="47" width="24" height="4" rx="5" fill="black" opacity="0.08" />
     {/* Screen bezel */}
     <rect x="17" y="9" width="20" height="36" rx="2" fill="black" opacity="0.4" />
     {/* Screen */}

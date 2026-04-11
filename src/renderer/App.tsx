@@ -15,7 +15,8 @@ import {
   getNodesBounds,
   getViewportForBounds,
   ReactFlowInstance,
-  useReactFlow
+  useReactFlow,
+  ReactFlowProvider
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import DeviceNode from './components/DeviceNode';
@@ -1346,6 +1347,7 @@ const AppContent: React.FC = () => {
         />
 
         <ErrorBoundary componentName="Design Canvas">
+          <ReactFlowProvider>
           <DesignTab
             nodes={nodes}
             edges={edges}
@@ -1545,6 +1547,7 @@ const AppContent: React.FC = () => {
               hasUnsavedChanges={hasUnsavedChanges}
             />
           </DesignTab>
+          </ReactFlowProvider>
         </ErrorBoundary>
 
         <StylePanel
