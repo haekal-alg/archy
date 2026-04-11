@@ -100,8 +100,8 @@ export function useEdgeInteraction({
     [screenToFlowPosition, setEdges, saveToHistory]
   );
 
-  const onSegmentClick = useCallback(
-    (edgeId: string, segmentIndex: number, e: React.MouseEvent) => {
+  const onEdgePathClick = useCallback(
+    (edgeId: string, e: React.MouseEvent) => {
       try {
         // Don't add waypoints if we were just finishing a drag
         if (isDraggingRef.current) return;
@@ -109,7 +109,6 @@ export function useEdgeInteraction({
 
         const flowPos = screenToFlowPosition({ x: e.clientX, y: e.clientY });
         const snapped = snapToGrid(flowPos, GRID_SIZE);
-        log('info', `Segment click: edge=${edgeId}, segmentIndex=${segmentIndex}, insertAt=(${snapped.x}, ${snapped.y})`);
 
         setEdges((eds) =>
           eds.map((edge) => {
@@ -117,11 +116,45 @@ export function useEdgeInteraction({
             const data = (edge.data || {}) as CustomEdgeData;
             const waypoints = data.waypoints ? [...data.waypoints] : [];
 
-            // Insert new waypoint at the correct position in the array
-            // segmentIndex 0 = between source and first waypoint (or target if no waypoints)
-            // So insert at index = segmentIndex
-            waypoints.splice(segmentIndex, 0, { x: snapped.x, y: snapped.y });
-            log('info', `Waypoint inserted: edge=${edgeId}, totalWaypoints=${waypoints.length}, routingMode=manual`);
+            // Find the best insertion index using the edge's source/target
+            // React Flow stores sourceX/Y in internals, but we can approximate
+            // by finding the closest segment among existing waypoints
+            let insertIndex = waypoints.length; // default: append at end
+
+            if (waypoints.length > 0) {
+              // We need source/target positions to find the right segment.
+              // Use findClosestSegment with a dummy source/target (0,0) and just
+              // compare distances to existing waypoint segments.
+              // Actually, we can reconstruct from the edge's source/target handles,
+              // but those aren't available here. Instead, find the closest
+              // pair of adjacent waypoints and insert between them.
+              let bestDist = Infinity;
+              const allPts = [...waypoints];
+              for (let i = 0; i < allPts.length; i++) {
+                const dist = Math.hypot(snapped.x - allPts[i].x, snapped.y - allPts[i].y);
+                if (dist < bestDist) {
+                  bestDist = dist;
+                  // Insert before or after this point based on which side is closer
+                  if (i === 0) {
+                    insertIndex = 0;
+                  } else {
+                    // Check if click is between i-1 and i, or after i
+                    const prevDist = Math.hypot(snapped.x - allPts[i - 1].x, snapped.y - allPts[i - 1].y);
+                    insertIndex = prevDist < dist ? i : i;
+                  }
+                }
+              }
+              // Refine: use findClosestSegment with first/last waypoint as proxy source/target
+              const proxySource = waypoints[0];
+              const proxyTarget = waypoints[waypoints.length - 1];
+              const result = findClosestSegment(snapped, proxySource, proxyTarget, waypoints.slice(1, -1));
+              // Adjust index: findClosestSegment operates on [proxySource, ...middle, proxyTarget]
+              // segmentIndex 0 = before first middle point = index 0 in original
+              insertIndex = Math.min(result.segmentIndex + 1, waypoints.length);
+            }
+
+            waypoints.splice(insertIndex, 0, { x: snapped.x, y: snapped.y });
+            log('info', `Waypoint inserted via path click: edge=${edgeId}, insertIndex=${insertIndex}, totalWaypoints=${waypoints.length}, pos=(${snapped.x}, ${snapped.y})`);
 
             return {
               ...edge,
@@ -136,7 +169,7 @@ export function useEdgeInteraction({
 
         setTimeout(() => saveToHistory(), 0);
       } catch (err) {
-        log('error', `Segment click failed: edge=${edgeId}, segmentIndex=${segmentIndex}, error=${err instanceof Error ? err.message : String(err)}, stack=${err instanceof Error ? err.stack : 'n/a'}`);
+        log('error', `Edge path click failed: edge=${edgeId}, error=${err instanceof Error ? err.message : String(err)}, stack=${err instanceof Error ? err.stack : 'n/a'}`);
       }
     },
     [screenToFlowPosition, setEdges, saveToHistory]
@@ -184,7 +217,7 @@ export function useEdgeInteraction({
 
   return {
     onWaypointDragStart,
-    onSegmentClick,
+    onEdgePathClick,
     onWaypointDoubleClick,
   };
 }

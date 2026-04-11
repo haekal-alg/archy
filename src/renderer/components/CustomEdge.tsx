@@ -15,7 +15,6 @@ import {
   buildSmoothStepManualPath,
   buildBezierManualPath,
   computeLabelPosition,
-  buildSegmentPaths,
 } from '../utils/edgePath';
 import { useEdgeInteractionContext } from '../contexts/EdgeInteractionContext';
 
@@ -139,11 +138,6 @@ const CustomEdge: React.FC<EdgeProps> = ({
 
   const strokeDasharray = strokeStyle === 'dashed' ? '8 4' : strokeStyle === 'dotted' ? '2 4' : 'none';
 
-  // Build segment hit-zone paths for click-to-add-waypoint
-  const segmentPaths = (selected || isHovered) && interaction
-    ? buildSegmentPaths(source, target, waypoints)
-    : [];
-
   return (
     <>
       {/* Main edge path */}
@@ -162,20 +156,19 @@ const CustomEdge: React.FC<EdgeProps> = ({
         onMouseLeave={() => setIsHovered(false)}
       />
 
-      {/* Segment hit zones for adding waypoints */}
-      {segmentPaths.map((segPath, i) => (
+      {/* Fat invisible hit zone following the actual edge path for click-to-add-waypoint */}
+      {interaction && (
         <path
-          key={`hit-${id}-${i}`}
-          d={segPath}
+          d={path}
           fill="none"
           stroke="transparent"
-          strokeWidth={20}
+          strokeWidth={Math.max(20, strokeWidth + 16)}
           style={{ cursor: 'crosshair', pointerEvents: 'stroke' }}
-          onClick={(e) => interaction?.onSegmentClick(id, i, e)}
+          onClick={(e) => interaction.onEdgePathClick(id, e)}
           onMouseEnter={() => setIsHovered(true)}
           onMouseLeave={() => setIsHovered(false)}
         />
-      ))}
+      )}
 
       {/* Animated flow effect with intense glow */}
       {animated && (
