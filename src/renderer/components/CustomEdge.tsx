@@ -79,42 +79,62 @@ const CustomEdge: React.FC<EdgeProps> = ({
   const markerEndUrl = getMarkerUrl(markerEndType, 'end');
 
   // ─── Path Computation ──────────────────────────────────────
-  let path: string;
-  let labelX: number;
-  let labelY: number;
+  let path: string = '';
+  let labelX: number = 0;
+  let labelY: number = 0;
 
   const source = { x: sourceX, y: sourceY };
   const target = { x: targetX, y: targetY };
 
-  if (isManual) {
-    // Manual mode: build path from stored waypoints
-    if (routingType === 'smoothstep') {
-      path = buildSmoothStepManualPath(source, target, waypoints);
-    } else if (routingType === 'bezier') {
-      path = buildBezierManualPath(source, target, waypoints);
+  try {
+    if (isManual) {
+      // Manual mode: build path from stored waypoints
+      if (routingType === 'smoothstep') {
+        path = buildSmoothStepManualPath(source, target, waypoints);
+      } else if (routingType === 'bezier') {
+        path = buildBezierManualPath(source, target, waypoints);
+      } else {
+        path = buildPolylinePath(source, target, waypoints);
+      }
+      const labelPos = computeLabelPosition(source, target, waypoints);
+      labelX = labelPos.x;
+      labelY = labelPos.y;
     } else {
-      path = buildPolylinePath(source, target, waypoints);
+      // Auto mode: use React Flow's built-in path computation
+      if (routingType === 'smoothstep') {
+        [path, labelX, labelY] = getSmoothStepPath({
+          sourceX, sourceY, sourcePosition,
+          targetX, targetY, targetPosition,
+        });
+      } else if (routingType === 'straight') {
+        [path, labelX, labelY] = getStraightPath({
+          sourceX, sourceY, targetX, targetY,
+        });
+      } else {
+        [path, labelX, labelY] = getBezierPath({
+          sourceX, sourceY, sourcePosition,
+          targetX, targetY, targetPosition,
+        });
+      }
     }
-    const labelPos = computeLabelPosition(source, target, waypoints);
-    labelX = labelPos.x;
-    labelY = labelPos.y;
-  } else {
-    // Auto mode: use React Flow's built-in path computation
-    if (routingType === 'smoothstep') {
-      [path, labelX, labelY] = getSmoothStepPath({
-        sourceX, sourceY, sourcePosition,
-        targetX, targetY, targetPosition,
-      });
-    } else if (routingType === 'straight') {
-      [path, labelX, labelY] = getStraightPath({
-        sourceX, sourceY, targetX, targetY,
-      });
-    } else {
-      [path, labelX, labelY] = getBezierPath({
-        sourceX, sourceY, sourcePosition,
-        targetX, targetY, targetPosition,
-      });
+
+    if (!path) {
+      const msg = `[CustomEdge] Empty path computed for edge=${id}, mode=${routingMode}, type=${routingType}, waypoints=${waypoints.length}, source=(${sourceX},${sourceY}), target=(${targetX},${targetY})`;
+      console.error(msg);
+      if ((window as any).electron?.log) (window as any).electron.log('error', msg);
+      // Fallback to straight line
+      path = `M ${sourceX} ${sourceY} L ${targetX} ${targetY}`;
+      labelX = (sourceX + targetX) / 2;
+      labelY = (sourceY + targetY) / 2;
     }
+  } catch (err) {
+    const msg = `[CustomEdge] Path computation error for edge=${id}, mode=${routingMode}, type=${routingType}, waypoints=${JSON.stringify(waypoints)}: ${err instanceof Error ? err.message : String(err)}\n${err instanceof Error ? err.stack : ''}`;
+    console.error(msg);
+    if ((window as any).electron?.log) (window as any).electron.log('error', msg);
+    // Fallback to straight line
+    path = `M ${sourceX} ${sourceY} L ${targetX} ${targetY}`;
+    labelX = (sourceX + targetX) / 2;
+    labelY = (sourceY + targetY) / 2;
   }
 
   const strokeDasharray = strokeStyle === 'dashed' ? '8 4' : strokeStyle === 'dotted' ? '2 4' : 'none';
